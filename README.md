@@ -2,7 +2,7 @@
 
 #### 2018/10/06
 
-* [Heatsink efficiency considerations](Heatsink%20Efficiency/README.md)
+* [Quick Review of NanoPi NEO4](Quick%20Review%20of%20NanoPi%20NEO4/README.md)
 
 #### older stuff
 
