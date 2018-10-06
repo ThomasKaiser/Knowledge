@@ -1,4 +1,4 @@
-# ARM SoCs with PCIe support
+# ARMv8 SoCs with PCIe support
 
 ## Multi purpose SoCs
 
