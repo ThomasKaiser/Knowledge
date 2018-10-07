@@ -2,7 +2,7 @@
 
 NanoPi NEO4 is currently the smallest RK3399 board around. I got 2 pre-release samples provided by FriendlyELEC for tests, development and review. In the following I focus on things I'm interested in (that's headless server mode and nothing else)
 
-![](IMG_8092.JPG)
+![](../media/IMG_8092.JPG)
 
 ## Basic specs
 
@@ -62,7 +62,7 @@ I added NEO4 performance numbers already to [sbc-bench results](https://github.c
 
 So let's look at heat dissipation now:
 
-![](IMG_8103.JPG)
+![](../media/IMG_8103.JPG)
 
 FriendlyELEC provides a massive milled Aluminium heatsink for the board that ships with a 20x20 mm thermal pad to connect heatsink with RK3399. Unfortunately these thermal pads perform rather poorly wrt heat transfer (see [NanoPi Fire3](https://forum.armbian.com/topic/7260-quick-review-of-nanopi-fire3/?do=findComment&comment=61661), [NanoPi K1 Plus](https://forum.armbian.com/topic/8125-quick-review-of-nanopi-k1-plus/?do=findComment&comment=61417), [NanoPi M4](https://forum.armbian.com/topic/8097-nanopi-m4-performance-and-consumption-review/?tab=comments#comment-61786) and [RockPro64](https://forum.armbian.com/topic/7310-rockpro64/?do=findComment&comment=61811)) so my personal recommendation is to replace the thermal pad with a 1.2mm copper shim and two thin films of thermal compound.
 

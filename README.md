@@ -2,7 +2,7 @@
 
 #### 2018/10/06
 
-* [Quick Review of NanoPi NEO4](Quick%20Review%20of%20NanoPi%20NEO4/README.md)
+* [Quick Review of NanoPi NEO4](articles/Quick_Review_of_NanoPi_NEO4.md)
 
 #### older stuff
 
