@@ -56,7 +56,7 @@ For further numbers please compare with [NanoPi M4 review in Armbian forum](http
 
 ## CPU and memory performance
 
-As expected the RK3399 here performs like any other RK3399 on this planet. The only interesting questions are only how heat dissipation works here (RK3399 since somewhat beefy will overheat and needs to be throttled without sufficient heat dissipation) and how memory implementation looks like.
+As expected the RK3399 here performs like any other RK3399 on this planet. The only interesting questions are how heat dissipation works here (RK3399 since somewhat beefy will overheat and needs to be throttled without sufficient heat dissipation) and how memory implementation looks like.
 
 I added NEO4 performance numbers already to [sbc-bench results](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md). For reasons unknown yet when running NEO4 with appropriate DT (`rk3399-nanopi4-rev04.dts`) memory bandwidth and especially latency is slightly worse compared to running with NanoPi M4 settings (but doesn't matter with almost all use cases)
 
@@ -66,7 +66,7 @@ So let's look at heat dissipation now:
 
 FriendlyELEC provides a massive milled Aluminium heatsink for the board that ships with a 20x20 mm thermal pad to connect heatsink with RK3399. Unfortunately these thermal pads perform rather poorly wrt heat transfer (see [NanoPi Fire3](https://forum.armbian.com/topic/7260-quick-review-of-nanopi-fire3/?do=findComment&comment=61661), [NanoPi K1 Plus](https://forum.armbian.com/topic/8125-quick-review-of-nanopi-k1-plus/?do=findComment&comment=61417), [NanoPi M4](https://forum.armbian.com/topic/8097-nanopi-m4-performance-and-consumption-review/?tab=comments#comment-61786) and [RockPro64](https://forum.armbian.com/topic/7310-rockpro64/?do=findComment&comment=61811)) so my personal recommendation is to replace the thermal pad with a 1.2mm copper shim and two thin films of thermal compound.
 
-I had a detailed look at [heatsink efficiency here](Heatsink%20Efficiency/README.md) but regardless whether you use the thermal pad or exchange it with something working better there are three simple rules:
+I had a detailed look at [heatsink efficiency here](Heatsink_Efficiency.md) but regardless whether you use the thermal pad or exchange it with something working better there are three simple rules:
 
 * You **need** a heatsink unless NEO4 should idle all the time. Usually the PCB acts as an own heatsink but here PCB size is that tiny that you can't rely on.
 * If your use case involves only short peak loads then FriendlyELEC's massive heatsink does the job (the huge Alu block can compensate easily for short SoC temperature increases)
@@ -152,7 +152,7 @@ There's 1 x USB3, 2 x USB2 (one time on a pin header), the USB OTG port is route
 
 Two PCIe Gen2 lanes are routed to the 40-pin header but since this connector is proprietary it needs specially designed 'HATs' or PCIe expanders to make use of them (and I really hope we'll see some of them since this is still an amazing feature for such a tiny board to expose this universal high speed bus in that way!)
 
-On the 40-pin header a few more protocols are exposed (please check FriendlyELEC's wiki](http://wiki.friendlyarm.com/wiki/index.php/NanoPi_NEO4) for details)
+On the 40-pin header a few more protocols are exposed (please check [FriendlyELEC's wiki](http://wiki.friendlyarm.com/wiki/index.php/NanoPi_NEO4) for details)
 
 ## Conclusion
 
