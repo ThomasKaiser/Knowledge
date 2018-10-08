@@ -43,7 +43,7 @@ The good thing about cpuminer's benchmark mode is that you get the actual khash/
 * NEO4 copper shim: 7.74 kH/s at ~83°C
 * RockPro64: 8.15 kH/s at ~72°C
 
-It should be noted that throttling treshold for NEO4 and RockPro64 is set lower than the 
+It should be noted that throttling tresholds for all 4 boards are similar (trip-point-0 at 70°C and trip-point-1 at 85°C) but the critical treshold is set to 95°C with Ficus (RK default is 115°C) which prevents RK3399 here from exceeding 95°C.
 
 ### Looking at the different approaches individually
 
