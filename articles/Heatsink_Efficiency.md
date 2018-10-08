@@ -21,6 +21,12 @@ All 4 boards run Debian Stretch with kernel 4.4 and cpufreqs limited to 1.4/1.8 
 
 ![](../media/heatsink_tempgraph1.png)
 
+
+
+2nd test: same as above but this time running on one NEO4 without any heatsink mounted:
+
+![](../media/heatsink_tempgraph2.png)
+
 ## Interpreting the results
 
 It's pretty obvious that heat dissipation on RockPro64 works best, followed by the NEO4 with copper shim(s) between RK3399 and heatsink, then the other NEO4 with FriendlyELEC's thermal pad and then [Rock960 EE (also called Ficus)](https://forum.armbian.com/topic/8329-quick-review-of-rock960-enterprise-edition-aka-ficus/).
@@ -29,6 +35,7 @@ It's pretty obvious that heat dissipation on RockPro64 works best, followed by t
 
 SoC temperatures reported as follows:
 
+* NEO4 w/o heatsink: 57°C
 * Rock960: 51.5°C
 * NEO4 thermal pad: 42°C
 * NEO4 copper shim: 40.5°C
@@ -38,12 +45,13 @@ SoC temperatures reported as follows:
 
 The good thing about cpuminer's benchmark mode is that you get the actual khash/s values constantly reported while running the benchmark. So once the CPU cores start to throttle the benchmark scores will immediately drop too. At the end of the 15 min run the hash rates and temperatures were reported as follows:
 
+* NEO4 w/o heatsink: 4.48 kH/s at ~94°C
 * Rock960: 6.88 kH/s at ~94°C
 * NEO4 thermal pad: 7.38 kH/s at ~85°C
 * NEO4 copper shim: 7.74 kH/s at ~83°C
 * RockPro64: 8.15 kH/s at ~72°C
 
-It should be noted that throttling tresholds for all 4 boards are similar (trip-point-0 at 70°C and trip-point-1 at 85°C) but the critical treshold is set to 95°C with Ficus (RK default is 115°C) which prevents RK3399 here from exceeding 95°C.
+It should be noted that throttling tresholds for all 4 boards are similar (trip-point-0 at 70°C and trip-point-1 at 85°C) but the critical treshold is set to 95°C with Ficus (RK default is 115°C). But regardless of the `critical` value none of the boards w/o heatsink exceeded 95°C (NEO4 w/o heatsink throttled down to 408 MHz on the A72 and 1200 MHz on the A53 little cores).
 
 ### Looking at the different approaches individually
 
@@ -55,7 +63,9 @@ RK3399 directly attached with some thermal compound to this huge heatsink with s
 
 #### NanoPi NEO4
 
-The board is rather small so the PCB does not help that much to dissipate heat away from the SoC. FriendlyELEC chose a huge heatsink out of milled Aluminium which has an own significant thermal mass (the thing gets warm after some time and stores the heat if there's no airflow around). As usual the vendor provided thermal pad performs rather poorly wrt heat transfer so the alternative approach to replace the thermal pad with a copper shim works a lot better. Since distance between SoC and heatsink is ~1.2mm here I needed to combine two copper shims since I have none with 1.2mm height.
+The board is rather small so the PCB does not help that much to dissipate heat away from the SoC. It's pretty useless to let such a small board run without an efficient heatsink.
+
+FriendlyELEC chose a huge heatsink out of milled Aluminium which has an own significant thermal mass (the thing gets warm after some time and stores the heat if there's no airflow around). As usual the vendor provided thermal pad performs rather poorly wrt heat transfer so the alternative approach to replace the thermal pad with a copper shim works a lot better. Since distance between SoC and heatsink is ~1.2mm here I needed to combine two copper shims since I have none with 1.2mm height.
 
 ![](../media/IMG_8103.JPG)
 
