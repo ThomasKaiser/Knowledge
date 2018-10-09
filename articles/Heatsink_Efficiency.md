@@ -93,12 +93,12 @@ Now a quick test with those larger boards where the PCB itself acts as a heatsin
 
 ![](../media/heatsink_tempgraph4.png)
 
-| Condition | RockPro64 | RP64 upright | Ficus | Ficus upright |
-| --------- | --------- | ------------ | ----- | ------------- |
+| Condition | RockPro64 | RockPro64 upright | Ficus | Ficus upright |
+| --------: | :-------: | :----------: | :---: | :-----------: |
 | Idle | 32.5 | 31.5 | 42.5 | 37 |
-| stress | 52 | 51.5 | 74 | 68 |
-| cpuminer 1 | 62 | 60 | 84 | 76 |
-| cpuminer 2 ] 72 | 69 | +85 | 84.5 |
+| stress 5min | 52 | 51.5 | 74 | 68 |
+| cpuminer 5min | 62 | 60 | 84 | 76 |
+| cpuminer 15min | 72 | 69 | +85 | 84.5 |
 
 Differences with RockPro64 aren't that huge but with Ficus it really helps a lot. We've 5°C lower temps in idle, 6°C after 5 min `stress`, 8°C less after 5 min `cpuminer` and RK3399 still doesn't throttle after the 15 min `cpuminer` test.
 
@@ -114,7 +114,7 @@ The heatsink outperforms the 'fan only' setup as expected. If you want to use a 
 ## Preliminary conclusions
 
 * Board size matters since BGA ICs like RK3399 dissipate heat into the PCB's ground plane (compare Rock960 and NEO4 above).
-* With large boards orientation matters. Allowing for some airflow around the whole PCB and choosing large heatsink fins with sufficient spacing keeps temperatures down.
+* With large boards orientation matters. Allowing for some airflow around the whole PCB and choosing large heatsink fins with sufficient spacing keeps temperatures down (convection).
 * optimal heat transfer between SoC and heatsink is important to keep temperatures down. Thermal pads suck (see not only NEO4 above and [RockPro64](https://forum.armbian.com/topic/7310-rockpro64/?do=findComment&comment=61811) but also [NanoPi Fire3](https://forum.armbian.com/topic/7260-quick-review-of-nanopi-fire3/?do=findComment&comment=61661), [NanoPi K1 Plus](https://forum.armbian.com/topic/8125-quick-review-of-nanopi-k1-plus/?do=findComment&comment=61417) and [NanoPi M4](https://forum.armbian.com/topic/8097-nanopi-m4-performance-and-consumption-review/?tab=comments#comment-61786)) and the ideal combination of SoC and heatsink is just an ultra thin film of thermal compound. If that's not possible replacing a thermal pad with a copper shim + thermal compound always greatly improves efficiency.
 * huge massive heatsinks with an own thermal mass are sufficient to compensate for shorter load and temperature peaks from time to time but since they store heat under constant high load they won't help that much (without some additional airflow AKA fan then).
 * If there are no mounting holes for a heatsink it might be worth a try to buy an oversized heatsink and some thermal glue.
