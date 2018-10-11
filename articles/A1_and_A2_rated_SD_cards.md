@@ -125,7 +125,7 @@ Test flawed since the installation on the Intenso card reads more on average com
 
 #### [FriendlyELEC eMMC 8GB](http://ix.io/1oSp)
 
-                                                  random    random
+                                                        random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       1     1725     1645     7036     7055     5350     1489
     102400       2     4011     3668    13632    13572    10446     3273
@@ -145,7 +145,7 @@ Test flawed since the installation on the Intenso card reads more on average com
 
 #### [SanDisk Extreme Plus A2 64GB](http://ix.io/1oQi)
 
-                                                  random    random
+                                                        random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       1      561      395     2479     2456     2438      462
     102400       2     1275      875     4935     4963     4999     1035
