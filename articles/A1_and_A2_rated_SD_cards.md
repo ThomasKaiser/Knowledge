@@ -20,11 +20,11 @@ An `iozone` run pinned to a big core and set to max CPU clockspeed is used for b
 * SanDisk Extreme Plus (neither A1 nor A2)
 * SanDisk Industrial 8GB
 * SanDisk 'Ultra' 8GB
-* Intenso 'Class 4' 4GB
+* Intenso 'Class 4' 4GB (this card is used as an equivalent for 'average SD card' SBC users pulled out of an old digital camera and use now for the rootfs)
 
 ## Results overview
 
-|            | Average card | SanDisk Ultra | Industrial | Extreme | Ultra A1 | Extreme A1 | Extreme Plus A2 | eMMC |
+|            | Average card | SanDisk Ultra | Industrial | Extreme Plus | Ultra A1 | Extreme A1 | Extreme Plus A2 | eMMC |
 | ---------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
 |   1k read IOPS | 1469 | 2173 | 2116 | 3484 | 2539 | 3990 | 2438 | 5350 |
 |  1k write IOPS |   97 |  179 |  421 |  542 |  469 |  834 |  462 | 1489 |
@@ -40,8 +40,9 @@ An `iozone` run pinned to a big core and set to max CPU clockspeed is used for b
 ## Obvious results
 
 * The newly bought Extreme Plus A2 is not A2 compliant since way too slow. I need to negotiate a refund/return with Amazon
+* 'Average' SD cards show horribly low random write performance (for whatever reasons especially at 16k block size -- here the slowest card 'performs' over 500 times worse compared to the eMMC module)
 * The boot time test is insufficient. Measured time until execution of `/etc/rc.local` might give a better idea (quick test showed 14.93 secs with fastest card vs. 23.59 with the slow Intenso card)
-* LXDE installation time correlates somehow with random write performance
+* LXDE installation time correlates with **random write** and not sequential write performance (compare 'Average' with SanDisk Ultra and also Extreme Plus with Extreme A1)
 
 ## Storage access patterns while booting
 
