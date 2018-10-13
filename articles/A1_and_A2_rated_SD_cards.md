@@ -47,7 +47,7 @@ I returned the SanDisk Extreme Plus A2 64GB at Amazon and bought a SanDisk Extre
 * The newly bought SanDisk A2 rated cards seem not to be A2 compliant since way too slow. At least when used with ext4 they're slower than good A1 rated cards. I need to test with ExFAT but a quick check on Linux resulted in bogus results since ExFAT on Linux is handled by FUSE (userspace) and then read results are cached and not reflecting storage performance (e.g. 760 MB/s sequential reads reported)
 * 'Average' SD cards show horribly low random write performance (for whatever reasons especially at 16k block size -- here the slowest card 'performs' over 500 times worse compared to the eMMC module)
 * The boot time test is insufficient. Measured time until execution of `/etc/rc.local` might give a better idea (quick test showed 14.93 secs with fastest card vs. 23.59 with the slow Intenso card)
-* LXDE installation time correlates with **random** write and not sequential write performance (compare 'Class 4' with SanDisk Ultra A1, compare Extreme Plus with Extreme A1 and especially Ultra A1)
+* LXDE installation time correlates with **random** write and not sequential write performance (compare 'Class 4' with SanDisk Ultra, compare Extreme Plus with Extreme A1 and especially Ultra A1)
 
 ## Storage access patterns while booting
 
