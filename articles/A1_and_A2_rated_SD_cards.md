@@ -29,7 +29,7 @@ I returned the SanDisk Extreme Plus A2 64GB at Amazon and bought a SanDisk Extre
 
 ## Results overview
 
-|            | Average card | SanDisk Ultra | Industrial | Extreme Plus | Ultra A1 | Extreme A1 | Extreme Pro A2 | Extreme Plus A2 | eMMC |
+|            | Average card | SanDisk Ultra | SanDisk Industrial | Extreme Plus | Ultra A1 | Extreme A1 | Extreme Plus A2 | Extreme Pro A2 | eMMC |
 | ---------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
 |   1k read IOPS | 1469 | 2173 | 2116 | 3484 | 2539 | 3990 | 2438 | 2113 | 5350 |
 |  1k write IOPS |   97 |  179 |  421 |  542 |  469 |  834 |  462 |  453 | 1489 |
