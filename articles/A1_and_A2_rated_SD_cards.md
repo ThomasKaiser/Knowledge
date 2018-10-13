@@ -11,38 +11,43 @@ An `iozone` run pinned to a big core and set to max CPU clockspeed is used for b
 
 ![](../media/IMG_8122.JPG)
 
-8 different storage types were tested:
+9 different storage types were tested:
 
-* FriendlyELEC's Samsung eMMC 8GB module
-* SanDisk Extreme Plus A2 64GB (obviously not A2 compliant since performance way too low)
-* SanDisk Extreme A1 32GB
-* SanDisk Ultra A1 32GB
-* SanDisk Extreme Plus (neither A1 nor A2)
-* SanDisk Industrial 8GB
-* SanDisk 'Ultra' 8GB
 * Intenso 'Class 4' 4GB (this card is used as an equivalent for 'average SD card' SBC users pulled out of an old digital camera and use now for the rootfs)
+* SanDisk 'Ultra' 8GB
+* SanDisk Industrial 8GB
+* SanDisk Extreme Plus (neither A1 nor A2)
+* SanDisk Ultra A1 32GB
+* SanDisk Extreme A1 32GB
+* SanDisk Extreme Plus A2 64GB (seems not to be A2 compliant since performance way too low)
+* SanDisk Extreme Pro A2 64GB (seems not to be A2 compliant since performance way too low)
+* FriendlyELEC's Samsung eMMC 8GB module
+
+## Additional test
+
+I returned the SanDisk Extreme Plus A2 64GB at Amazon and bought a SanDisk Extreme Pro A2 64GB instead. Quick test showed even worse performance.
 
 ## Results overview
 
-|            | Average card | SanDisk Ultra | Industrial | Extreme Plus | Ultra A1 | Extreme A1 | Extreme Plus A2 | eMMC |
-| ---------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
-|   1k read IOPS | 1469 | 2173 | 2116 | 3484 | 2539 | 3990 | 2438 | 5350 |
-|  1k write IOPS |   97 |  179 |  421 |  542 |  469 |  834 |  462 | 1489 |
-|   4k read IOPS | 1699 | 2144 | 1807 | 2463 | 2708 | 3298 | 1670 | 4942 |
-|  4k write IOPS |   34 |  161 |  753 |  737 |  905 | 1472 |  597 | 2276 |
-|  16k read IOPS |  708 | 1413 | 1357 | 1901 | 1670 | 2152 | 1559 | 3571 |
-| 16k write IOPS |    2 |    5 |  446 |  562 |  529 | 1089 |  678 | 1593 |
-|      read MB/s |   43 |   45 |   67 |   67 |   67 |   67 |   67 |  129 |
-|     write MB/s |   10 |   13 |   32 |   62 |   19 |   61 |   51 |   46 |
-|  boot time (in sec) |  8.4 |  5.4 |  5.7 |  5.3 |  5.2 |  5.3 |  5.4 |  4.7 |
-|   LXDE install (in sec) |  398 |  139 |   89 |   84 |   72 |   59 |   74 |   56 |
+|            | Average card | SanDisk Ultra | Industrial | Extreme Plus | Ultra A1 | Extreme A1 | Extreme Pro A2 | Extreme Plus A2 | eMMC |
+| ---------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
+|   1k read IOPS | 1469 | 2173 | 2116 | 3484 | 2539 | 3990 | 2438 | 2113 | 5350 |
+|  1k write IOPS |   97 |  179 |  421 |  542 |  469 |  834 |  462 |  453 | 1489 |
+|   4k read IOPS | 1699 | 2144 | 1807 | 2463 | 2708 | 3298 | 1670 | 1343 | 4942 |
+|  4k write IOPS |   34 |  161 |  753 |  737 |  905 | 1472 |  597 |  581 | 2276 |
+|  16k read IOPS |  708 | 1413 | 1357 | 1901 | 1670 | 2152 | 1559 | 1250 | 3571 |
+| 16k write IOPS |    2 |    5 |  446 |  562 |  529 | 1089 |  678 |  656 | 1593 |
+|      read MB/s |   43 |   45 |   67 |   67 |   67 |   67 |   67 |   67 |  129 |
+|     write MB/s |   10 |   13 |   32 |   62 |   19 |   61 |   51 |   50 |   46 |
+|  boot time (in sec) |  8.4 |  5.4 |  5.7 |  5.3 |  5.2 |  5.3 |  5.4 |  5.5 | 4.7 |
+|   LXDE install (in sec) |  398 |  139 |   89 |   84 |   72 |   59 |   74 |  72 |   56 |
 
 ## Obvious results
 
-* The newly bought Extreme Plus A2 is not A2 compliant since way too slow. I need to negotiate a refund/return with Amazon
+* The newly bought SanDisk A2 rated cards seem not to be A2 compliant since way too slow. At least when used with ext4 they're slower than good A1 rated cards. I need to test with ExFAT but a quick check on Linux resulted in bogus results since ExFAT on Linux is handled by FUSE (userspace) and then read results are cached and not reflecting storage performance (e.g. 760 MB/s sequential reads reported)
 * 'Average' SD cards show horribly low random write performance (for whatever reasons especially at 16k block size -- here the slowest card 'performs' over 500 times worse compared to the eMMC module)
 * The boot time test is insufficient. Measured time until execution of `/etc/rc.local` might give a better idea (quick test showed 14.93 secs with fastest card vs. 23.59 with the slow Intenso card)
-* LXDE installation time correlates with **random write** and not sequential write performance (compare 'Average' with SanDisk Ultra and also Extreme Plus with Extreme A1 and especially Ultra A1)
+* LXDE installation time correlates with **random** write and not sequential write performance (compare 'Class 4' with SanDisk Ultra A1, compare Extreme Plus with Extreme A1 and especially Ultra A1)
 
 ## Storage access patterns while booting
 
@@ -142,6 +147,26 @@ Test flawed since the installation on the Intenso card reads more on average com
     real	0m55.681s
     user	0m20.721s
     sys	0m12.667s
+
+#### [SanDisk Extreme Pro A2 64GB](http://ix.io/1p2L)
+
+                                                        random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       1      567      402     2147     2113     2113      453
+    102400       2     1178      827     3918     4088     4405     1145
+    102400       4     1971     1992     7182     7061     5373     2324
+    102400      16     7193     7211    21557    21114    19999    10498
+    102400     128    30657    29972    53150    52185    52588    22742
+    102400     512    46646    45891    62557    63204    62857    42485
+    102400    1024    50939    50722    64786    64811    64823    47495
+    102400   16384    50591    50280    66915    66582    67026    50872
+    
+    [    5.724544] zram0: detected capacity change from 0 to 52428800
+    [    5.267945] zram0: detected capacity change from 0 to 52428800
+    
+    real	1m13.938s
+    user	0m22.362s
+    sys	0m11.716s
 
 #### [SanDisk Extreme Plus A2 64GB](http://ix.io/1oQi)
 
