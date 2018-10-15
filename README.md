@@ -1,8 +1,12 @@
 # Random stuff about 'small and energy efficient' computing.
 
+#### 2018/10/15
+
+* [Performance comparison of A1 and A2 rated SD cards](articles/A1_and_A2_rated_SD_cards.md)
+
 #### 2018/10/08
 
-* [Heatsink Efficiency](articles//Heatsink_Efficiency.md)
+* [Heatsink Efficiency](articles/Heatsink_Efficiency.md)
 
 #### 2018/10/06
 

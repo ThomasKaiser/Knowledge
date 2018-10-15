@@ -1,311 +1,241 @@
 # Performance impact of MMC storage used on SBC
 
-Not any contents yet
+## Historical background
 
+SD cards were initially made for pure sequential workloads (storing/reading pictures or video). The vast majority of cards was only optimized for this single use case and performed extremely poorly with random IO access patterns.
 
-## 1st round of tests
+When using SD cards as main storage on SBC (single board computers) this limitation resulted in poor performance since the main storage access pattern when running Linux or Android is random IO (accessing mostly small chunks of data in a random fashion in contrary to sequentially writing/reading large chunks of data in cameras and video recorders).
 
-All tests happen on NanoPi NEO4 with UHS/SDR104 mode enabled (for reliability reasons limiting SD host controller clock source PLL configuration in a similar way to what [Hardkernel did on ODROID-N1](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250) therefore bottlenecking sequential performance to ~67MB/s). All tests done with [Armbian_5.64_Nanopineo4_Debian_stretch_default_4.4.159.7z](https://dl.armbian.com/nanopineo4/archive/) using Armbian defaults (ext4, 600 sec commit interval). The eMMC install has been transferred using `nand-sata-install`.
+SD Association's 'speed classes' only dealt with sequential IO (minimum MB/s ratings) and it was an adventure to find SD cards that also perform ok-ish or even great with random IO access patterns as it's normal with Android/Linux. See here for a historical overview trying to find good SD cards for the use case 2 1/2 years ago: [https://forum.armbian.com/topic/954-sd-card-performance/](https://forum.armbian.com/topic/954-sd-card-performance/)
 
-An `iozone` run pinned to a big core and set to max CPU clockspeed is used for basic benchmarking (IOPS and sequential transfer speeds): `taskset -c 5 iozone -e -I -a -s 100M -r 1k -r 2k -r 4k -r 16k -r 128k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2`. Then a grep for `detected capacity change from 0 to 52428800` in `dmesg` output is used to compare influence of the used card on boot speeds. And finally time needed to install LXDE desktop environment was measured (`time apt-get -y install lxde`)
+The stuff we do mostly on SBC requires high *random* IO but is not that much dependent on *sequential* performance unless you stream data (the NAS use case for example). So running off storage with superior random IO performance greatly improves the time needed to boot, browse the web (browser do constant random IO in the background), install updates and so on.
+
+## 'Application Performance Class' to the rescue
+
+Some time ago SD Association tried to address this problem and defined also specs and 'speed classes' for random IO access patterns mainly with Android in mind: the [Application Performance Classes](https://www.sdcard.org/developers/overview/application/index.html) A1 and A2 were invented.
+
+![](https://www.sdcard.org/developers/overview/application/img/img_application.jpg)
+
+### Application Performance Class 1 (A1)
+
+This performance class requires at least 1500/500 read/write IOPS (IO operations per second) with a 4k blocksize (small data chunks) and at least 10 MB/s sustained sequential write performance. No special host requirements are needed, the card simply has to exceed the performance requirements on its own.
+
+At the end of 2017 we were already able to buy some great performing A1 rated cards that are multiple times faster than what the specs require. E.g. a SanDisk Extreme A1 being two to six times faster than required by A1 specs.
+
+### Application Performance Class 2 (A2)
+
+A2 promises even better performance with 4000/2000 read/write IOPS minimum but there's a problem since as outlined by the SD Association A2 cards show "much higher performance than A1 performance by using functions of Command Queuing and Cache".
+
+Cache and Command Queuing require host (driver) support since the host needs to activate those new features first. The cache feature on A2 rated cards makes use of volatile RAM on the card requiring the host to learn new commands to issue flushing the cache (involving the risk of data losses -- for details see especially chapter 4.17 in [Physical Layer Simplified Specification 6.0](https://www.sdcard.org/downloads/pls/pdf/index.php?p=Part1_Physical_Layer_Simplified_Specification_Ver6.00.jpg&f=Part1_Physical_Layer_Simplified_Specification_Ver6.00.pdf&e=EN_SS1))
+
+### Real world 2018 A1 and A2 performance comparison
+
+I recently acquired two A2 rated SanDisk cards and to my surprise they were both slower than my older SanDisk A1 rated cards. They barely meet A1 specs (the 1500/500 read/write IOPS) and since silly me didn't read the specs before I thought the SanDisk Extreme Plus A2 I bought first would be defective so I returned it to Amazon and bought a SanDisk Extreme Pro A2 instead.
+
+The Extreme Pro is even slightly slower than the Extreme Plus and only now I started to understand that A2 cards can only show their performance if the host is also 'A2 compliant' needing updated MMC drivers to deal with these new cards. It seems at the time of this writing this is still missing in Linux (tested with 4.19.0-rc4).
+
+## Benchmarking the cards
+
+I rely on the following methodology for testing (using [sd-card-bench.sh](https://github.com/ThomasKaiser/sbc-bench/blob/master/sd-card-bench.sh)):
+
+* `iozone` benchmark to test through sequential and random IO at various block sizes from 1KB to 16MB
+* Measuring the time until `/etc/rc.local` gets executed as a means of 'boot time performance'
+* Installation of a DE (desktop environment) as representation of large software installations or upgrades (~150 packages, dealing with a lot of small files and constant `sync` calls to ensure installation on disk is intact). The task is a mixture of write and read access (10 times more write than read though)
+* Removing the whole DE (again a lot of synced random write IO -- deleting something is write access at the block device layer since only filesystem metadata and structures get updated)
+* Installing the DE a 2nd time, this time the packages come from the local apt cache (still in the page cache so not even involving storage access at all since still in DRAM) so speed of Internet access and upstream servers does not interfere with storage performance
+
+All tests happen on a NanoPi M4 with UHS/SDR104 mode enabled (for reliability reasons limiting SD host controller clock source PLL configuration in a similar way to what [Hardkernel did on ODROID-N1](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250) therefore bottlenecking sequential performance to ~66MB/s). All tests done with a freshly built Armbian Stretch using defaults (ext4, 600 sec commit interval).
 
 ![](../media/IMG_8122.JPG)
 
-9 different storage types were tested:
+8 different storage types were tested. In brackets the card production date according to the card's metadata:
 
-* Intenso 'Class 4' 4GB (this card is used as an equivalent for 'average SD card' SBC users pulled out of an old digital camera and use now for the rootfs)
-* SanDisk 'Ultra' 8GB
-* SanDisk Industrial 8GB
-* SanDisk Extreme Plus (neither A1 nor A2)
-* SanDisk Ultra A1 32GB
-* SanDisk Extreme A1 32GB
-* SanDisk Extreme Plus A2 64GB (seems not to be A2 compliant since performance way too low)
-* SanDisk Extreme Pro A2 64GB (seems not to be A2 compliant since performance way too low)
-* FriendlyELEC's Samsung eMMC 8GB module
+* Intenso 'Class 4' 4GB (02/2015)
+* SanDisk 'Ultra' 8GB (06/2016)
+* SanDisk Industrial 8GB (02/2018)
+* SanDisk Extreme Plus (07/2015)
+* SanDisk Ultra A1 32GB (09/2017)
+* SanDisk Extreme A1 32GB (10/2017)
+* SanDisk Extreme Pro A2 64GB (08/2018)
+* FriendlyELEC's Samsung eMMC 8GB module (02/2018)
 
-## Additional test
-
-I returned the SanDisk Extreme Plus A2 64GB at Amazon and bought a SanDisk Extreme Pro A2 64GB instead. Quick test showed even worse performance.
+The Intenso Class 4 card is used as an equivalent for 'average SD card' SBC users pull out of an old digital camera and use now for their Linux installation.
 
 ## Results overview
 
-|            | Average card | SanDisk Ultra | SanDisk Industrial | Extreme Plus | Ultra A1 | Extreme A1 | Extreme Plus A2 | Extreme Pro A2 | eMMC |
-| ---------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
-|   1k read IOPS | 1469 | 2173 | 2116 | 3484 | 2539 | 3990 | 2438 | 2113 | 5350 |
-|  1k write IOPS |   97 |  179 |  421 |  542 |  469 |  834 |  462 |  453 | 1489 |
-|   4k read IOPS | 1699 | 2144 | 1807 | 2463 | 2708 | 3298 | 1670 | 1343 | 4942 |
-|  4k write IOPS |   34 |  161 |  753 |  737 |  905 | 1472 |  597 |  581 | 2276 |
-|  16k read IOPS |  708 | 1413 | 1357 | 1901 | 1670 | 2152 | 1559 | 1250 | 3571 |
-| 16k write IOPS |    2 |    5 |  446 |  562 |  529 | 1089 |  678 |  656 | 1593 |
-|      read MB/s |   43 |   45 |   67 |   67 |   67 |   67 |   67 |   67 |  129 |
-|     write MB/s |   10 |   13 |   32 |   62 |   19 |   61 |   51 |   50 |   46 |
-|  boot time (in sec) |  8.4 |  5.4 |  5.7 |  5.3 |  5.2 |  5.3 |  5.4 |  5.5 | 4.7 |
-|   LXDE install (in sec) |  398 |  139 |   89 |   84 |   72 |   59 |   74 |  72 |   56 |
+The links in the title row contain [sd-card-bench](https://github.com/ThomasKaiser/sbc-bench/blob/master/sd-card-bench.sh))'s raw output to check for details. Unfortunately I forgot to upload the logfile for the 'Average' Intenso card and have overwritten the card already in the meantime for a new set of tests:
+
+|            | Average card | [SanDisk Ultra](http://ix.io/1pbI) | [SanDisk Industrial](http://ix.io/1pa0) | [Extreme Plus](http://ix.io/1pa8) | [Ultra A1](http://ix.io/1p8P) | [Extreme A1](http://ix.io/1p98) | [Extreme Pro A2](http://ix.io/1p8K) | [eMMC](http://ix.io/1pc9) |
+| ---------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
+|   1k read IOPS | 1574 | 2243 | 2257 | 2903 | 3262 | 3840 | 2431 | 5191 |
+|  1k write IOPS |   99 |  184 |  416 |  564 |  470 |  826 |  417 | 1230 |
+|   4k read IOPS | 1926 | 2139 | 1853 | 2344 | 2867 | 3201 | 1766 | 5083 |
+|  4k write IOPS |   33 |  133 |  762 |  770 |  787 | 1480 |  732 | 1943 |
+|  16k read IOPS |  726 | 1421 | 1571 | 1915 | 1784 | 2030 | 1660 | 3707 |
+| 16k write IOPS |    2 |    6 |  457 |  577 |  516 |  769 |  427 |  981 |
+|      read MB/s |   43 |   45 |   66 |   66 |   66 |   66 |   65 |  128 |
+|     write MB/s |   10 |    8 |   29 |   62 |   18 |   59 |   50 |   32 |
+|  boot time (in sec) | 26.7 | 20.9 | 20.7 | 13.4 | 14.2 | 16.2 | 17.0 | 15.5 |
+| 1st install (in sec) | 1070 |  430 |  253 |  216 | 207 |  161 |  190 | 178 |
+| DE removal (in sec) |  149 |   68 |   49 |   33 |   31 |   28 |   36 |  27 |
+| 2nd install (in sec) |  470 |  157 |  113 |   76 |   75 |   57 |   75 |  65 |
 
 ## Obvious results
 
-* The newly bought SanDisk A2 rated cards seem not to be A2 compliant since way too slow. At least when used with ext4 they're slower than good A1 rated cards. I need to test with ExFAT but a quick check on Linux resulted in bogus results since ExFAT on Linux is handled by FUSE (userspace) and then read results are cached and not reflecting storage performance (e.g. 760 MB/s sequential reads reported)
+* At the time of this writing due to lacking A2 host support (drivers) at least SanDisk A2 rated cards are outperformed by A1 cards from the same company (even the cheap Ultra A1 is faster everywhere except sequential write performance)
+* though my 2 A1 rated cards are from late 2017 so maybe SanDisk adjusted A1 performance in the meantime. A test with recently acquired A1 cards would be needed
 * 'Average' SD cards show horribly low random write performance (for whatever reasons especially at 16k block size -- here the slowest card 'performs' over 500 times worse compared to the eMMC module)
-* The boot time test is insufficient. Measured time until execution of `/etc/rc.local` might give a better idea (quick test showed 14.93 secs with fastest card vs. 23.59 with the slow Intenso card)
-* LXDE installation time correlates with **random** write and not sequential write performance (compare 'Class 4' with SanDisk Ultra, compare Extreme Plus with Extreme A1 and especially Ultra A1)
+* DE (desktop environment) installation time correlates **only** with **random** write and not sequential write performance (compare 'Class 4' with SanDisk Ultra, compare Extreme Plus with Extreme A1 and especially Ultra A1)
 
-## Storage access patterns while booting
+## Looking at storage access patterns
 
-I added the following to `/etc/rc.local` to get an idea how storage access patterns look like while booting:
+`sd-card-bench` runs an `iostat 20` task in the background that monitors storage activity (1st entry representing what happened since last boot and then querying the kernel counters every n seconds -- in our case 20). This provides some insights as to what happens in reality. Is the OS busy reading or writing or is it a mix of both?
 
-    awk '{print $1}' /proc/uptime >/root/iostat.txt
-    iostat 10 >>/root/iostat.txt &
+The first column shows the 'tps' (transactions per second, comparable with IOPS), then average throughput numbers are shown in KB/s and then absolute amount of data since last query.
 
-This will write uptime to a log and then collects storage access counters (absolute amount of data, transactions per second (tps) and KB/s). While booting less than 1MB will be written and slightly above 120 MB will be read. Testing 4 times with fastest and slowest SD card:
+### Booting
 
-#### SanDisk Extreme A1 32GB
+The below is the `iostat 20` output with system on the eMMC. First entry is ~16 seconds after the kernel loaded, the subsequent entries are with a 20 sec delay in between:
 
-On average `/etc/rc.local` will be executed after 14.93 secs. 
-
-    13.80
     Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         179.81      8771.13        58.18     121217        804
-    mmcblk0           4.60       138.40         0.40       1384          4
-    mmcblk0           0.00         0.00         0.00          0          0
-    mmcblk0           0.90         0.00         4.00          0         40
-    
-    15.11
+    mmcblk1         214.00     10296.19        69.67     132409        896
+    mmcblk1           2.00        67.20         0.00       1344          0
+    mmcblk1           0.45         0.20         2.20          4         44
+    mmcblk1           0.00         0.00         0.00          0          0
+
+While booting with this Armbian Stretch CLI image ~130 MB are read from the storage and less than 1 MB is written. So this is mostly read storage access and based on the above numbers (comparing the synthetic benchmark results with actual boot times) there are no obvious correlations to random or sequential read performance (why boots SanDisk Extreme Plus or Ultra A1 faster than the eMMC module for example?)
+
+### Installing a Desktop Environment
+
+This is again the eMMC while installing the DE the first time. Packages are downloaded from upstream apt servers (so 'the Internet' is a potential bottleneck here), are then stored on 'disk' and obviously partially read again (write/read ratio in the example below is exactly 10:1)
+
     Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         165.81      8087.10        53.97     122277        816
-    mmcblk0           5.70       181.20         0.00       1812          0
-    mmcblk0           0.00         0.00         0.00          0          0
-    mmcblk0           1.00         0.00         4.40          0         44
-    
-    16.58
+    mmcblk1          95.15      3558.20      4072.60      71164      81452
+    mmcblk1         187.70        67.40      7887.80       1348     157756
+    mmcblk1         353.85        48.40      5597.20        968     111944
+    mmcblk1         300.95        13.60      5735.00        272     114700
+    mmcblk1         321.20         2.40      5743.80         48     114876
+    mmcblk1         170.75       101.20      5659.00       2024     113180
+    mmcblk1         202.30       104.20      6125.40       2084     122508
+    mmcblk1         272.20       653.40      3813.60      13068      76272
+    mmcblk1         181.05       266.00      3427.80       5320      68556
+
+This task took 178 seconds on the eMMC but a whopping 1070 seconds when running on the 'Class 4' card:
+
     Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         150.84      7416.45        47.47     123113        788
-    mmcblk0           4.40       138.00         0.00       1380          0
-    mmcblk0           0.00         0.00         0.00          0          0
-    mmcblk0          10.30       211.60         1.60       2116         16
-    
-    14.26
+    mmcblk0          49.30       599.60       565.00      11992      11300
+    mmcblk0           7.35         0.00      3258.40          0      65168
+    mmcblk0           8.95         0.00      3768.60          0      75372
+    mmcblk0          16.95         3.00      2687.40         60      53748
+    mmcblk0          43.45        70.00       776.40       1400      15528
+    mmcblk0          26.05         0.00       498.80          0       9976
+    mmcblk0          18.25         3.80      1524.20         76      30484
+    mmcblk0          26.30         0.80       717.60         16      14352
+    mmcblk0          31.80         7.20      1381.80        144      27636
+    mmcblk0          21.70         0.40      3002.00          8      60040
+    mmcblk0          26.15         0.40       882.20          8      17644
+    mmcblk0          30.25         8.20       892.40        164      17848
+    mmcblk0          15.55         0.80      1234.80         16      24696
+    mmcblk0          34.45         0.40       714.40          8      14288
+    mmcblk0          34.55         0.20       900.20          4      18004
+    mmcblk0          41.25         0.00       762.20          0      15244
+    mmcblk0          20.65         0.80       775.80         16      15516
+    mmcblk0          19.70         0.40      1565.60          8      31312
+    mmcblk0          28.35         0.00       676.20          0      13524
+    mmcblk0          29.40         0.00       903.20          0      18064
+    mmcblk0          22.80         8.40       770.80        168      15416
+    mmcblk0          26.75         0.80       916.00         16      18320
+    mmcblk0          28.80         0.80      1040.80         16      20816
+    mmcblk0          20.05         0.00      1108.40          0      22168
+    mmcblk0          25.70         0.00       749.60          0      14992
+    mmcblk0          21.50         0.00       702.40          0      14048
+    mmcblk0          28.60         3.20       905.00         64      18100
+    mmcblk0          28.80         0.40      1016.00          8      20320
+    mmcblk0          21.45         0.00      1423.60          0      28472
+    mmcblk0          21.95         0.20       848.00          4      16960
+    mmcblk0          19.95         0.00      1007.20          0      20144
+    mmcblk0          24.70         0.80       978.40         16      19568
+    mmcblk0          33.40         0.00       991.20          0      19824
+    mmcblk0          27.60         0.00       523.00          0      10460
+    mmcblk0          28.20         0.00      1291.60          0      25832
+    mmcblk0          15.30         0.60      1033.80         12      20676
+    mmcblk0          27.90         0.40       743.80          8      14876
+    mmcblk0          25.45         0.80      1558.80         16      31176
+    mmcblk0          19.40         0.00      2490.60          0      49812
+    mmcblk0          33.10         0.20       548.00          4      10960
+    mmcblk0          19.90         0.80      4166.80         16      83336
+    mmcblk0          17.15         1.20      4157.00         24      83140
+    mmcblk0          37.35       538.80      1176.80      10776      23536
+    mmcblk0          58.15       250.80      1257.80       5016      25156
+    mmcblk0          62.00       297.00      1244.40       5940      24888
+    mmcblk0          56.70       155.60       223.60       3112       4472
+    mmcblk0          96.45       144.00       994.60       2880      19892
+    mmcblk0          96.40        21.80      1354.80        436      27096
+    mmcblk0          46.00       186.80       723.20       3736      14464
+    mmcblk0          45.95        30.20       692.40        604      13848
+    mmcblk0          76.30         0.00       991.00          0      19820
+    mmcblk0          51.20         7.60       702.40        152      14048
+
+It's pretty obvious that this 'Class 4' card is limited by its **poor random write performance**: when only writes happen the tps (transactions per second) reported are around ~26 which is (not so) surprisingly slightly below the 4k random write IOPS number the iozone benchmark reported (33 4k read IOPS). Please keep in mind that all these average SD cards get a lot slower with slightly larger data chunks. The 16k random write IOPS with this card are as low as 2 (!) which is just 200 times worse compared to any recent quality card and even 500 times slower than the eMMC module used.
+
+### Removing and reinstalling the Desktop Environment
+
+This task did an `apt purge armbian-stretch-desktop` then measuring the time of the following `apt autoremove` deleting 150 of the installed 400 packages. This is updating apt databases and filesystem structures (file deletion means write activity below the filesystem layer!). Afterwards the time for a 2nd `apt install armbian-stretch-desktop` has been measured which will install the 150 packages again that have been deleted before.
+
+Since this time the packages are already in the local apt cache and also still in the page cache (filesystem cache) neither stuff has to be downloaded from the Inernet nor even read from disk since all the packages are still hold in RAM. That's why we only see write activity this time. First on the eMMC (deletion took 27 sec and 2nd install 65):
+
     Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         175.75      8689.63        54.66     124001        780
-    mmcblk0           4.30       137.60         0.00       1376          0
-    mmcblk0           0.00         0.00         0.00          0          0
-    mmcblk0           0.90         0.00         4.00          0         40
+    mmcblk1         120.55        16.20      3582.20        324      71644
+    mmcblk1         149.40         2.00      4477.80         40      89556
+    mmcblk1         330.30         0.00      6254.00          0     125080
+    mmcblk1         228.45         0.00      6589.20          0     131784
+    mmcblk1         141.20         0.00      4244.60          0      84892
+    mmcblk1         124.40        26.00      2342.40        520      46848
 
-#### Intenso 'Class 4' 4 GB
+And the same on the 'Class 4' card again (deletion took 149 sec and 2nd install 470):
 
-On average `/etc/rc.local` will be executed after 23.59 secs. 
-
-    21.90
     Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         115.34      5778.32        36.74     126603        805
-    mmcblk0           4.60       141.60         0.00       1416          0
-    mmcblk0           0.00         0.00         0.00          0          0
-    mmcblk0           1.20         0.00         4.80          0         48
-    
-    24.25
-    Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         104.08      5234.57        31.85     127043        773
-    mmcblk0           4.70       138.40         0.00       1384          0
-    mmcblk0           1.20         0.00         4.80          0         48
-    mmcblk0           0.00         0.00         0.00          0          0
-    
-    21.49
-    Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         117.67      5954.95        35.75     128091        769
-    mmcblk0           4.40       138.00         0.00       1380          0
-    mmcblk0           0.00         0.00         0.00          0          0
-    mmcblk0           1.10         0.00         4.40          0         44
-    
-    26.72
-    Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
-    mmcblk0         121.98      7386.32        27.48     199283        741
-    mmcblk0           5.40       146.40         0.00       1464          0
-    mmcblk0          22.30       604.40         4.80       6044         48
-    mmcblk0           0.00         0.00         0.00          0          0
+    mmcblk0          35.50         0.60       551.60         12      11032
+    mmcblk0          12.85         0.00      2183.40          0      43668
+    mmcblk0          62.25         7.20      1344.20        144      26884
+    mmcblk0          45.80         0.00      2583.60          0      51672
+    mmcblk0          82.95        10.80      1506.80        216      30136
+    mmcblk0          69.10         0.00      1045.40          0      20908
+    mmcblk0          66.05         0.00      1504.80          0      30096
+    mmcblk0          48.15         0.00      1127.60          0      22552
+    mmcblk0          35.70         0.00      1111.00          0      22220
+    mmcblk0          15.75         0.00      2151.60          0      43032
+    mmcblk0          29.75         0.00       893.20          0      17864
+    mmcblk0          29.00         0.00       736.20          0      14724
+    mmcblk0          26.00         0.00       887.40          0      17748
+    mmcblk0          21.60         0.00       841.40          0      16828
+    mmcblk0          19.95         0.00       700.20          0      14004
+    mmcblk0          17.60         0.00       797.00          0      15940
+    mmcblk0          27.15         0.00       708.00          0      14160
+    mmcblk0          24.35         0.00      1018.60          0      20372
+    mmcblk0          30.30         0.00       878.40          0      17568
+    mmcblk0          18.40         0.00      1397.00          0      27940
+    mmcblk0          19.30         0.00       615.60          0      12312
+    mmcblk0          21.70         0.00      1033.60          0      20672
+    mmcblk0          25.80         0.00       652.00          0      13040
+    mmcblk0          27.70         0.00       939.80          0      18796
+    mmcblk0          21.30         0.00       634.80          0      12696
+    mmcblk0          24.39         0.00       952.32          0      19056
+    mmcblk0          13.35         0.00      3945.80          0      78916
+    mmcblk0          18.60         0.20      4261.40          4      85228
+    mmcblk0          29.40         0.00      1047.00          0      20940
+    mmcblk0          57.15         0.00      1326.20          0      26524
+    mmcblk0          37.75         0.00       540.00          0      10800
+    mmcblk0          69.00         0.00      1105.60          0      22112
+    mmcblk0          16.05         0.00      1863.40          0      37268
 
-Test flawed since the installation on the Intenso card reads more on average compared to fast card above. And log output reveals that this installation is somewhat corrupted (maybe the Intenso is already dying, it's the last of a batch of 5 and the other 4 are already dead)
+Again the whole procedure is bottlenecked only by the **poor random write performance** (check the tps numbers vs. KB/s)
 
-## Individual test results
+## Conclusions
 
-`iozone` results, parsed `dmesg` output and `apt-get -y install lxde` numbers below. The links are `armbianmonitor -u` output to be able to verify results:
+* Buying cheap A1 rated cards makes a lot of sense with typical SBC use cases since random IO performance (especially write) makes the difference between working with these things flawlessly and everything being slow as hell.
+* At the time of this writing with missing driver support surprisingly A2 rated cards perform lower than less expensive A1 rated cards. Until A2 host support is ready most probably this will remain the same.
 
-#### [FriendlyELEC eMMC 8GB](http://ix.io/1oSp)
+## TODO
 
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1     1725     1645     7036     7055     5350     1489
-    102400       2     4011     3668    13632    13572    10446     3273
-    102400       4     9113     9373    25221    25197    19767     9103
-    102400      16    26820    27158    67420    67510    57136    25484
-    102400     128    43550    43759   115285   115340   111551    39000
-    102400     512    45873    46294   126238   126779   125928    44290
-    102400    1024    47050    46465   129243   129898   126701    44586
-    102400   16384    45631    45505   128793   128908   129072    46700
-    
-    [    4.802578] zram0: detected capacity change from 0 to 52428800
-    [    4.588468] zram0: detected capacity change from 0 to 52428800
-    
-    real	0m55.681s
-    user	0m20.721s
-    sys	0m12.667s
-
-#### [SanDisk Extreme Pro A2 64GB](http://ix.io/1p2L)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1      567      402     2147     2113     2113      453
-    102400       2     1178      827     3918     4088     4405     1145
-    102400       4     1971     1992     7182     7061     5373     2324
-    102400      16     7193     7211    21557    21114    19999    10498
-    102400     128    30657    29972    53150    52185    52588    22742
-    102400     512    46646    45891    62557    63204    62857    42485
-    102400    1024    50939    50722    64786    64811    64823    47495
-    102400   16384    50591    50280    66915    66582    67026    50872
-    
-    [    5.724544] zram0: detected capacity change from 0 to 52428800
-    [    5.267945] zram0: detected capacity change from 0 to 52428800
-    
-    real	1m13.938s
-    user	0m22.362s
-    sys	0m11.716s
-
-#### [SanDisk Extreme Plus A2 64GB](http://ix.io/1oQi)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1      561      395     2479     2456     2438      462
-    102400       2     1275      875     4935     4963     4999     1035
-    102400       4     1990     1998     8892     9017     6679     2389
-    102400      16     7231     7263    25427    25110    24941    10843
-    102400     128    29209    31152    54320    53372    53023    24436
-    102400     512    46073    46501    62286    62298    62374    41978
-    102400    1024    50246    50328    64373    64397    64337    47815
-    102400   16384    51429    51246    66967    66836    66843    50995
-    
-    [    5.603406] zram0: detected capacity change from 0 to 52428800
-    [    5.322362] zram0: detected capacity change from 0 to 52428800
-    
-    real	1m14.177s
-    user	0m23.367s
-    sys	0m12.273s
-
-#### [SanDisk Extreme A1 32GB](http://ix.io/1oU7)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1     1022      728     4395     4427     3990      834
-    102400       2     2216     1575     8280     8276     7444     1970
-    102400       4     3523     3566    14627    14501    13190     5888
-    102400      16    11383    11445    35235    34261    34426    17431
-    102400     128    32768    33067    57534    57002    56853    30835
-    102400     512    52901    56009    63771    63367    63556    50015
-    102400    1024    59780    59496    64627    64813    64998    57174
-    102400   16384    61120    62397    67433    67549    67397    60207
-    
-    [    5.644375] zram0: detected capacity change from 0 to 52428800
-    [    4.969854] zram0: detected capacity change from 0 to 52428800
-    
-    real	0m58.518s
-    user	0m19.985s
-    sys	0m11.457s
-
-#### [SanDisk Ultra A1 32GB](http://ix.io/1oQs)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1      741      728     3072     2873     2539      469
-    102400       2     1416     1500     7239     7196     6087     1088
-    102400       4     3078     3976    12989    12972    10833     3619
-    102400      16     4724     7848    31050    30202    26719     8458
-    102400     128     9601    14261    54354    54568    53179    14653
-    102400     512    15596    17336    62917    62926    62427    16309
-    102400    1024    17370    15794    64553    64551    64401    17353
-    102400   16384    17942    17443    67039    67064    67177    19108
-    
-    [    5.382811] zram0: detected capacity change from 0 to 52428800
-    [    5.080334] zram0: detected capacity change from 0 to 52428800
-    
-    real	1m12.146s
-    user	0m21.360s
-    sys	0m11.998s
-
-#### [SanDisk Extreme Plus 16GB](http://ix.io/1oR0)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1      628      728     3395     3409     3484      542
-    102400       2     1180     1448     6663     6693     6384     1211
-    102400       4     3328     3411    12544    12498     9851     2948
-    102400      16    10809    11375    31876    30612    30419     8997
-    102400     128    35725    39308    56064    56071    56346    17967
-    102400     512    58648    58898    63287    63241    63278    58297
-    102400    1024    60008    60340    65003    64827    64950    58819
-    102400   16384    62628    61968    67312    67268    67413    61844
-    
-    [    5.519882] zram0: detected capacity change from 0 to 52428800
-    [    5.094977] zram0: detected capacity change from 0 to 52428800
-    
-    real	1m23.630s
-    user	0m20.005s
-    sys	0m11.157s
-
-#### [SanDisk Industrial 8GB](http://ix.io/1oQz)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1      608      566     2589     2571     2116      421
-    102400       2      933     1205     4994     4972     4044     1181
-    102400       4     2312     2675     9286     9289     7227     3012
-    102400      16     7930     7958    24944    23602    21717     7138
-    102400     128    15612    15785    51994    51960    51868    15745
-    102400     512    19677    29209    59553    59601    61480    25490
-    102400    1024    22298    32347    62415    62530    62249    31149
-    102400   16384    27557    32705    66970    66981    66974    32785
-    
-    [    5.633479] zram0: detected capacity change from 0 to 52428800
-    [    5.779378] zram0: detected capacity change from 0 to 52428800
-    
-    real	1m28.914s
-    user	0m23.946s
-    sys	0m12.179s
-
-#### [SanDisk 'Ultra' 8GB](http://ix.io/1oQP)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1      145      455     2581     2572     2173      179
-    102400       2      523     1115     4897     4896     4854      392
-    102400       4     2347     2515     8794     8779     8576      644
-    102400      16     6261     5402    22981    22891    22608       84
-    102400     128    10803    10984    40066    39787    39844      708
-    102400     512    10352    10216    43473    43351    43357     2637
-    102400    1024     7832    11369    44651    44640    44654     5303
-    102400   16384    10025    13070    45874    45851    45842    12895
-    
-    [    6.466794] zram0: detected capacity change from 0 to 52428800
-    [    5.318249] zram0: detected capacity change from 0 to 52428800
-    [    5.431797] zram0: detected capacity change from 0 to 52428800
-    
-    real	2m18.543s
-    user	0m20.010s
-    sys	0m11.300s
-
-#### [Intenso 'Class 4' 4GB](http://ix.io/1oSl)
-
-                                                        random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       1      104      366     1808     1826     1469       97
-    102400       2      118      719     3853     3725     3092      120
-    102400       4     1312     1392     9682     9678     6795      138
-    102400      16     5998     6068    12473    12314    11324       38
-    102400     128     8686     8557    29933    24681    29268      307
-    102400     512     9199     9108    39489    38871    29798     1230
-    102400    1024     9308     9192    41760    40806    40590     2340
-    102400   16384    10607    10630    43731    43963    43714    10604
-    
-    [    6.888544] zram0: detected capacity change from 0 to 52428800
-    [    9.377240] zram0: detected capacity change from 0 to 52428800
-    [    8.993906] zram0: detected capacity change from 0 to 52428800
-    
-    real	6m38.115s
-    user	0m20.593s
-    sys	0m12.215s
+* Buy recent A1 rated SanDisk cards and check performance again. Maybe more recent A1 cards from them perform also lower than the cards produced in late 2017 (we've seen this with other vendors already before: e.g. Samsung EVO/EVO+ and even Samsung Pro)
