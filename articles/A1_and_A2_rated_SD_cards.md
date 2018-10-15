@@ -176,13 +176,13 @@ This task took 178 seconds on the eMMC but a whopping 1070 seconds when running 
     mmcblk0          76.30         0.00       991.00          0      19820
     mmcblk0          51.20         7.60       702.40        152      14048
 
-It's pretty obvious that this 'Class 4' card is limited by its **poor random write performance**: when only writes happen the tps (transactions per second) reported are around ~26 which is (not so) surprisingly slightly below the 4k random write IOPS number the iozone benchmark reported (33 4k read IOPS). Please keep in mind that all these average SD cards get a lot slower with slightly larger data chunks. The 16k random write IOPS with this card are as low as 2 (!) which is just 200 times worse compared to any recent quality card and even 500 times slower than the eMMC module used.
+It's pretty obvious that this 'Class 4' card is limited by its **poor random write performance**: when only writes happen the tps (transactions per second) reported are around ~26 which is (not so) surprisingly slightly below the 4k random write IOPS number the iozone benchmark reported (33 4k write IOPS). Please keep in mind that all these average SD cards get a lot slower with slightly larger data chunks. The 16k random write IOPS with this card are as low as 2 (!) which is just 200 times worse compared to any recent quality SD card and even 500 times slower than the eMMC module tested.
 
 ### Removing and reinstalling the Desktop Environment
 
 This task did an `apt purge armbian-stretch-desktop` then measuring the time of the following `apt autoremove` deleting 150 of the installed 400 packages. This is updating apt databases and filesystem structures (file deletion means write activity below the filesystem layer!). Afterwards the time for a 2nd `apt install armbian-stretch-desktop` has been measured which will install the 150 packages again that have been deleted before.
 
-Since this time the packages are already in the local apt cache and also still in the page cache (filesystem cache) neither stuff has to be downloaded from the Inernet nor even read from disk since all the packages are still hold in RAM. That's why we only see write activity this time. First on the eMMC (deletion took 27 sec and 2nd install 65):
+Since this time the packages are already in the local apt cache and also still in the page cache (filesystem cache) neither stuff has to be downloaded from the Internet nor even read from disk since all the packages are still hold in RAM. That's why we only see write activity this time. First on the eMMC (deletion took 27 sec and 2nd install 65):
 
     Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
     mmcblk1         120.55        16.20      3582.20        324      71644
