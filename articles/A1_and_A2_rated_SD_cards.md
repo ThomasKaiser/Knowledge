@@ -40,9 +40,9 @@ I rely on the following methodology for testing (using [sd-card-bench.sh](https:
 
 * `iozone` benchmark to test through sequential and random IO at various block sizes from 1KB to 16MB
 * Measuring the time until `/etc/rc.local` gets executed as a means of 'boot time performance'
-* Installation of a DE (desktop environment) as representation of large software installations or upgrades (~150 packages, dealing with a lot of small files and constant `sync` calls to ensure installation on disk is intact). The task is a mixture of write and read access (10 times more write than read though)
-* Removing the whole DE (again a lot of synced random write IO -- deleting something is write access at the block device layer since only filesystem metadata and structures get updated)
-* Installing the DE a 2nd time, this time the packages come from the local apt cache (still in the page cache so not even involving storage access at all since still in DRAM) so speed of Internet access and upstream servers does not interfere with storage performance
+* Installation of a DE (desktop environment) as representation of large software installations or upgrades (~400 packages, dealing with a lot of small files and constant `sync` calls to ensure installation on disk is intact). The task is a mixture of write and read access (10 times more write than read though)
+* Removing 150 packages of the DE (again a lot of synced random write IO -- deleting something is write access at the block device layer since only filesystem metadata and structures get updated)
+* Reinstalling these 150 packages again, this time the packages come from the local apt cache (still in the page cache so not even involving storage access at all since still in DRAM) so speed of Internet access and upstream servers does not interfere with storage performance
 
 All tests happen on a NanoPi M4 with UHS/SDR104 mode enabled (for reliability reasons limiting SD host controller clock source PLL configuration in a similar way to what [Hardkernel did on ODROID-N1](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250) therefore bottlenecking sequential performance to ~66MB/s). All tests done with a freshly built Armbian Stretch using defaults (ext4, 600 sec commit interval).
 
@@ -63,7 +63,7 @@ The Intenso Class 4 card is used as an equivalent for 'average SD card' SBC user
 
 ## Results overview
 
-The links in the title row contain [sd-card-bench](https://github.com/ThomasKaiser/sbc-bench/blob/master/sd-card-bench.sh))'s raw output to check for details. Unfortunately I forgot to upload the logfile for the 'Average' Intenso card and have overwritten the card already in the meantime for a new set of tests:
+The links in the title row contain [sd-card-bench](https://github.com/ThomasKaiser/sbc-bench/blob/master/sd-card-bench.sh)'s raw output to check for details. Unfortunately I forgot to upload the logfile for the 'Average' Intenso card and have overwritten the card already in the meantime for a new set of tests:
 
 |            | Average card | [SanDisk Ultra](http://ix.io/1pbI) | [SanDisk Industrial](http://ix.io/1pa0) | [Extreme Plus](http://ix.io/1pa8) | [Ultra A1](http://ix.io/1p8P) | [Extreme A1](http://ix.io/1p98) | [Extreme Pro A2](http://ix.io/1p8K) | [eMMC](http://ix.io/1pc9) |
 | ---------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
@@ -83,15 +83,15 @@ The links in the title row contain [sd-card-bench](https://github.com/ThomasKais
 ## Obvious results
 
 * At the time of this writing due to lacking A2 host support (drivers) at least SanDisk A2 rated cards are outperformed by A1 cards from the same company (even the cheap Ultra A1 is faster everywhere except sequential write performance)
-* though my 2 A1 rated cards are from late 2017 so maybe SanDisk adjusted A1 performance in the meantime. A test with recently acquired A1 cards would be needed
+* My two A1 rated cards are from late 2017 so maybe SanDisk adjusted A1 performance in the meantime. A test with recently acquired A1 cards would be needed
 * 'Average' SD cards show horribly low random write performance (for whatever reasons especially at 16k block size -- here the slowest card 'performs' over 500 times worse compared to the eMMC module)
 * DE (desktop environment) installation time correlates **only** with **random** write and not sequential write performance (compare 'Class 4' with SanDisk Ultra, compare Extreme Plus with Extreme A1 and especially Ultra A1)
 
 ## Looking at storage access patterns
 
-`sd-card-bench` runs an `iostat 20` task in the background that monitors storage activity (1st entry representing what happened since last boot and then querying the kernel counters every n seconds -- in our case 20). This provides some insights as to what happens in reality. Is the OS busy reading or writing or is it a mix of both?
+`sd-card-bench` runs an `iostat 20` task in the background that monitors storage activity (1st row representing what happened since last boot and then querying the kernel counters every *n* seconds -- in our case *20*). This provides some insights as to what happens in reality. Is the OS busy reading or writing, is it a mix of both, are bottlenecks becoming obvious?
 
-The first column shows the 'tps' (transactions per second, comparable with IOPS), then average throughput numbers are shown in KB/s and then absolute amount of data since last query.
+The 2nd column shows the 'tps' (transactions per second, comparable with IOPS), then average throughput numbers are shown in KB/s and then absolute amount of data since last query.
 
 ### Booting
 
@@ -238,4 +238,4 @@ Again the whole procedure is bottlenecked only by the **poor random write perfor
 
 ## TODO
 
-* Buy recent A1 rated SanDisk cards and check performance again. Maybe more recent A1 cards from them perform also lower than the cards produced in late 2017 (we've seen this with other vendors already before: e.g. Samsung EVO/EVO+ and even Samsung Pro)
+* Buy recent A1 rated SanDisk cards and check performance again. Maybe more recent SanDisk A1 cards perform now also lower than the cards measured above that were produced in late 2017 (we've seen this with other vendors already before: e.g. Samsung EVO/EVO+ and even Samsung Pro)
