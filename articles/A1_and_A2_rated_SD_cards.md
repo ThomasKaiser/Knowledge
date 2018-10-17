@@ -44,7 +44,11 @@ I rely on the following methodology for testing (using [sd-card-bench.sh](https:
 * Removing 150 packages of the DE (again a lot of synced random write IO -- deleting something is write access at the block device layer since only filesystem metadata and structures get updated)
 * Reinstalling these 150 packages again, this time the packages come from the local apt cache (still in the page cache so not even involving storage access at all since still in DRAM) so speed of Internet access and upstream servers does not interfere with storage performance
 
-All tests happen on a NanoPi M4 with UHS/SDR104 mode enabled (for reliability reasons limiting SD host controller clock source PLL configuration in a similar way to what [Hardkernel did on ODROID-N1](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250) therefore bottlenecking sequential performance to ~66MB/s). All tests done with a freshly built Armbian Stretch using defaults (ext4, 600 sec commit interval).
+![](../media/SD-Card-speed-modes.png)
+
+All tests happen on a NanoPi M4 with UHS/SDR104 mode enabled (for reliability reasons limiting SD host controller clock source PLL configuration in a similar way to what [Hardkernel did on ODROID-N1](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250) therefore bottlenecking sequential performance to ~66MB/s). Please note that the majority of SBC does not support 1.8V signaling and are therefore limited to HS mode (see table above) limiting not only sequential transfer speeds to below 25MB/s but also affecting random IO performance (see at the end of [this overview](https://forum.armbian.com/topic/954-sd-card-performance/?do=findComment&comment=49811) where I incorrectly refer to *HS mode* as *DDR50* all the time).
+
+All tests done with a freshly built Armbian Stretch using defaults (ext4, 600 sec commit interval).
 
 ![](../media/IMG_8122.JPG)
 
