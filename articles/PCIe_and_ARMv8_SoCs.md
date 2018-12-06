@@ -6,6 +6,11 @@
 * Amlogic S922X/A311D (1 x Gen2 x1)
 * MediaTek MT7622 (2 x Gen2 x1)
 * NXP i.MX8 (up to 1 x Gen3 x2 or 2 x Gen3 x1, another x1 multiplexed with SATA)
+* Qualcomm Snapdragon 805 (1 x Gen2 x1)
+* Qualcomm Snapdragon 810 (2 x Gen2 x1)
+* Qualcomm Snapdragon 820 (3 x Gen2 x1)
+* Qualcomm Snapdragon 835 (1 x Gen2 x1)
+* Qualcomm Snapdragon 845 (1 x Gen2 x1, 1 x Gen3 x1)
 * RealTek RTD1295/RTD1296 (1 x Gen1 x1, 1 x Gen2 x1)
 * Rockchip RK3399 (1 x Gen2 x4)
 * Samsung Exynos 9810 (1 x Gen3 x1, 1 x Gen2 x1)
@@ -14,8 +19,12 @@
 ## Server SoCs
 
 * AMD A1100 (8 Gen3 lanes)
+* AnnapurnaLabs (Amazon) Alpine AL-324
 * Broadcom Vulcan AKA ThunderX2 (up to 56 PCIe Gen3 lanes with 14 controllers. Supported widths x1, x2, x4, x8 and x16)
 * Cavium ThunderX (multiple x4/x8 Gen3 ports)
+* HiSilicon Hi1610/Hi1612 (16 Gen3 lanes)
+* HiSilicon Hi1616 (46 Gen3 lanes)
+* HiSilicon Hi1620 (40 Gen4 lanes)
 * Marvell Armada 37x0 (1 x Gen2 x1)
 * Marvell Armada 70x0 (1 x Gen3 x4, 2 x Gen3 x1)
 * Marvell Armada 80x0 (1 x Gen3 x4, 1 x Gen3 x2, 4 x Gen3 x1)
