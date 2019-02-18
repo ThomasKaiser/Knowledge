@@ -2,6 +2,10 @@
 
 #### 2018/10/28
 
+* [Quick preview of ODROID-N2](articles/Quick_Preview_of_ODROID-N2.md)
+
+#### 2018/10/28
+
 * [Quick preview of ODROID-H2](articles/Quick_Preview_of_ODROID-H2.md)
 
 #### 2018/10/15
