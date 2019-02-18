@@ -1,6 +1,6 @@
 # Random stuff about 'small and energy efficient' computing.
 
-#### 2018/10/28
+#### 2019/02/18
 
 * [Quick preview of ODROID-N2](articles/Quick_Preview_of_ODROID-N2.md)
 
