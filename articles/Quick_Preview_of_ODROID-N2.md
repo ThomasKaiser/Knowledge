@@ -132,7 +132,7 @@ Hardkernel runs a demanding task (*stress-ng* on the CPU cores and also some GPU
 
 <del> If you ever [monitored the behavior of a fully loaded board equipped with a huge heatsink with significant own thermal mass](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Heatsink_Efficiency.md) then the graph looks highly suspicious anyway since usually temperatures continue to slightly increase and not settle at around 73°C which is a strange throttling treshold given that in DT there's no 73 entry at all.</del> **Edit:** I read the x-axis wrongly and interpreted 5000 seconds as 500 and so on. With temperatures becoming stable only after an hour this looks reasonable.
 
-<del>I really wonder why Hardkernel didn't fire up something that simple as [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) being able to answer most of the open questions above.</del> **Edit:** Not relevant any more since HK community member []@rooted provided results](https://forum.armbian.com/topic/9619-announcement-odroid-n2/?do=findComment&comment=72766) -- for interpretation see above.
+<del>I really wonder why Hardkernel didn't fire up something that simple as [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) being able to answer most of the open questions above.</del> **Edit:** Not relevant any more since HK community member [@rooted provided results](https://forum.armbian.com/topic/9619-announcement-odroid-n2/?do=findComment&comment=72766) -- for interpretation see above.
 
 ## Powering and enclosure
 
