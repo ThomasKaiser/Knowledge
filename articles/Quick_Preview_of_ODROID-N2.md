@@ -92,6 +92,28 @@ Another rather dangerous attempt to compare performance is to look at Geekbench 
 
 When comparing with something similar to ODROID-N1 ([RK3399 Firefly with similar cpufreq settings as N1](https://browser.geekbench.com/v4/cpu/5508812)) we're talking about single-core scores of 1405 and 3114 multi-core. Due to different Geekbench versions and modes of execution results are not really comparable but provide at least an impression of N2 not shining wrt single-threaded performance compared to N1/RK3399. Further tests needed or let's better say strange that these tests haven't been done yet by Hardkernel.
 
+## sbc-bench results
+
+Now first results are available [here](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md).
+
+Looking at the thermals now I believe that S922X is made in a more efficient process than RK3399: cpuminer which involves heavy NEON optimizations scores 11.36 with the SoC temperature at 53°C only passively cooled at an ambient temperature of 23°C. Both score and heat generation are a lot better compared to RK3399.
+
+When looking at 7-zip scores the overall multi-core score is ~25% higher compared to RK3399. 7-zip not only depends on CPU horsepower but also on memory latency. Here S922X is currently 20% worse compared to RK3399 (this *might* improve with newer Amlogic firmware BLOBs in the future). It's also only useful as a rough estimate for 'server workloads' so not describing other use cases like 'Desktop Linux' good or at all.
+
+With most other use cases single-threaded performance is more important than multi-core scores. With 7-zip looking at the A53 scores that's 1182 with S922X at 1.9 GHz vs. 1093 with RK3399 at 1.5 GHz (maybe plausible given the higher memory latencies with S922X but if judging by cpufreq only this smells like the A53 cores being clocked lower under load than 1.9 GHz). On the big cores we're talking about 1665 with S922X's A73 core at 1.8 GHz vs. 1814 with RK3399's A72 at 2.0 GHz which *would* indicate higher single-threaded performance on RK3399.
+
+Again 7-zip scores are only useful for estimating compression/decompression workloads or 'server stuff in general' so differing workloads might not be represented that good by this benchmark. Also it would be interesting to measure real CPU clockspeeds while demanding benchmarks like *7zr b* or */usr/local/src/cpuminer-multi/cpuminer --benchmark --cpu-priority=2* are running:
+
+    taskset -c 0 /usr/local/src/mhz/mhz 3 100000 # little cores
+    taskset -c 2 /usr/local/src/mhz/mhz 3 100000 # big cores
+
+When looking at the single-threaded openssl AES benchmarks that are not affected by memory performance at all the results with large chunk sizes seem to mirror the clockspeed differences:
+
+* little cores: 701065 (RK3399) vs. 879667 (S922X) which would translate to 1.5GHz vs. 1.88GHz
+* big cores: 1139856 (RK3399) vs. 1023885 (S922X) which would translate to 2GHz vs. 1.80GHz
+
+By looking at this and the check of individual cpufreq OPP the reported S922X clockspeeds all seem reasonable at least in idle or with single-threaded workloads. What's missing is checking the frequencies again when running heavy multi-threaded workloads as outlined above.
+
 ## Thermals, cpufreq behavior, 'overclocking'
 
 All 64-bit Amlogic SoCs contain one Cortex-M core responsible for 'power management'. This core's firmware gets loaded when the SoC boots (as part of ATF -- ARM Trusted Firmware -- and is therefore cryptographically signed. Replacing this firmware is not that easy). The Cortex-M controls thermal, cpufreq and DVFS behavior and as such the stuff defined in Linux (device-tree definitions) has lower precedence.
@@ -110,7 +132,7 @@ Hardkernel runs a demanding task (*stress-ng* on the CPU cores and also some GPU
 
 <del> If you ever [monitored the behavior of a fully loaded board equipped with a huge heatsink with significant own thermal mass](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Heatsink_Efficiency.md) then the graph looks highly suspicious anyway since usually temperatures continue to slightly increase and not settle at around 73°C which is a strange throttling treshold given that in DT there's no 73 entry at all.</del> **Edit:** I read the x-axis wrongly and interpreted 5000 seconds as 500 and so on. With temperatures becoming stable only after an hour this looks reasonable.
 
-I really wonder why Hardkernel didn't fire up something that simple as [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) being able to answer most of the open questions above.
+<del>I really wonder why Hardkernel didn't fire up something that simple as [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) being able to answer most of the open questions above.</del> **Edit:** Not relevant any more since HK community member []@rooted provided results](https://forum.armbian.com/topic/9619-announcement-odroid-n2/?do=findComment&comment=72766) -- for interpretation see above.
 
 ## Powering and enclosure
 
@@ -122,10 +144,12 @@ The SoC's own thermal behavior aside (firmware settings) it's great to see Hardk
 
 A lot of clueless people (me included) think/thought heat would be rising. It doesn't, [it just radiates in all directions while only hot/warm **air** rises](https://forum.odroid.com/viewtopic.php?f=149&t=31277&start=250#p235544). As such having the huge heatsink at the bottom isn't that much of an issue (personally tested with ODROID HC1 which uses exactly the same design of having the SoC on the bottom PCB side directly attached to a giant heatsink below -- [around 1°C difference depending on having the heatsink at the bottom or top](https://forum.armbian.com/topic/4983-odroid-hc1-hc2/))
 
-Combining this huge heatsink with a cheap plastic cover creates a full enclosure able to efficiently dissipate the heat to the outside unlike RPi inspired 'cooling solutions' where the SoC is on the wrong PCB side and also *inside* the enclosure making efficient heat dissipation nearly impossible.
+Combining this huge heatsink with a cheap plastic cover creates a full enclosure able to efficiently dissipate the heat to the outside unlike RPi inspired 'cooling solutions' where the SoC is on the wrong PCB side and also its heatsink or fansink is *inside* the enclosure making efficient heat dissipation nearly impossible.
+
+The sbc-bench run and Hardkernel's own load test show that heat dissipation with this passively cooled approach works excellent.
 
 ![](../media/ODROID-N2-open-enclosure.jpg)
 
 ## Final thoughts
 
-None yet, need *sbc-bench* numbers first to be able to get an idea about N2's CPU performance.
+TBD
