@@ -55,7 +55,7 @@ Also currently nobody seems to know how performant and reliable Amlogic's PCIe i
 
 ### Networking and storage
 
-The easy stuff first: Hardkernel reports Gigabit Ethernet maxing out at ~940 MBits/sec in each direction which is simply the maximum you could get. USB3 storage results also look good. They report ~340MB/s with a 1MB block size which is comparable to [what RK3399 is capable of](https://forum.armbian.com/topic/1925-some-storage-benchmarks-on-sbcs/?do=findComment&comment=51350). 
+The easy stuff first: Hardkernel reports Gigabit Ethernet maxing out at ~940 MBits/sec in each direction which is simply the maximum you could get. USB3 storage results also look good. They report ~340MB/s with a 1MB block size which is comparable to [what RK3399 is capable of](https://forum.armbian.com/topic/1925-some-storage-benchmarks-on-sbcs/?do=findComment&comment=51350). **Edit**: See [Updates section below](#Updates) since it seems Hardkernel forgot to enable UAS (USB Attached SCSI) so most probably USB storage performance will further increase.
 
 Since they do not show results for 16MB block size (around 400 MB/s with N1/RK3399) I would assume S922X is slower than RK3399 with really large block sizes. Anyway ~340MB/s is just fine for use cases where sequential transfers are important (normally then used with HDDs which are slower anyway). For the majority of use cases not sequential IO is key but high random IO (low latency and high IOPS). Maybe they have a reason to not show 4K random access performance numbers for N2 though it's hard to measure since you need the very same and very fast SSD worn out in an identical way to get comparable numbers between different USB3 host controller implementations (one of the reasons I used the very same SSD for almost all of my tests linked above to and always made a reference benchmark with the fastest implementation first to see whether the SSD is still able to show top performance)
 
@@ -91,6 +91,8 @@ The choice of benchmark tools and the execution modes seem to be solely focused 
 Another rather dangerous attempt to compare performance is to look at Geekbench scores. [Here](https://browser.geekbench.com/v4/cpu/11957170) Amlogic's reference design board for S922X running a 64-bit kernel combined with a 32-bit Android userland measured with 32-bit Geekbench 4.0.4 showing a single-core score of 1261 and multi-core score of 3778 (ARMv8 Crypto Extensions not active so when measured with [Geekbench 4.1 or above](https://www.geekbench.com/blog/2017/03/geekbench-41/) these scores will slightly improve -- Geekbench total scores are calculcated as follows: Cryptography: 5%, Integer 45%, Floating Point: 30%, Memory: 20%)
 
 When comparing with something similar to ODROID-N1 ([RK3399 Firefly with similar cpufreq settings as N1](https://browser.geekbench.com/v4/cpu/5508812)) we're talking about single-core scores of 1405 and 3114 multi-core. Due to different Geekbench versions and modes of execution results are not really comparable but provide at least an impression of N2 not shining wrt single-threaded performance compared to N1/RK3399. Further tests needed or let's better say strange that these tests haven't been done yet by Hardkernel.
+
+**Edit:** See [Updates section below](#Updates) since Hardkernel provided Geekbench scores themselves in the meantime.
 
 ## sbc-bench results
 
@@ -161,3 +163,8 @@ The sbc-bench runs and Hardkernel's own load test show that heat dissipation wit
 * I would assume Mediaplayer capabilities are fine (at least that's what's to be expected from Amlogic)
 * Software support for many use cases is already great, using an 4.9 LTS kernel means 4 years of coverage from now and I would assume that at that time mainline kernel will be also suitable for most use cases
 * Given the rather competitive pricing I would assume N2 will be a success
+
+## Updates
+
+* It seems Hardkernel [forgot to enable UAS in their kernel](https://forum.odroid.com/viewtopic.php?f=177&t=33900) so the reported USB storage speeds will further improve (don't be confused by the relatively low *hdparm* scores. Since *hdparm* is a tool from last century it tests with just 128K block size which was huge back then but is not sufficient today. Looking at iozone scores testing with different block sizes makes this relationship obvious)
+* Hardkernel published [Geekbench scores](https://browser.geekbench.com/v4/cpu/12114546) showing lower single-threaded performance compared to their N1 (and all the other RK3399 thingies out there) but also ~25% better multi-core performance compared to RK3399. [Here](https://browser.geekbench.com/v4/cpu/12094230) is a prior run with ARMv8 Crypto Extensions not yet enabled resulting in lower scores.
