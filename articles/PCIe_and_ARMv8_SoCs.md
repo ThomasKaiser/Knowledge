@@ -3,7 +3,8 @@
 ## Multi purpose SoCs
 
 * Allwinner H6 (1 x Gen2 x1). Note: [quirky controller not able to work with -- non existing -- generic drivers](https://linux-sunxi.org/Mainlining_Effort#cite_note-h6-pcie-4)
-* Amlogic S922X/A311D (1 x Gen2 x1)
+* Amlogic S922X/A311D (1 x Gen2 x1 muxed with USB3). Note: Gen2 x1 speed [seems reasonable](https://www.cnx-software.com/2019/05/14/khadas-vim3-amlogic-s922x-board-m-2-nvme-ssd-wifi-5-bluetooth-5/#comment-562858)
+* Broadcom BCM2711 (1 x Gen2 x1)
 * MediaTek MT7622 (2 x Gen2 x1)
 * Nvidia Jetson AGX (5 x Gen4 (16GT/s), 1x8, 1x4, 1x2, 2x1 Root port and endpoint)
 * Nvidia Jetson Nano (1 x Gen2 x1, 1 x Gen2 x4)
