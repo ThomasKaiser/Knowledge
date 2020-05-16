@@ -2,7 +2,7 @@
 
 ## Multi purpose SoCs
 
-* Allwinner H6 (1 x Gen2 x1). Note: [quirky controller not able to work with -- non existing -- generic drivers](https://linux-sunxi.org/Mainlining_Effort#cite_note-h6-pcie-4)
+* Allwinner H6 (1 x Gen2 x1). Note: [quirky controller not able to work with -- non existing -- generic drivers](https://linux-sunxi.org/Mainlining_Effort#cite_note-h6-pcie-4). As of march 2020 thanks to @Icenowy a [possible workaround using virtualization](https://forum.armbian.com/topic/13529-a-try-on-utilizing-h6-pcie-with-virtualization/) exists.
 * Amlogic S922X/A311D (1 x Gen2 x1 muxed with USB3). Note: Gen2 x1 speed [seems reasonable](https://www.cnx-software.com/2019/05/14/khadas-vim3-amlogic-s922x-board-m-2-nvme-ssd-wifi-5-bluetooth-5/#comment-562858)
 * Broadcom BCM2711 (1 x Gen2 x1)
 * MediaTek MT7622 (2 x Gen2 x1)
