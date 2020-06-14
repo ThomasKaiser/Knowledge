@@ -2,13 +2,13 @@
 
 ## Why?
 
-TL;DR: It makes no sense at all unless you're forced to use proprietary software that can only make use of the old Netatalk metadata scheme.
+**TL;DR: It makes no sense at all unless you're forced to use proprietary software that can only make use of the old Netatalk 2.x metadata scheme.**
 
-Ubuntu 20.04 LTS finally ships with Netatalk 3.1.12 so unless you're in that bad situation explained above simply enjoy Netatalk via an ''apt install netatalk''. In our case we need Netatalk 2.x since we're using a commercial backup/sync suite called [Archiware P5](https://p5.archiware.com) which is only compatible with the old Netatalk metadata format. We use P5 Synchronize to sync Mac fileserver contents hourly from Helios EtherShare/PCShare servers to be available trough FOSS Netatalk as a means of 'permanent backup' on another machine.
+Ubuntu 20.04 LTS finally ships with Netatalk 3.1.12 so unless you're in that bad situation explained above simply enjoy Netatalk 3 via an ''apt install netatalk''. In our case we need Netatalk 2.x since we're using a commercial backup/sync suite called [Archiware P5](https://p5.archiware.com) which is only compatible with the old Netatalk metadata format. We use P5 Synchronize to sync Mac fileserver contents hourly from Helios EtherShare/PCShare servers to be available through free and open Netatalk as a means of 'permanent backup' on another machine (no, you can't do this with `rsync` or `zfs send|receive` since metadata conversion and encodings translation is needed).
 
 ## The challenge ##
 
-Netatalk 2.2.6 from 2017-07-09 is only available as source tarball and was linked against OpenSSL 1.0.x back then. Ubuntu 20.04 uses OpenSSL 1.1.x by default and as such patches are needed.
+Netatalk 2.2.6 from 2017-07-09 is only available as source tarball and was linked against OpenSSL 1.0.x back then. Ubuntu 20.04 uses OpenSSL 1.1.x by default and as such patches are needed to make it work on Focal Fossa.
 
 ## The details ##
 
@@ -18,7 +18,7 @@ Install the prerequisits, grab the [Netatalk 2.2.6 tarball](https://sourceforge.
     cd /usr/local/src
     tar xf /path/to/netatalk-2.2.6.tar.bz2
 
-Now grab the NetBSD-Patches that make Netatalk 2.2.6 work with OpenSSL 1.1.x:
+Now grab the patches from NetBSD project that make Netatalk 2.2.6 work with OpenSSL 1.1.x:
 
     wget https://github.com/obache/lpt1/raw/master/net/netatalk22/patches/patch-etc_uams_uams__randnum.c
     wget https://github.com/obache/lpt1/raw/master/net/netatalk22/patches/patch-etc_uams_uams__dhx__passwd.c
@@ -28,7 +28,7 @@ Now grab the NetBSD-Patches that make Netatalk 2.2.6 work with OpenSSL 1.1.x:
     patch -p1 <../patch-etc_uams_uams__dhx__passwd.c 
     patch -p1 <../patch-etc_uams_uams__randnum.c 
 
-Now configure the software for Ubuntu 20.04 (`--enable-systemd`). It should look like this at the end:
+Then configure the software for Ubuntu 20.04 (`--enable-systemd`). It should look like this at the end:
 
     ./configure --enable-systemd --disable-ddp --disable-cups --without-ldap --without-acls
     ...
