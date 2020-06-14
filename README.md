@@ -1,5 +1,9 @@
 # Random stuff about 'small and energy efficient' computing.
 
+#### 2020/06/14
+
+* [Making Netatalk 2 work with Ubuntu 20.04 Focal Fossa](Netatalk_2.2_on_Ubuntu_Focal_Fossa.md)
+
 #### 2019/02/20
 
 * [Two small ODROID-N2 updates](articles/Quick_Preview_of_ODROID-N2.md#Updates)
