@@ -18,6 +18,7 @@
 * RealTek RTD1294 (1 x Gen1 x1)
 * RealTek RTD1295/RTD1296 (1 x Gen1 x1, 1 x Gen2 x1)
 * RealTek RTD1395 (1 x Gen2 x1)
+* RealTek RTD1619 (2 x Gen2 x1)
 * Rockchip RK3399 (1 x Gen2 x4)
 * Samsung Exynos 9810 (1 x Gen3 x1, 1 x Gen2 x1)
 * Texas Instruments AM654 (2 x Gen3 x1)
