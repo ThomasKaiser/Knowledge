@@ -18,18 +18,24 @@ For a more broad overview what to expect with the new platform check [Anandtech]
 
 Setting this new laptop up the easy/lazy/noob way: finishing last TimeMachine backup on my i7 MacBook Pro 16", firing up the new MacBook Air, connecting the TM disk to the Air and let Migration Assistant transfer everything (this includes a lot of stuff below `/usr/local/` e.g. my whole [homebrew](https://brew.sh) install and some other `x86_64` binaries).
 
-After this migration, a macOS update to 11.0.1 and a reboot everything works as it should. Safari starts with the ~60 tabs open I had on the Intel MBP, my text editor opens with lots of unsaved documents but random `x86_64` CLI tools below `/usr/local/bin/` do not execute. I needed to fire up one of the many Intel applications below `/Applications/` so I've been asked whether I want to install Rosetta2. After this step all my `x86_64` stuff works since Rosetta2 kicks in with first invocation and does the 'binary translation' job so from then on the translated binary will be invoked directly.
+After this migration, a macOS update to 11.0.1 and a reboot everything works as it should. Safari starts with the ~60 tabs open I had on the Intel MBP, my text editor opens with all the documents I had opened on the Intel MacBook (lots of unsaved documents too) but random `x86_64` CLI tools below `/usr/local/bin/` do not execute. I needed to fire up one of the many Intel GUI applications below `/Applications/` first so I've been asked whether I want to install Rosetta2. After this step all my `x86_64` stuff works since Rosetta2 kicks in with first invocation and does the 'binary translation' job so from then on the translated binary will be invoked directly. Longest Rosetta2 translation run was for Google Chrome. This took ~8 seconds until `x86_64` Chrome opened on ARM.
 
 I realized one minor exception when I wanted to explore binaries with the `lipo` tool since all the 'Xcode command line tools' remained in `x86_64` and there was a library mismatch. Reinstalling the Universal Binary version of the tools did the trick:
 
     sudo rm -rf /Library/Developer/CommandLineTools/
     sudo xcode-select --install
 
-For now I'm staying with the whole userland below `/usr/local/` being `x86_64` so everything I run from there has been translated using Rosetta2 to `arm64e` once. This is mostly since homebrew is yet not ready for ARM (some formulas will break) so it's important to stay on the 'wrong' architecture when dealing with homebrew. To install for example a tool to examine/use transparent filesystem compression I can't call `brew` directly but have to use the `arch` command instead:
+For now I'm staying with the whole userland below `/usr/local/` being `x86_64` so everything I run from there needs to be translated using Rosetta2 to `arm64e` once. This is mostly since homebrew is yet not ready for ARM (some formulas will break) so it's important to stay on the 'wrong' architecture when dealing with homebrew. To install for example a tool to examine/use transparent filesystem compression I can't call `brew` directly but have to use the `arch` command instead:
 
     arch -x86_64 brew install afsctool
 
-(an alternative when working directly sitting in front of the machine is to tick the 'open in Rosetta' checkbox of Terminal.app or iTerm.app in Finder since the architecture the tool is running with will be inherited to every process executed from within)
+(an alternative when working directly sitting in front of the machine is to tick the 'open in Rosetta' checkbox of Terminal.app or iTerm.app in Finder since the architecture the app is running with will be inherited to every process executed from within)
+
+Since Migration Assistant transferred everything also the hostnames were identical. To fix this and to rename the new Mac from mac-tk to mac-tk-air I did the following:
+
+    sudo scutil --set ComputerName mac-tk-air
+    sudo scutil --set HostName mac-tk-air
+    sudo scutil --set LocalHostName mac-tk-air.local
 
 ### First impressions
 
@@ -37,16 +43,18 @@ The "Apple Silicon" MacBook Air feels faster than my 16" Intel MacBook ([Core i7
 
 ### Basic collection of information
 
-  * `ioregl -l` output: https://github.com/ThomasKaiser/Knowledge/tree/master/media/ioreg-MacBookAir10.txt
+  * `ioregl -l` output: https://raw.githubusercontent.com/ThomasKaiser/Knowledge/master/media/ioreg-MacBookAir10.txt
   * `hidutil list` output: http://ix.io/2EUV (19 thermal sensors inside)
   * `system_profiler` output: http://ix.io/2EVx
   * When looking at CPU utilization (be it with `htop`, `Activity Monitor` or `powermetrics`) it's important to realize that cpu0-cpu3 are efficiency cores and cpu4-cpu7 are the performance cores.
 
 ### CPU performance assessment
 
-Since being an energy efficiency fetishist I play around with ARM single board computers as miniature servers for a while. To benchmark those things I found 7-zip's internal benchmark a pretty good representation of ['server workloads in general' since relying on integer/memory](https://github.com/ThomasKaiser/sbc-bench#7-zip). Of course it makes absolutely no sense at all to use this benchmark on a laptop due to totally different use cases.
+Since being an energy efficiency fetishist I played around with ARM single board computers as miniature servers for a while. To benchmark those things I found 7-zip's internal benchmark a pretty good representation of ['server workloads in general' since relying on integer/memory](https://github.com/ThomasKaiser/sbc-bench#7-zip). Of course it makes absolutely no sense at all to use this benchmark on a Mac laptop due to totally different use cases.
 
-But I gave it a try just to compare with my Intel MacBook. `/usr/local/bin/7z b` ends up with ~27500 7-zip MIPS (running in Rosetta2 'emulation' mode!). After half an hour some slight throttling kicks in and the results are in the 26000-26500 range. The MacBook Air has no fan, is passively cooled and doesn't even get hot (touch test). The very same benchmark running natively on my Intel i7-9750H MacBook Pro (6 cores, 12 threads) results in 29000 7-zip MIPS while the fan kicks in after a minute and screams at +5000 rpm and a little later the CPU thermal sensor reports temperatures above 90°C with fan on maximum operation.
+But I gave it a try just to compare with my Intel MacBook. `/usr/local/bin/7z b` ends up with ~27500 7-zip MIPS (running in Rosetta2 'emulation' mode!). After half an hour some slight throttling kicks in and the results are in the 26000-26500 range. The MacBook Air has no fan, is passively cooled and doesn't even get hot (touch test). 
+
+The very same benchmark running natively on my Intel i7-9750H MacBook Pro (6 cores, 12 threads) results in 29000 7-zip MIPS while the fan kicks in after a minute and screams at +5000 rpm and a little later the CPU thermal sensor reports temperatures above 90°C with fan on maximum operation.
 
 I won't do any further CPU performance testing since 'fast enough' or let's better say *simply impressive* considering the thermal behaviour and that I tested an Intel binary on the ARM laptop running via binary translation. I'll focus on performance/watt measurements solely later on.
 
@@ -158,15 +166,15 @@ See "Controller Characteristics" for some internals. `ioreg` entry for the `IOEm
     Unsafe Shutdowns:                   2
     Media and Data Integrity Errors:    0
     Error Information Log Entries:      0
-   
-   Read Error Information Log failed: NVMe admin command:0x02/page:0x01 is not supported
+    
+    Read Error Information Log failed: NVMe admin command:0x02/page:0x01 is not supported
 
 ### USB4 / Thunderbolt
 
-The new M1 Macs are advertised as USB4/TB3 capable. Since almost everything is optional with USB4 this means with those three "Apple Silicon" Macs for now:
+The new M1 Macs are advertised as USB4/TB3 capable and all only have two USB-C ports. Since almost everything is optional with USB4 this means with those three "Apple Silicon" Macs for now:
 
   * Thunderbolt 3 compliant
-  * maximum SuperSpeed 10Gbps USB transfer speeds
+  * maximum *SuperSpeed 10Gbps* USB transfer speeds
 
 A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3, most probably not all of the needed requirements for TB4 could be met:
 
@@ -180,9 +188,9 @@ Quick check with IPoverThunderbolt using `iperf3` with default settings (MTU 150
 
 ### Universal Binaries
 
-Almost every binary in macOS 11 is now an [Universal Binary](https://en.wikipedia.org/wiki/Universal_binary#Universal_2) in the sense that it contains both `x86_64` code and `arm64e`. Notable exceptions: *Rosetta 2 Updater.app* is `arm64e` only and */System/Library/Frameworks/OpenCL.framework* is `x86_64` only (for a list of apps use `Utilities:System Information.app` or `system_profiler SPApplicationsDataType`)
+Almost every binary in macOS 11 is now an [Universal Binary](https://en.wikipedia.org/wiki/Universal_binary#Universal_2) in the sense that it contains both `x86_64` and `arm64e`. Notable exceptions: *Rosetta 2 Updater.app* is `arm64e` only and */System/Library/Frameworks/OpenCL.framework* is `x86_64` only (for a list of apps use `Utilities:System Information.app` or `system_profiler SPApplicationsDataType`)
 
-Let's look at an utilitiy that hasn't been upgraded since ages (bash on macOS is still on version 3.2.57). The size of `/bin/bash` in 10.15.7 is 623472 bytes. In 11.0.1 it's 1296640 bytes and the `arm64e` portion is slightly larger:
+Let's look at an utilitiy that hasn't been upgraded since ages (bash on macOS is still on version 3.2.57). The size of `/bin/bash` in 10.15.7 is 623472 bytes containing only `x86_64`. In 11.0.1 it's 1296640 bytes and the `arm64e` portion is slightly larger:
 
     mac-tk-air:~ tk$ ls -la /bin/bash
     -r-xr-xr-x  1 root  wheel  1296640  1 Jan  2020 /bin/bash
@@ -269,7 +277,8 @@ It's also save to assume that the storage requirements for macOS 11 being an 'Un
 
   * information about battery and connected USB-C chargers are available through the AppleSmartBattery object (compare with `ioreg -l`)
   * `pmset -g log`
-
+  * `powermetrics`
+  * `top -stats pid,command,cpu,idlew,power -o power -d -s3` - https://blog.mozilla.org/nnethercote/2015/08/26/what-does-the-os-x-activity-monitors-energy-impact-actually-measure/
 
 
 Footnotes
