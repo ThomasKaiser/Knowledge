@@ -10,7 +10,7 @@ As of Nov 2020 Apple startet to produce Mac computers based on their own SoCs in
 
 While most people talk about the ISA only (switching from Intel to ARM) the transition is a bit more than this since those Apple SoCs also contain a lot more than just CPU cores (GPU and Machine Learning cores, SSD and memory controller, various accelerators for video, crypto, etc.)
 
-For a more broad overview what to expect with the new platform check [Anandtech](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested) or others. I try to focus on the stuff that is not mentioned everywhere else on the Internet.
+For a more broad overview what to expect with the new platform check [Anandtech](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested) or others. For some closer looks inside the new laptops visit [iFixit](https://www.ifixit.com/News/46884/m1-macbook-teardowns-something-old-something-new). I try to focus on the stuff that is not mentioned everywhere else on the Internet.
 
 ## Gathering information
 
@@ -172,11 +172,11 @@ See "Controller Characteristics" for some internals. `ioreg` entry for the `IOEm
 Let's compare with the Intel MacBook equipped with a T2 chip containing the SSD controller:
 
 |    | T2 controller | M1 SoC |
-| ----: | ---- | ---- |
-| Controller | AppleANS2Controller | AppleANS3NVMeController |
+| ----: | :----: | :----: |
+| Controller name | AppleANS2Controller | AppleANS3NVMeController |
 | Interconnect | PCIe | Apple Fabric |
-| IOPCIPauseCompatible | Yes | n/a ]
-| NVMe Revision Supported | 1.10 | 1.10 ]
+| IOPCIPauseCompatible | Yes | n/a |
+| NVMe Revision Supported | 1.10 | 1.10 |
 | NVMe SMART Capable | Yes | Yes |
 | Unmap (TRIM) | Yes | Yes |
 | ThermalThrottlingSupported | Yes | Yes |
@@ -193,22 +193,38 @@ Let's compare with the Intel MacBook equipped with a T2 chip containing the SSD 
 | MaxPowerState | 3 | 1 |
 | Controller Characteristics | detailed info | basic info |
 
-So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal management. Macs with M1 SoC expose a lot more about the 'SSD internals' (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba")
+So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal/proprietary solution. Macs with M1 SoC expose a lot more about the SSD internals compared to T2 (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba").
 
-### USB4 / Thunderbolt
+As with the T2 controller in previous Intel Macs both SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys are inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is supposed to happen when you enter a wrong FileVault passphrase too often at boot time). 
 
-The new M1 Macs are advertised as USB4/TB3 capable and all only have two USB-C ports. Since almost everything is optional with USB4 this means with those three "Apple Silicon" Macs for now:
+### USB4 / Thunderbolt / PCIe
+
+The new M1 Macs are advertised as USB4/TB3 capable and all three models only have two USB-C ports. It's important to understand that 'USB4' is the name for a protocol revision and not a synonym for a certain type of link speed.
+
+Those three "Apple Silicon" Macs provide the following at each USB-C port:
 
   * Thunderbolt 3 compliant
-  * maximum *SuperSpeed 10Gbps* USB transfer speeds
+  * *SuperSpeed 10Gbps* maximum USB transfer speeds
 
-A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3, most probably not all of the needed requirements for TB4 could be met:
+A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3. Most probably not all of the needed requirements for TB4 could be met:
 
 ![](https://heise.cloudimg.io/width/3092/q70.png-lossy-70.webp-lossy-70.foil1/_www-heise-de_/imgs/18/3/0/0/1/5/6/8/thunderbolt4-comparison-chart-2f0aae9c6d8e08d7.jpg)
 
 Quick check with IPoverThunderbolt using `iperf3` with default settings (MTU 1500 bytes): ARM -> Intel results in 17 Gbit/sek (cpu0 almost maxing out on the Intel MacBook for `kernel_task` handling the IRQ processing). In the other direction we're at 15 Gbit/sek, this time cpu5 and cpu6 (both performance cores) busy on the ARM MacBook. Since `iperf3` is `x86_64` and therefore executed by Rosetta2 the results should be taken with a grain of salt but for me it's already 'fast enough' (quick check with MTU 9000 ended up with slightly *lower* numbers for whatever reason).
 
+Apple showed the term "PCIe 4.0" in their presentations. Again as with USB4 this is a protocol revision and not a synonym for link speeds (16GT/h AKA Gen4). Asides the wireless chip (see next chapter) only the two Thunderbolt ports seem to make use of PCIe. When establishing an IPoverThunderbolt link with an active TB3 cable the connection is established as follows:
 
+    Link Status: 0x2
+    Speed: Up to 40 Gb/s x1
+    Current Link Width: 0x2
+
+The `ioreg` output suggests that the TB PCIe implementation is limited to 2 lane operation so IPoverThunderbolt bandwidth seems to be already the maximum the connection is cable of (at Gen3 speeds). Most probably "Apple Silicon" in form of the M1 SoCs is limited to a few lanes with Gen3 maximum speeds since a more capable PCIe setup isn't needed on current models.
+
+In case the M1 SoCs would have a bunch of Gen4 lanes and would support [CCIX](https://en.wikichip.org/wiki/ccix) we might see larger MacBooks / iMacs with more than one of those M1 interconnected via PCIe. But maybe Apple chooses a chiplet approach instead and combines several M1 dies + separate IO controller on an interposer. Or maybe they do something entirely different and come up with a different CPU design to power the [i]Mac Pro in the future.
+
+### Wireless capabilities
+
+Not really related to "Apple Silicon" but to the 3 models in question: Wi-Fi 6 and Bluetooth 5.0 are provided by a PCIe attached 'Apple USI 339S00758' chip with BroadCom/Cypress tech inside according to `ioreg` (hints to BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
 
 ## Software
 
