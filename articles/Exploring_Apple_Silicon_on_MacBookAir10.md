@@ -18,7 +18,7 @@ For a more broad overview what to expect with the new platform check [Anandtech]
 
 Setting this new laptop up the easy/lazy/noob way: finishing last TimeMachine backup on my i7 MacBook Pro 16", firing up the new MacBook Air, connecting the TM disk to the Air and let Migration Assistant transfer everything (this includes a lot of stuff below `/usr/local/` e.g. my whole [homebrew](https://brew.sh) install and some other `x86_64` binaries).
 
-After this migration, a macOS update to 11.0.1 and a reboot everything works as it should. Safari starts with the ~60 tabs open I had on the Intel MBP, my text editor opens with all the documents I had opened on the Intel MacBook (lots of unsaved documents too) but random `x86_64` CLI tools below `/usr/local/bin/` do not execute. I needed to fire up one of the many Intel GUI applications below `/Applications/` first so I've been asked whether I want to install Rosetta2. After this step all my `x86_64` stuff works since Rosetta2 kicks in with first invocation and does the 'binary translation' job so from then on the translated binary will be invoked directly. Longest Rosetta2 translation run was for Google Chrome. This took ~8 seconds until `x86_64` Chrome opened on ARM.
+After this migration, a macOS update to 11.0.1 and a reboot everything works as it should. Safari starts with the ~60 tabs open I had on the Intel MBP, my text editor opens with all the documents I had opened on the Intel MacBook (lots of unsaved documents too) but random `x86_64` CLI tools below `/usr/local/bin/` do not execute. I needed to fire up one of the many 'migrated' Intel GUI applications below `/Applications/` first so I've been asked whether I want to install Rosetta2. After this step all my `x86_64` stuff works since Rosetta2 kicks in with first invocation and does the 'binary translation' job so from then on the translated binary will be invoked directly. Longest Rosetta2 translation run was for Google Chrome. This took ~8 seconds until `x86_64` Chrome opened on ARM.
 
 I realized one minor exception when I wanted to explore binaries with the `lipo` tool since all the 'Xcode command line tools' remained in `x86_64` and there was a library mismatch. Reinstalling the Universal Binary version of the tools did the trick:
 
@@ -29,9 +29,9 @@ For now I'm staying with the whole userland below `/usr/local/` being `x86_64` s
 
     arch -x86_64 brew install afsctool
 
-(an alternative when working directly sitting in front of the machine is to tick the 'open in Rosetta' checkbox of Terminal.app or iTerm.app in Finder since the architecture the app is running with will be inherited to every process executed from within)
+(defining `alias brew="arch -x86_64 brew"` might be a good idea and an alternative when always working directly sitting in front of the machine is to tick the 'open in Rosetta' checkbox of Terminal.app or iTerm.app in Finder since the architecture the app is running with will be inherited to every process executed from within)
 
-Since Migration Assistant transferred everything also the hostnames were identical. To fix this and to rename the new Mac from mac-tk to mac-tk-air I did the following:
+Since Migration Assistant transferred everything including all settings also the hostnames were identical which is a bit disturbing given that I'm accessing the new MacBook often via SSH. To rename the new Mac from mac-tk to mac-tk-air I did the following:
 
     sudo scutil --set ComputerName mac-tk-air
     sudo scutil --set HostName mac-tk-air
@@ -168,6 +168,32 @@ See "Controller Characteristics" for some internals. `ioreg` entry for the `IOEm
     Error Information Log Entries:      0
     
     Read Error Information Log failed: NVMe admin command:0x02/page:0x01 is not supported
+
+Let's compare with the Intel MacBook equipped with a T2 chip containing the SSD controller:
+
+|    | T2 controller | M1 SoC |
+| ----: | ---- | ---- |
+| Controller | AppleANS2Controller | AppleANS3NVMeController |
+| Interconnect | PCIe | Apple Fabric |
+| IOPCIPauseCompatible | Yes | n/a ]
+| NVMe Revision Supported | 1.10 | 1.10 ]
+| NVMe SMART Capable | Yes | Yes |
+| Unmap (TRIM) | Yes | Yes |
+| ThermalThrottlingSupported | Yes | Yes |
+| Logical Block Size | 4096 | 4096 |
+| Physical Block Size | 4096 | 4096 |
+| Preferred IO Size | 1048576 | 1048576 |
+| Encryption Type | AES-XTS | AES-XTS |
+| IOMaximumSegmentByteCountWrite | 4096 | 4096 |
+| IOMaximumSegmentCountRead | 256 | 256 |
+| IOCommandPoolSize | 128 | 64 |
+| IOMinimumSegmentAlignmentByteCount | 4 | 4096 |
+| IOMaximumByteCountRead | n/a | 1048576 |
+| IOMaximumByteCountWrite | n/a | 1048576 |
+| MaxPowerState | 3 | 1 |
+| Controller Characteristics | detailed info | basic info |
+
+So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal management. Macs with M1 SoC expose a lot more about the 'SSD internals' (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba")
 
 ### USB4 / Thunderbolt
 
