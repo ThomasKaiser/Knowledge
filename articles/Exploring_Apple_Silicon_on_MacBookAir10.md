@@ -25,11 +25,11 @@ I realized one minor exception when I wanted to explore binaries with the `lipo`
     sudo rm -rf /Library/Developer/CommandLineTools/
     sudo xcode-select --install
 
-For now I'm staying with the whole userland below `/usr/local/` being `x86_64` so everything I run from there needs to be translated using Rosetta2 to `arm64e` once. This is mostly since homebrew is yet not ready for ARM (some formulas will break) so it's important to stay on the 'wrong' architecture when dealing with homebrew. To install for example a tool to examine/use transparent filesystem compression I can't call `brew` directly but have to use the `arch` command instead:
+For now I'm staying with the whole userland below `/usr/local/` being `x86_64` so everything I run from there needs to be translated using Rosetta2 to `arm64e` once. I'm reluctant to start over with `arm64e` native homebrew for now since it is not quite ready for ARM now (some formulas will break). As such it's important to stay on the 'wrong' architecture when dealing with homebrew for the next weeks. To install for example a tool to examine/use transparent filesystem compression I can't call `brew` directly but have to use the `arch` command instead:
 
     arch -x86_64 brew install afsctool
 
-(defining `alias brew="arch -x86_64 brew"` might be a good idea and an alternative when always working directly sitting in front of the machine is to tick the 'open in Rosetta' checkbox of Terminal.app or iTerm.app in Finder since the architecture the app is running with will be inherited to every process executed from within)
+(defining `alias brew="arch -x86_64 brew"` might be a good idea in such a situation and an alternative when always working directly sitting in front of the machine is to tick the 'open in Rosetta' checkbox of Terminal.app or iTerm.app in Finder since the architecture the app is running with will be inherited to every process executed from within)
 
 Since Migration Assistant transferred everything including all settings also the hostnames were identical which is a bit disturbing given that I'm accessing the new MacBook often via SSH. To rename the new Mac from mac-tk to mac-tk-air I did the following:
 
@@ -195,36 +195,42 @@ Let's compare with the Intel MacBook equipped with a T2 chip containing the SSD 
 
 So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal/proprietary solution. Macs with M1 SoC expose a lot more about the SSD internals compared to T2 (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba").
 
-As with the T2 controller in previous Intel Macs both SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys are inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is supposed to happen when you enter a wrong FileVault passphrase too often at boot time). 
+As with the T2 controller in previous Intel Macs SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys are all inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results for recent Apple machines you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is actually going to happen when you enter a wrong FileVault passphrase too often at boot time).
 
-### USB4 / Thunderbolt / PCIe
+### USB / Thunderbolt / PCIe
 
 The new M1 Macs are advertised as USB4/TB3 capable and all three models only have two USB-C ports. It's important to understand that 'USB4' is the name for a protocol revision and not a synonym for a certain type of link speed.
 
 Those three "Apple Silicon" Macs provide the following at each USB-C port:
 
-  * Thunderbolt 3 compliant
+  * Thunderbolt 3 compliance
   * *SuperSpeed 10Gbps* maximum USB transfer speeds
 
 A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3. Most probably not all of the needed requirements for TB4 could be met:
 
 ![](https://heise.cloudimg.io/width/3092/q70.png-lossy-70.webp-lossy-70.foil1/_www-heise-de_/imgs/18/3/0/0/1/5/6/8/thunderbolt4-comparison-chart-2f0aae9c6d8e08d7.jpg)
 
-Quick check with IPoverThunderbolt using `iperf3` with default settings (MTU 1500 bytes): ARM -> Intel results in 17 Gbit/sek (cpu0 almost maxing out on the Intel MacBook for `kernel_task` handling the IRQ processing). In the other direction we're at 15 Gbit/sek, this time cpu5 and cpu6 (both performance cores) busy on the ARM MacBook. Since `iperf3` is `x86_64` and therefore executed by Rosetta2 the results should be taken with a grain of salt but for me it's already 'fast enough' (quick check with MTU 9000 ended up with slightly *lower* numbers for whatever reason).
+Quick check with IPoverThunderbolt using `iperf3` with default settings (MTU 1500 bytes): ARM -> Intel results in 17 Gbit/sec (cpu0 almost maxing out on the Intel MacBook for `kernel_task` handling the IRQ processing). In the other direction we're at 15 Gbit/sec, this time cpu5 and cpu6 (both performance cores) busy on the ARM MacBook. Since `iperf3` is `x86_64` and therefore executed by Rosetta2 the results should be taken with a grain of salt but for me it's already 'fast enough' (quick check with MTU 9000 ended up with slightly *lower* numbers for whatever reason).
 
-Apple showed the term "PCIe 4.0" in their presentations. Again as with USB4 this is a protocol revision and not a synonym for link speeds (16GT/h AKA Gen4). Asides the wireless chip (see next chapter) only the two Thunderbolt ports seem to make use of PCIe. When establishing an IPoverThunderbolt link with an active TB3 cable the connection is established as follows:
+Quick check with two USB Ethernet dongles (RTL8156 inside so capable of NBase-T/2.5GbE) results in expected numbers: 2.32 Gbit/sec in each direction without retransmits.
+
+Apple showed the term "PCIe 4.0" in their presentations. Again as with USB4 this is a protocol revision and not a synonym for link speeds so you should *not* expect '16GT/h AKA Gen4' if you read PCIe 4.0. Asides the wireless chip (see below) only the two Thunderbolt ports seem to make use of PCIe in a '2 lanes per port' config. When establishing an IPoverThunderbolt link with an active TB3 cable the connection is reported as follows:
 
     Link Status: 0x2
     Speed: Up to 40 Gb/s x1
     Current Link Width: 0x2
 
-The `ioreg` output suggests that the TB PCIe implementation is limited to 2 lane operation so IPoverThunderbolt bandwidth seems to be already the maximum the connection is cable of (at Gen3 speeds). Most probably "Apple Silicon" in form of the M1 SoCs is limited to a few lanes with Gen3 maximum speeds since a more capable PCIe setup isn't needed on current models.
+The `ioreg` output suggests that the TB PCIe implementation is limited to 2 lane operation so the aforementioned IPoverThunderbolt bandwidth seems to be already the maximum the connection is capable of at Gen3 speeds. Most probably "Apple Silicon" in form of the M1 SoCs is limited to a few lanes with Gen3 maximum speeds since a more capable PCIe setup isn't needed on current models.
 
-In case the M1 SoCs would have a bunch of Gen4 lanes and would support [CCIX](https://en.wikichip.org/wiki/ccix) we might see larger MacBooks / iMacs with more than one of those M1 interconnected via PCIe. But maybe Apple chooses a chiplet approach instead and combines several M1 dies + separate IO controller on an interposer. Or maybe they do something entirely different and come up with a different CPU design to power the [i]Mac Pro in the future.
+In case the M1 SoCs would have a bunch of Gen4 lanes and would support [CCIX](https://en.wikichip.org/wiki/ccix) we might see larger MacBooks / iMacs with more than one of those M1 interconnected via PCIe (would be some sort of [NUMA](https://en.wikipedia.org/wiki/Non-uniform_memory_access) and would most probably require limiting all applications that are not built for [Grand Central Dispatch](https://en.wikipedia.org/wiki/Grand_Central_Dispatch) to remain on the 1st SoC). 
+
+But maybe Apple chooses a chiplet approach instead and combines several M1 dies + separate IO chip on an interposer. Or maybe they do something entirely different and come up with an advanced CPU design to power the [i]Mac Pro of the future.
 
 ### Wireless capabilities
 
-Not really related to "Apple Silicon" but to the 3 models in question: Wi-Fi 6 and Bluetooth 5.0 are provided by a PCIe attached 'Apple USI 339S00758' chip with BroadCom/Cypress tech inside according to `ioreg` (hints to BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
+Not really related to "Apple Silicon" but to the 3 models in question: Wi-Fi 6 (802.11ax) and Bluetooth 5.0 are provided by an 'Apple USI 339S00758' chip with BroadCom/Cypress tech inside (BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
+
+Measuring wireless performance in kitchen-sink benchmark style is pointless as always since way too much external factors determine performance in a setup like mine (with tons of neighbours and their wireless networks around). Since my access point is still only capable of Wi-Fi 5 (802.11ac) the Air due to only supporting 2T2R MIMO is currently a downgrade compared to the Intel MacBook Pro that is able to establish a 3x3 connection. With a new 802.11ax capable access point this might change.
 
 ## Software
 
@@ -298,7 +304,7 @@ When looking at other binaries sometimes Intel is larger and sometimes ARM. So l
 
 Intel binaries are roughly 4% larger. Another check for system frameworks <span id="a2">[ [2] ](#f2)</span> shows the opposite: here the `arm64e` framework binaries are 4% larger than their Intel counterparts so it's save to assume that the binary portions are roughly identical in size.
 
-It's also save to assume that the storage requirements for macOS 11 being an 'Universal Binary' release is a bit larger than `x86_64` only former macOS versions. But Apple started with transparent file compression back in OS X 10.6 by tweaking HFS+ in some way. And with APFS today not much has changed and we benefit from compressed data on disk (the `afsctool` isn't on latest version and therefore reports 'HFS+ compression' while in reality we're talking APFS instead)
+It's also save to assume that the storage space requirements for macOS 11 being an 'Universal Binary' release are a bit higher than former macOS versions that were `x86_64` only. But Apple already started with transparent file compression back in OS X 10.6 by tweaking HFS+ in some way. And with APFS today not much has changed and we benefit from compressed data on disk (the `afsctool` isn't on latest version and therefore reports 'HFS+ compression' while in reality we're talking APFS here)
 
     mac-tk-air:~ tk$ afsctool -v /bin/bash 
     /bin/bash:
@@ -313,14 +319,112 @@ It's also save to assume that the storage requirements for macOS 11 being an 'Un
     Approximate overhead of extended attributes: 536 bytes
     Approximate total file size (compressed data fork + EA + EA overhead + file overhead): 697120 bytes / 697 KB (kilobytes) / 681 KiB (kibibytes)
 
+### top
 
+The `top` version included in macOS provides some way to estimate/guess power consumption at the application level. You can execute `top -stats pid,command,cpu,idlew,power -o power -d -s3` for example. To interpret the data see [here](https://blog.mozilla.org/nnethercote/2015/08/26/what-does-the-os-x-activity-monitors-energy-impact-actually-measure/) for example.
+
+### pmset
+
+`pmset` is the tool of choice to 'manipulate power management settings' and to get an idea what's going on behind the scenes.
+
+`pmset -g ac` on Apple laptops shows info about the USB-C charger used and current consumption settings. Comparing Intel MacBook on the left with Apple Silicon Air on the right:
+
+    Wattage = 94W                               Wattage = 30W
+    Current = 4700mA                            Current = 1500mA
+    Voltage = 20000mV                           Voltage = 20000mV
+    AdapterID = 28674                           AdapterID = 28675
+    Manufacturer = Apple Inc.                   Manufacturer = Apple Inc.
+    Family Code = 0xe000400a                    Family Code = 0xe000400a
+    Adapter Name = 96W USB-C Power Adapter      Adapter Name = 30W USB-C Power Adapter
+    Hardware Version = 1.0                      Hardware Version = 1.0
+    Firmware Version = 01070051                 Firmware Version = 01030052
+
+Quick check with a 'Khadas' branded random USB-C charger from China:
+
+    mac-tk-air:~ tk$ pmset -g ac 
+     Wattage = 24W
+     Current = 1600mA
+     Voltage = 15000mV
+     AdapterID = 0
+     Family Code = 0xe000400a
+
+`pmset -g batt` allows to check whether the device is running fully on AC or is draining the battery right now. Works similar on Intel and the new MacBooks:
+
+    mac-tk:~ tk$ pmset -g batt
+    Now drawing from 'AC Power'
+     -InternalBattery-0 (id=9109603)	100%; charged; 0:00 remaining present: true
+
+    mac-tk-air:~ tk$ pmset -g batt
+    Now drawing from 'Battery Power'
+     -InternalBattery-0 (id=19136611)	100%; discharging; 18:37 remaining present: true
+
+You get additional battery info by parsing the `ioreg -n AppleSmartBattery` output.
+
+`pmset -g cap` (capabilities) shows an overview which power management related modes are available when running on AC or on battery. Only difference between both modes is `womp` (wake for network access) availabe on AC vs. `lessbright` (dimming the backlight) on battery. Looks like this on Intel:
+
+    Capabilities for AC Power:   Capabilities for Battery Power:
+     displaysleep                 displaysleep
+     disksleep                    disksleep
+     sleep                        sleep
+     womp                         lessbright
+     acwake                	      acwake
+     lidwake                      lidwake
+     halfdim                      halfdim
+     gpuswitch                    gpuswitch
+     standby                      standby
+     standbydelayhigh             standbydelayhigh
+     standbydelaylow              standbydelaylow
+     highstandbythreshold         highstandbythreshold
+     powernap                     powernap
+     ttyskeepawake                ttyskeepawake
+     hibernatemode                hibernatemode
+     hibernatefile                hibernatefile
+     tcpkeepalive                 tcpkeepalive
+     proximitywake                proximitywake
+     vactdisabled                 vactdisabled
+
+vs. this currently on Apple Silicon:
+
+    Capabilities for AC Power:   Capabilities for Battery Power:
+     displaysleep                 displaysleep
+     disksleep                    disksleep
+     sleep                        sleep
+     womp                         lessbright
+     standby                      standby
+     powernap                     powernap
+     ttyskeepawake                ttyskeepawake
+     tcpkeepalive                 tcpkeepalive
+
+While it seems power management has become more primitive due to less modes available on Apple Silicon the opposite is true, just check the `pmset -g log` output for details (translates the 'raw' ASL logs from below `/var/log/powermanagement/` into something human readable).
+
+When testing the new hardware all the `*log` modes of `pmset` are of interest, e.g. run in separate terminals `pmset -g thermlog` and `pmset -g pslog` and so on to get an idea what's going on while benchmarking/testing.
+
+### powermetrics
+
+`powermetrics` is the tool of choice to get an idea about energy consumption, performance and related topics. When being called on Intel with default sample set (tasks,battery,network,disk,interrupts,cpu_power,gpu_power,gpu_agpm_stats,smc) this looks like this: http://ix.io/2FbJ
+
+On Apple Silicon it looks like this instead: http://ix.io/2FbK
+
+Unfortunately it seems no information about SMC stuff (thermals, fan data) is currently available on the Apple Silicon Macs, at least `powermetrics -n 1 -i 1 --samplers smc` on a MacBook Air and the new 13" Pro only output `unrecongnized sampler: smc` while on most Intel machines it looks like this for example:
+
+    **** SMC sensors ****
+    
+    CPU Thermal level: 0
+    GPU Thermal level: 0
+    IO Thermal level: 0
+    Fan: 1836.76 rpm
+    CPU die temperature: 46.96 C
+    GPU die temperature: 35.00 C
+    CPU Plimit: 0.00
+    GPU Plimit (Int): 0.00 
+    Number of prochots: 0
+
+But the good news is we get very detailed information around everything consumption/performance relevant on Apple Silicon, e.g. clockspeeds and active/idle residency for both CPU clusters and the GPU cores and also consumption figures for these subsystems as well as RAM, controllers and the whole package.
+
+## Testing in detail
 
 (TBC)
 
-  * information about battery and connected USB-C chargers are available through the AppleSmartBattery object (compare with `ioreg -l`)
-  * `pmset -g log`
-  * `powermetrics`
-  * `top -stats pid,command,cpu,idlew,power -o power -d -s3` - https://blog.mozilla.org/nnethercote/2015/08/26/what-does-the-os-x-activity-monitors-energy-impact-actually-measure/
 
 
 Footnotes
