@@ -25,7 +25,7 @@ I realized one minor exception when I wanted to explore binaries with the `lipo`
     sudo rm -rf /Library/Developer/CommandLineTools/
     sudo xcode-select --install
 
-For now I'm staying with the whole userland below `/usr/local/` being `x86_64` so everything I run from there needs to be translated using Rosetta2 to `arm64e` once. I'm reluctant to start over with `arm64e` native homebrew for now since it is not quite ready for ARM now (some formulas will break). As such it's important to stay on the 'wrong' architecture when dealing with homebrew for the next weeks. To install for example a tool to examine/use transparent filesystem compression I can't call `brew` directly but have to use the `arch` command instead:
+For now I'm staying with the whole userland below `/usr/local/` being `x86_64` so everything I run from there needs to be translated using Rosetta2 to `arm64e` once. I'm reluctant to start over with `arm64e` native homebrew for now since it is not quite ready for `arm64e` yet (some formulas will break). As such it's important to stay on the 'wrong' architecture when dealing with homebrew for the next weeks. To install for example a tool to examine/use transparent filesystem compression I can't call `brew` directly but have to use the `arch` command instead:
 
     arch -x86_64 brew install afsctool
 
@@ -57,6 +57,8 @@ But I gave it a try just to compare with my Intel MacBook. `/usr/local/bin/7z b`
 The very same benchmark running natively on my Intel i7-9750H MacBook Pro (6 cores, 12 threads) results in 29000 7-zip MIPS while the fan kicks in after a minute and screams at +5000 rpm and a little later the CPU thermal sensor reports temperatures above 90°C with fan on maximum operation.
 
 I won't do any further CPU performance testing since 'fast enough' or let's better say *simply impressive* considering the thermal behaviour and that I tested an Intel binary on the ARM laptop running via binary translation. I'll focus on performance/watt measurements solely later on.
+
+Update: When running a native `arm64e` 7-zip binary we're at slightly above 33000 7-zip MIPS (at below 14W consumption) or in other words: only 20% faster compared to Rosetta2 'emulation' mode and ~15% faster than a 6C/12T i7-9750H.
 
 ### Internal storage
 
@@ -193,7 +195,7 @@ Let's compare with the Intel MacBook equipped with a T2 chip containing the SSD 
 | MaxPowerState | 3 | 1 |
 | Controller Characteristics | detailed info | basic info |
 
-So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal/proprietary solution. Macs with M1 SoC expose a lot more about the SSD internals compared to T2 (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba").
+So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal/proprietary solution. Macs with M1 SoC expose a lot more about the SSD internals compared to T2 (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba" or "vendor-name"="Sandisk" in colleague's 13" MacBook Pro).
 
 As with the T2 controller in previous Intel Macs SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys are all inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results for recent Apple machines you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is actually going to happen when you enter a wrong FileVault passphrase too often at boot time).
 
@@ -206,7 +208,7 @@ Those three "Apple Silicon" Macs provide the following at each USB-C port:
   * Thunderbolt 3 compliance
   * *SuperSpeed 10Gbps* maximum USB transfer speeds
 
-A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3. Most probably not all of the needed requirements for TB4 could be met:
+A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3. Most probably chip design started prior to Intel finalizing TB4 specs and/or not all of the needed requirements for TB4 could be met:
 
 ![](https://heise.cloudimg.io/width/3092/q70.png-lossy-70.webp-lossy-70.foil1/_www-heise-de_/imgs/18/3/0/0/1/5/6/8/thunderbolt4-comparison-chart-2f0aae9c6d8e08d7.jpg)
 
@@ -327,7 +329,7 @@ The `top` version included in macOS provides some way to estimate/guess power co
 
 `pmset` is the tool of choice to 'manipulate power management settings' and to get an idea what's going on behind the scenes.
 
-`pmset -g ac` on Apple laptops shows info about the USB-C charger used and current consumption settings. Comparing Intel MacBook on the left with Apple Silicon Air on the right:
+`pmset -g ac` on Apple laptops shows info about the USB-C charger used and current consumption settings. Comparing Intel MacBook on the left with Apple Silicon MacBook Air on the right:
 
     Wattage = 94W                               Wattage = 30W
     Current = 4700mA                            Current = 1500mA
@@ -397,7 +399,7 @@ vs. this currently on Apple Silicon:
 
 While it seems power management has become more primitive due to less modes available on Apple Silicon the opposite is true, just check the `pmset -g log` output for details (translates the 'raw' ASL logs from below `/var/log/powermanagement/` into something human readable).
 
-When testing the new hardware all the `*log` modes of `pmset` are of interest, e.g. run in separate terminals `pmset -g thermlog` and `pmset -g pslog` and so on to get an idea what's going on while benchmarking/testing.
+When testing the new hardware all the `*log` modes of `pmset` are of interest (see `man pmset`), e.g. run in separate terminals `pmset -g thermlog` and `pmset -g pslog` and so on to get an idea what's really happening while benchmarking/testing.
 
 ### powermetrics
 
@@ -427,8 +429,7 @@ But the good news is we get very detailed information around everything consumpt
 
 
 
-Footnotes
-=========
+#### Footnotes
 
-1. <span id="f1"></span>`for app in /System/Applications/*.app ; do Sizes=$(lipo -detailed_info "${app}/Contents/MacOS/$(basename "${app}" .app)" 2>/dev/null | awk -F" " '/size/ {print $2}'); set $Sizes; echo -e "${app##*/}\t$1\t$2"; done >/Users/tk/app-sizes.txt` [back](#a1)
-2. <span id="f2"></span>`find /System/Library/Frameworks -name "*dylib" | while read ; do Sizes=$(lipo -detailed_info ${REPLY} 2>/dev/null | awk -F" " '/size/ {print $2}'); [ -z $Sizes ] || set $Sizes; echo -e "${REPLY##*/}\t$1\t$2"; done >/Users/tk/framework-sizes.txt` [back](#a2)
+1. <span id="f1"></span>`for app in /System/Applications/*.app ; do Sizes=$(lipo -detailed_info "${app}/Contents/MacOS/$(basename "${app}" .app)" 2>/dev/null | awk -F" " '/size/ {print $2}'); set $Sizes; echo -e "${app##*/}\t$1\t$2"; done >/Users/tk/app-sizes.txt` [(back)](#a1)
+2. <span id="f2"></span>`find /System/Library/Frameworks -name "*dylib" | while read ; do Sizes=$(lipo -detailed_info ${REPLY} 2>/dev/null | awk -F" " '/size/ {print $2}'); [ -z $Sizes ] || set $Sizes; echo -e "${REPLY##*/}\t$1\t$2"; done >/Users/tk/framework-sizes.txt` [(back)](#a2)
