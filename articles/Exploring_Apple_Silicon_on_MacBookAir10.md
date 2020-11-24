@@ -1,4 +1,4 @@
-# Exploring Apple Silicon on a MacBookAir10
+# Exploring Apple Silicon on a MacBookAir10,1
 
 **WORK IN PROGRESS**
 
@@ -52,7 +52,7 @@ The "Apple Silicon" MacBook Air feels faster than my 16" Intel MacBook ([Core i7
 
 Since being an energy efficiency fetishist I played around with ARM single board computers as miniature servers for a while. To benchmark those things I found 7-zip's internal benchmark a pretty good representation of ['server workloads in general' since relying on integer/memory](https://github.com/ThomasKaiser/sbc-bench#7-zip). Of course it makes absolutely no sense at all to use this benchmark on a Mac laptop due to totally different use cases.
 
-But I gave it a try just to compare with my Intel MacBook. `/usr/local/bin/7z b` ends up with ~27500 7-zip MIPS (running in Rosetta2 'emulation' mode!). After half an hour some slight throttling kicks in and the results are in the 26000-26500 range. The MacBook Air has no fan, is passively cooled and doesn't even get hot (touch test). 
+I gave it a try just for a quick efficiency comparison with my Intel MacBook. `/usr/local/bin/7z b` ends up with ~27500 7-zip MIPS running in Rosetta2 'emulation' mode. After half an hour some slight throttling kicks in and the results are in the 26000-26500 range. The MacBook Air has no fan, is passively cooled and doesn't even get hot (touch test). 
 
 The very same benchmark running natively on my Intel i7-9750H MacBook Pro (6 cores, 12 threads) results in 29000 7-zip MIPS while the fan kicks in after a minute and screams at +5000 rpm and a little later the CPU thermal sensor reports temperatures above 90°C with fan on maximum operation.
 
@@ -197,11 +197,11 @@ Let's compare with the Intel MacBook equipped with a T2 chip containing the SSD 
 
 So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal/proprietary solution. Macs with M1 SoC expose a lot more about the SSD internals compared to T2 (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba" or "vendor-name"="Sandisk" in colleague's 13" MacBook Pro).
 
-As with the T2 controller in previous Intel Macs SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys are all inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results for recent Apple machines you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is actually going to happen when you enter a wrong FileVault passphrase too often at boot time).
+As with the T2 controller in previous Intel Macs the SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys live all inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results for recent Apple machines you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is actually going to happen when you enter a wrong FileVault passphrase too often at boot time).
 
 ### USB / Thunderbolt / PCIe
 
-The new M1 Macs are advertised as USB4/TB3 capable and all three models only have two USB-C ports. It's important to understand that 'USB4' is the name for a protocol revision and not a synonym for a certain type of link speed.
+The new M1 Macs are advertised as USB4/TB3 capable and all three models only have two USB-C ports. It's important to understand that 'USB4' is the name of the protocol revision and not a synonym for a certain type of link speed.
 
 Those three "Apple Silicon" Macs provide the following at each USB-C port:
 
@@ -329,7 +329,7 @@ The `top` version included in macOS provides some way to estimate/guess power co
 
 `pmset` is the tool of choice to 'manipulate power management settings' and to get an idea what's going on behind the scenes.
 
-`pmset -g ac` on Apple laptops shows info about the USB-C charger used and current consumption settings. Comparing Intel MacBook on the left with Apple Silicon MacBook Air on the right:
+`pmset -g ac` on Apple laptops shows info about the USB-C charger used and current consumption settings. Comparing the chargers for the old Intel MacBook Pro on the left with the one for the Apple Silicon MacBook Air on the right:
 
     Wattage = 94W                               Wattage = 30W
     Current = 4700mA                            Current = 1500mA
@@ -425,7 +425,35 @@ But the good news is we get very detailed information around everything consumpt
 
 ## Testing in detail
 
-(TBC)
+### Moving from Intel to ARM
+
+Easy as expected, see above.
+
+### Headless mode
+
+The MacBook Air when being idle for some time after showing a screensaver on the LCD shuts down the backlight while being fully active and e.g. accessible via SSH. Consumption numbers below done with a Brennenstuhl Primera Line PM 231E known to be somewhat precise even in low load conditions. This means measurements at the wall taking into account all losses by the charger and USB-C cable.
+
+The MacBook has established a Wi-Fi connection (ac/Wi-Fi 5, 80 MHz, WPA2, 2x2) and is fully responsive when being queried by ping/ICMP or using an interactive SSH session. Charger behavior is checked constantly by running `while true ; do pmset -g batt; sleep 5; done` via SSH.
+
+  * Apple 94W charger with Apple 2m cable: 0.5W
+  * Apple 30W charger with Apple 2m cable: 0.5W
+  * Khadas USB-C charger with Apple 2m cable: 0.6W
+  * whatever charger with 'random USB-C cable off the Internet: +0.7W more
+
+While testing `pmset` output has been monitored to be the following so no battery drain has happened and PSU figures are valid:
+
+    Now drawing from 'AC Power'
+     -InternalBattery-0 (id=19136611)	100%; charged; 0:00 remaining present: true
+
+Summary: Without activated display but with an *active* 802.11ac wireless network connection the laptop while being fully accessible is idling at 0.5W *measured at the wall*. Sick.
+
+### LCD backlight consumption
+
+When activating the internal display but letting the laptop being totally idle consumption varies between 2.4W (lowest brightness) and 7.3W. The `powermetrics` tool unfortunately isn't able to report power usage for the display since reporting `unable to get backlight node`.
+
+Summary: The internal 2560x1600 display when being active adds between ~2W and ~7W to the overall consumption depending on the brightness level. Keep this in mind when enjoying power consumption reviews of these devices. You get a 5W variation solely based on display brightness.
+
+
 
 
 
