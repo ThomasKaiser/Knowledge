@@ -52,13 +52,13 @@ The "Apple Silicon" MacBook Air feels faster than my 16" Intel MacBook ([Core i7
 
 Since being an energy efficiency fetishist I played around with ARM single board computers as miniature servers for a while. To benchmark those things I found 7-zip's internal benchmark a pretty good representation of ['server workloads in general' since relying on integer/memory](https://github.com/ThomasKaiser/sbc-bench#7-zip). Of course it makes absolutely no sense at all to use this benchmark on a Mac laptop due to totally different use cases.
 
-I gave it a try just for a quick efficiency comparison with my Intel MacBook. `/usr/local/bin/7z b` ends up with ~27500 7-zip MIPS running in Rosetta2 'emulation' mode. After half an hour some slight throttling kicks in and the results are in the 26000-26500 range. The MacBook Air has no fan, is passively cooled and doesn't even get hot (touch test). 
+I gave it a try just for a quick efficiency comparison with my Intel MacBook. `/usr/local/bin/7z b` ends up with ~27500 7-zip MIPS running in Rosetta2 'emulation' mode. After half an hour some slight throttling happens and the results are in the 26000-26500 range. The MacBook Air has no fan, is passively cooled and doesn't even get hot (touch test). 
 
-The very same benchmark running natively on my Intel i7-9750H MacBook Pro (6 cores, 12 threads) results in 29000 7-zip MIPS while the fan kicks in after a minute and screams at +5000 rpm and a little later the CPU thermal sensor reports temperatures above 90°C with fan on maximum operation.
+The very same benchmark running natively on my Intel i7-9750H MacBook Pro (6 cores, 12 threads) results in roughly 30000 7-zip MIPS while the system draws ~80W from the wall, the fan kicks in after a minute and screams at +5000 rpm and a little later the CPU thermal sensor reports temperatures above 90°C (still with fan on maximum speed).
 
 I won't do any further CPU performance testing since 'fast enough' or let's better say *simply impressive* considering the thermal behaviour and that I tested an Intel binary on the ARM laptop running via binary translation. I'll focus on performance/watt measurements solely later on.
 
-Update: When running a native `arm64e` 7-zip binary we're at slightly above 33000 7-zip MIPS (at below 14W consumption) or in other words: only 20% faster compared to Rosetta2 'emulation' mode and ~15% faster than a 6C/12T i7-9750H.
+Update: When running a native `arm64e` 7-zip binary we're at slightly above 33000 7-zip MIPS (at below 14W consumption) or in other words: only 20% faster compared to Rosetta2 'emulation' mode and ~10% faster than a 6C/12T i7-9750H.
 
 ### Internal storage
 
@@ -230,7 +230,7 @@ But maybe Apple chooses a chiplet approach instead and combines several M1 dies 
 
 ### Wireless capabilities
 
-Not really related to "Apple Silicon" but to the 3 models in question: Wi-Fi 6 (802.11ax) and Bluetooth 5.0 are provided by an 'Apple USI 339S00758' chip with BroadCom/Cypress tech inside (BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
+Not really related to "Apple Silicon" but to the 3 models in question: Wi-Fi 6 (802.11ax) and Bluetooth 5.0 are provided by an 'Apple USI 339S00758' chip most probably made in an advanced process technology with BroadCom/Cypress tech inside (BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
 
 Measuring wireless performance in kitchen-sink benchmark style is pointless as always since way too much external factors determine performance in a setup like mine (with tons of neighbours and their wireless networks around). Since my access point is still only capable of Wi-Fi 5 (802.11ac) the Air due to only supporting 2T2R MIMO is currently a downgrade compared to the Intel MacBook Pro that is able to establish a 3x3 connection. With a new 802.11ax capable access point this might change.
 
@@ -238,7 +238,7 @@ Measuring wireless performance in kitchen-sink benchmark style is pointless as a
 
 ### Universal Binaries
 
-Almost every binary in macOS 11 is now an [Universal Binary](https://en.wikipedia.org/wiki/Universal_binary#Universal_2) in the sense that it contains both `x86_64` and `arm64e`. Notable exceptions: *Rosetta 2 Updater.app* is `arm64e` only and */System/Library/Frameworks/OpenCL.framework* is `x86_64` only (for a list of apps use `Utilities:System Information.app` or `system_profiler SPApplicationsDataType`)
+Almost every binary in macOS 11 is now an [Universal Binary](https://en.wikipedia.org/wiki/Universal_binary#Universal_2) containing both `x86_64` and `arm64e` portions. Notable exceptions: *Rosetta 2 Updater.app* is `arm64e` only and */System/Library/Frameworks/OpenCL.framework* is `x86_64` only (for a list of apps use `Utilities:System Information.app` or `system_profiler SPApplicationsDataType`)
 
 Let's look at an utilitiy that hasn't been upgraded since ages (bash on macOS is still on version 3.2.57). The size of `/bin/bash` in 10.15.7 is 623472 bytes containing only `x86_64`. In 11.0.1 it's 1296640 bytes and the `arm64e` portion is slightly larger:
 
@@ -438,7 +438,7 @@ The MacBook has established a Wi-Fi connection (ac/Wi-Fi 5, 80 MHz, WPA2, 2x2) a
   * Apple 94W charger with Apple 2m cable: 0.5W
   * Apple 30W charger with Apple 2m cable: 0.5W
   * Khadas USB-C charger with Apple 2m cable: 0.6W
-  * whatever charger with 'random USB-C cable off the Internet: +0.7W more
+  * whatever charger with 'random USB-C cable from eBay': +0.7W *more*
 
 While testing `pmset` output has been monitored to be the following so no battery drain has happened and PSU figures are valid:
 
@@ -454,8 +454,23 @@ When activating the internal display but letting the laptop being totally idle c
 Summary: The internal 2560x1600 display when being active adds between ~2W and ~7W to the overall consumption depending on the brightness level. Keep this in mind when enjoying power consumption reviews of these devices. You get a 5W variation solely based on display brightness.
 
 
+### Throttling comparison between MacBook Air and 13" MBP
 
+We used Cinebench R23 as load generator. Some people also call this a representative benchmark for reasons unknown to me. It's a rendering benchmark using solely CPU cores, on Intel starting with release R23 utilizing AVX vector extensions if available. So no idea why/how this should be represenative for anything other than doing work in Cinema 4D.
 
+Anyway, this tool in its '10 min' mode can be used to check for throttling. When starting the multi core benchmark on both MacBook Air and Pro efficiency cores jump to 2064 MHz and power cores to 2988 MHz (when all power cores are active maximum clockspeeds will be reduced by 200 MHz). On the Air after a short period of time throttling kicks in (23°C ambient temperature), reducing the clockspeeds of the power cores down to 2.5 GHz while the efficiency cores remain at the top clockspeed:
+
+![](../media/M1-Air-vs-MBP-Clockspeeds.png)
+
+When looking at the power consumption this totally makes sense since the efficiency cores even when running fully utilized barely add to the overall power consumption. Lowering clockspeeds of the power cores by 500 MHz (18% frequency less) results in a 5W consumption drop or 33% less which is the expected result of [DVFS](https://en.wikipedia.org/wiki/Power_management#DVFS) at work:
+
+![](../media/M1-Air-vs-MBP-Power.png)
+
+We repeated the run this time the MacBook Air sitting on a huge -18°C icepack just to realize that still throttling happens but not that much. This time performance cores got downclocked only by 250 MHz and consumption dropped just by 2W:
+
+![](../media/M1-Air-with-icepack.png)
+
+It *seems* the throttling strategy is not solely based on thermal sensors since this time the MacBook Air was too cold to touch. In other words: if you're after sustained performance choose those M1 Macs with active cooling.
 
 #### Footnotes
 
