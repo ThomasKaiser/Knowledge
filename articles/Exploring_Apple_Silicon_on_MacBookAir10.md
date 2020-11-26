@@ -44,7 +44,7 @@ The "Apple Silicon" MacBook Air feels faster than my 16" Intel MacBook ([Core i7
 ### Basic collection of information
 
   * `ioregl -l` output: https://raw.githubusercontent.com/ThomasKaiser/Knowledge/master/media/ioreg-MacBookAir10.txt
-  * `hidutil list` output: http://ix.io/2EUV (19 thermal sensors inside)
+  * `hidutil list` output: http://ix.io/2EUV (19 thermal sensors listed but actually [it's 47](https://github.com/ThomasKaiser/Check_MK/blob/da500f3fe4a57382ace3d150630d04bc06879e1b/helpers/process-powermetrics-output.sh#L103-L149))
   * `system_profiler` output: http://ix.io/2EVx
   * When looking at CPU utilization (be it with `htop`, `Activity Monitor` or `powermetrics`) it's important to realize that cpu0-cpu3 are efficiency cores and cpu4-cpu7 are the performance cores.
 
@@ -456,21 +456,32 @@ Summary: The internal 2560x1600 display when being active adds between ~2W and ~
 
 ### Throttling comparison between MacBook Air and 13" MBP
 
-We used Cinebench R23 as load generator. Some people also call this a representative benchmark for reasons unknown to me. It's a rendering benchmark using solely CPU cores, on Intel starting with release R23 utilizing AVX vector extensions if available. So no idea why/how this should be represenative for anything other than doing work in Cinema 4D.
+We used Cinebench R23 as load generator. Some people also call this a representative benchmark for reasons unknown to me. It's a rendering benchmark using solely CPU cores, on Intel starting with release R23 utilizing AVX vector extensions if available. So no idea why/how this should be representative for anything other than doing work in Cinema 4D.
 
-Anyway, this tool in its '10 min' mode can be used to check for throttling. When starting the multi core benchmark on both MacBook Air and Pro efficiency cores jump to 2064 MHz and power cores to 2988 MHz (when all power cores are active maximum clockspeeds will be reduced by 200 MHz). On the Air after a short period of time throttling kicks in (23°C ambient temperature), reducing the clockspeeds of the power cores down to 2.5 GHz while the efficiency cores remain at the top clockspeed:
+Anyway, this tool in its '10 min' mode can be used to check for throttling. When starting the multi core benchmark on both MacBook Air and Pro efficiency cores jump to 2064 MHz and power cores to 2988 MHz (when all power cores are active maximum clockspeeds will be reduced by 200 MHz). On the Air after a short period of time SoC temperature exceeds ~75°C and throttling kicks in (23°C ambient temperature). Clockspeeds of the power cores are slightly but constantly reduced down to 2.5 GHz while the efficiency cores remain at 2 GHz all the time (therefore missing in the graph below):
 
 ![](../media/M1-Air-vs-MBP-Clockspeeds.png)
 
-When looking at the power consumption this totally makes sense since the efficiency cores even when running fully utilized barely add to the overall power consumption. Lowering clockspeeds of the power cores by 500 MHz (18% frequency less) results in a 5W consumption drop or 33% less which is the expected result of [DVFS](https://en.wikipedia.org/wiki/Power_management#DVFS) at work:
+*(clockspeeds and fan rpm are on the left scale while SoC temperatures on the right)*
+
+It seems throttling strategy for the Air is to never exceed 80°C SoC temperature while on the MacBook Pro the fan is used to keep SoC temperature below 70°C having to exceed 4000 rpm after 7 minutes.
+
+When looking at the power consumption downclocking only the power cores makes totally sense since the efficiency cores even when running fully utilized barely add to the overall power consumption (1.3W on full load). Lowering clockspeeds of the power cores on the Air by 500 MHz (18% frequency less) results in a 5W consumption drop or 33% less which is the expected result of [DVFS](https://en.wikipedia.org/wiki/Power_management#DVFS) at work. On the MacBook Pro the fan keeps clockspeeds up and the power cores consume 14W over the whole benchmark duration:
 
 ![](../media/M1-Air-vs-MBP-Power.png)
 
-We repeated the run this time the MacBook Air sitting on a huge -18°C icepack just to realize that still throttling happens but not that much. This time performance cores got downclocked only by 250 MHz and consumption dropped just by 2W:
+We repeated the run this time the MacBook Air sitting on a huge -18°C icepack cooling down the whole laptop prior to benchmark execution so we started with a SoC temperature of just 12°C.
+
+![](../media/M1-Air-with-icepack-temperatures.png)
+
+
+*(temperature is on the right scale while clockspeeds are on the left)*
+
+Throttling started as soon as the SoC temperature hit ~75°C which happened way later than before. This time the power cores were just downclocked by 200 MHz at the end of the 10 min benchmark run. Power consumption also just dropped by 2W this time:
 
 ![](../media/M1-Air-with-icepack.png)
 
-It *seems* the throttling strategy is not solely based on thermal sensors since this time the MacBook Air was too cold to touch. In other words: if you're after sustained performance choose those M1 Macs with active cooling.
+*(consumption in mW is on the right scale while clockspeeds are on the left)*
 
 #### Footnotes
 
