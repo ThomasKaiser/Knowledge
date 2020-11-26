@@ -201,12 +201,17 @@ As with the T2 controller in previous Intel Macs the SSD controller, crypto acce
 
 ### USB / Thunderbolt / PCIe
 
-The new M1 Macs are advertised as USB4/TB3 capable and all three models only have two USB-C ports. It's important to understand that 'USB4' is the name of the protocol revision and not a synonym for a certain type of link speed.
+The new M1 Macs are advertised as USB4/TB3 capable and all three models only have two USB-C ports. It's important to understand that 'USB4' is the name of a protocol revision and not the synonym for a certain type of link speed.
 
-Those three "Apple Silicon" Macs provide the following at each USB-C port:
+Calling a host 'USB4 compliant' basically means USB-C ports providing at least *SuperSpeed 10Gbps* USB transfer speeds, Thunderbolt 3 with at least 20 Gbps, at least one port providing DisplayPort alt mode and 7.5W per port for USB consumers (15W for TB devices).
+
+And that's exactly what you get with those three new "Apple Silicon" Macs (and more or less every MacBook Pro from 2016 on and every MacBook Air from 2018 or above). The two USB-C ports provide:
 
   * Thunderbolt 3 compliance
   * *SuperSpeed 10Gbps* maximum USB transfer speeds
+  * Ability to connect one 6k display to one USB-C port
+
+How a MacBook Air with its 30W charger could fulfill the TB3 powering requirements of '15W per port' is unclear to me but I guess the kind of people choosing the Air are aware that this device is for rather lightweight tasks while the 13" MacBook Pro is up to the job dealing also with some power hungry Thunderbolt peripherals (it comes with a 61W charger for a reason).
 
 A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3. Most probably chip design started prior to Intel finalizing TB4 specs and/or not all of the needed requirements for TB4 could be met:
 
@@ -226,11 +231,11 @@ The `ioreg` output suggests that the TB PCIe implementation is limited to 2 lane
 
 In case the M1 SoCs would have a bunch of Gen4 lanes and would support [CCIX](https://en.wikichip.org/wiki/ccix) we might see larger MacBooks / iMacs with more than one of those M1 interconnected via PCIe (would be some sort of [NUMA](https://en.wikipedia.org/wiki/Non-uniform_memory_access) and would most probably require limiting all applications that are not built for [Grand Central Dispatch](https://en.wikipedia.org/wiki/Grand_Central_Dispatch) to remain on the 1st SoC). 
 
-But maybe Apple chooses a chiplet approach instead and combines several M1 dies + separate IO chip on an interposer. Or maybe they do something entirely different and come up with an advanced CPU design to power the [i]Mac Pro of the future.
+But maybe Apple chooses a chiplet approach instead and combines several M1 dies + separate IO chip on an interposer. Or maybe they do something entirely different and come up with an advanced CPU design to power larger MacBooks and the [i]Mac Pro of the future.
 
 ### Wireless capabilities
 
-Not really related to "Apple Silicon" but to the 3 models in question: Wi-Fi 6 (802.11ax) and Bluetooth 5.0 are provided by an 'Apple USI 339S00758' chip most probably made in an advanced process technology with BroadCom/Cypress tech inside (BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
+Not really related to "Apple Silicon" but to the 3 Macs in question: Wi-Fi 6 (802.11ax) and Bluetooth 5.0 are provided by an 'Apple USI 339S00758' chip most probably made in an advanced process technology with BroadCom/Cypress tech inside (BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
 
 Measuring wireless performance in kitchen-sink benchmark style is pointless as always since way too much external factors determine performance in a setup like mine (with tons of neighbours and their wireless networks around). Since my access point is still only capable of Wi-Fi 5 (802.11ac) the Air due to only supporting 2T2R MIMO is currently a downgrade compared to the Intel MacBook Pro that is able to establish a 3x3 connection. With a new 802.11ax capable access point this might change.
 
@@ -453,7 +458,6 @@ When activating the internal display but letting the laptop being totally idle c
 
 Summary: The internal 2560x1600 display when being active adds between ~2W and ~7W to the overall consumption depending on the brightness level. Keep this in mind when enjoying power consumption reviews of these devices. You get a 5W variation solely based on display brightness.
 
-
 ### Throttling comparison between MacBook Air and 13" MBP
 
 We used Cinebench R23 as load generator. Some people also call this a representative benchmark for reasons unknown to me. It's a rendering benchmark using solely CPU cores, on Intel starting with release R23 utilizing AVX vector extensions if available. So no idea why/how this should be representative for anything other than doing work in Cinema 4D.
@@ -466,14 +470,13 @@ Anyway, this tool in its '10 min' mode can be used to check for throttling. When
 
 It seems throttling strategy for the Air is to never exceed 80°C SoC temperature while on the MacBook Pro the fan is used to keep SoC temperature below 70°C having to exceed 4000 rpm after 7 minutes.
 
-When looking at the power consumption downclocking only the power cores makes totally sense since the efficiency cores even when running fully utilized barely add to the overall power consumption (1.3W on full load). Lowering clockspeeds of the power cores on the Air by 500 MHz (18% frequency less) results in a 5W consumption drop or 33% less which is the expected result of [DVFS](https://en.wikipedia.org/wiki/Power_management#DVFS) at work. On the MacBook Pro the fan keeps clockspeeds up and the power cores consume 14W over the whole benchmark duration:
+When looking at the power consumption downclocking only the power cores makes totally sense since the efficiency cores even when running fully utilized barely add to the overall power consumption (1.3W on full load). Lowering clockspeeds of the power cores on the Air by 500 MHz (17% frequency less) results in a 5W consumption drop or 33% less which is the expected result of [DVFS](https://en.wikipedia.org/wiki/Power_management#DVFS) at work. On the MacBook Pro the fan keeps clockspeeds up and the power cores consume 14W over the whole benchmark duration:
 
 ![](../media/M1-Air-vs-MBP-Power.png)
 
 We repeated the run this time the MacBook Air sitting on a huge -18°C icepack cooling down the whole laptop prior to benchmark execution so we started with a SoC temperature of just 12°C.
 
 ![](../media/M1-Air-with-icepack-temperatures.png)
-
 
 *(temperature is on the right scale while clockspeeds are on the left)*
 
