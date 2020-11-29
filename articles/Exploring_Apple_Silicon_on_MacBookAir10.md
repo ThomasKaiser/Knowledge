@@ -205,13 +205,13 @@ The new M1 Macs are advertised as USB4/TB3 capable and all three models only hav
 
 Calling a host 'USB4 compliant' basically means USB-C ports providing at least *SuperSpeed 10Gbps* USB transfer speeds, Thunderbolt 3 with at least 20 Gbps, at least one port providing DisplayPort alt mode and 7.5W per port for USB consumers (15W for TB devices).
 
-And that's exactly what you get with those three new "Apple Silicon" Macs (and more or less every MacBook Pro from 2016 on and every MacBook Air from 2018 or above). The two USB-C ports provide:
+And that's exactly what you get with those three new "Apple Silicon" Macs (and more or less the same you got with every MacBook Pro from 2016 on and every MacBook Air from 2018 or later). The two USB-C ports provide:
 
   * Thunderbolt 3 compliance
   * *SuperSpeed 10Gbps* maximum USB transfer speeds
   * Ability to connect one 6k display to one USB-C port
 
-How a MacBook Air with its 30W charger could fulfill the TB3 powering requirements of '15W per port' is unclear to me but I guess the kind of people choosing the Air are aware that this device is for rather lightweight tasks while the 13" MacBook Pro is up to the job dealing also with some power hungry Thunderbolt peripherals (it comes with a 61W charger for a reason).
+How a MacBook Air with its 30W charger could fulfill the TB3 powering requirements of '15W per port' is not clear to me but I guess the kind of people choosing the Air are aware that this device is for rather lightweight tasks while the 13" MacBook Pro is up to the job dealing also with some power hungry Thunderbolt peripherals (it comes with a 61W charger for a reason).
 
 A Mac Mini teardown revealed that the TB controller is inside the M1 SoC and there are two [JHL8040R](https://ark.intel.com/content/www/de/de/ark/products/186251/intel-jhl8040r-thunderbolt-4-retimer.html) TB retimer chips soldered next to the USB-C ports. While these chips are TB4 capable Apple only implements TB3. Most probably chip design started prior to Intel finalizing TB4 specs and/or not all of the needed requirements for TB4 could be met:
 
@@ -330,6 +330,8 @@ It's also save to assume that the storage space requirements for macOS 11 being 
 
 The `top` version included in macOS provides some way to estimate/guess power consumption at the application level. You can execute `top -stats pid,command,cpu,idlew,power -o power -d -s3` for example. To interpret the data see [here](https://blog.mozilla.org/nnethercote/2015/08/26/what-does-the-os-x-activity-monitors-energy-impact-actually-measure/) for example.
 
+If you're not sure how to interpret data please stop here and rely on `Activity Monitor.app` instead.
+
 ### pmset
 
 `pmset` is the tool of choice to 'manipulate power management settings' and to get an idea what's going on behind the scenes.
@@ -346,7 +348,7 @@ The `top` version included in macOS provides some way to estimate/guess power co
     Hardware Version = 1.0                      Hardware Version = 1.0
     Firmware Version = 01070051                 Firmware Version = 01030052
 
-Quick check with a 'Khadas' branded random USB-C charger from China:
+Quick check with a 'Khadas' branded random USB-C charger:
 
     mac-tk-air:~ tk$ pmset -g ac 
      Wattage = 24W
@@ -462,7 +464,7 @@ Summary: The internal 2560x1600 display when being active adds between ~2W and ~
 
 We used Cinebench R23 as load generator. Some people also call this a representative benchmark for reasons unknown to me. It's a rendering benchmark using solely CPU cores, on Intel starting with release R23 utilizing AVX vector extensions if available. So no idea why/how this should be representative for anything other than doing work in Cinema 4D.
 
-Anyway, this tool in its '10 min' mode can be used to check for throttling. When starting the multi core benchmark on both MacBook Air and Pro efficiency cores jump to 2064 MHz and power cores to 2988 MHz (when all power cores are active maximum clockspeeds will be reduced by 200 MHz). On the Air after a short period of time SoC temperature exceeds ~75°C and throttling kicks in (23°C ambient temperature). Clockspeeds of the power cores are slightly but constantly reduced down to 2.5 GHz while the efficiency cores remain at 2 GHz all the time (therefore missing in the graph below):
+Anyway, this tool in its '10 min' mode can be used to check for throttling. When starting the multi core benchmark on both MacBook Air and Pro efficiency cores jump to 2064 MHz and power cores to 2988 MHz (single-threaded workloads run at 3.2GHz but when all power cores are active maximum clockspeeds will be reduced by 200 MHz). On the Air after a short period of time SoC temperature exceeds ~75°C and throttling kicks in (23°C ambient temperature). Clockspeeds of the power cores are slightly but constantly reduced down to 2.5 GHz while the efficiency cores remain at 2 GHz all the time (therefore missing in the graph below):
 
 ![](../media/M1-Air-vs-MBP-Clockspeeds.png)
 
@@ -470,7 +472,7 @@ Anyway, this tool in its '10 min' mode can be used to check for throttling. When
 
 It seems throttling strategy for the Air is to never exceed 80°C SoC temperature while on the MacBook Pro the fan is used to keep SoC temperature below 70°C having to exceed 4000 rpm after 7 minutes.
 
-When looking at the power consumption downclocking only the power cores makes totally sense since the efficiency cores even when running fully utilized barely add to the overall power consumption (1.3W on full load). Lowering clockspeeds of the power cores on the Air by 500 MHz (17% frequency less) results in a 5W consumption drop or 33% less which is the expected result of [DVFS](https://en.wikipedia.org/wiki/Power_management#DVFS) at work. On the MacBook Pro the fan keeps clockspeeds up and the power cores consume 14W over the whole benchmark duration:
+When looking at power savings (directly related to heat dissipation) downclocking only the power cores makes totally sense since the efficiency cores even when running fully utilized barely add to the overall power consumption (1.3W on full load). Lowering clockspeeds of the power cores on the Air by 500 MHz (17% frequency less) results in a 5W consumption drop or 33% less which is the expected result of [DVFS](https://en.wikipedia.org/wiki/Power_management#DVFS) at work. On the MacBook Pro the fan keeps clockspeeds up and the power cores consume 14W over the whole benchmark duration:
 
 ![](../media/M1-Air-vs-MBP-Power.png)
 
@@ -485,6 +487,20 @@ Throttling started as soon as the SoC temperature hit ~75°C which happened way 
 ![](../media/M1-Air-with-icepack.png)
 
 *(consumption in mW is on the right scale while clockspeeds are on the left)*
+
+### Throttling strategy observations
+
+When performing various load tests (CPU or GPU and CPU+GPU) it *seems* there are 3 rules in place:
+
+  * do not let 'SoC temperature' exceed 80°C (naively assuming that 'SoC temperature' can be determined by [collecting the value of each temperature sensor with 'SOC' in its name and calculating an average value from them](https://github.com/ThomasKaiser/Check_MK/blob/2b8139bd48f94219a441e879490354fd636973f9/agents/check_mk_agent.macosx#L419-L423))
+  * do net let temperature of a single thermal sensor exceed 95°C (this seems to affect the power management unit only right now, especially the 'pACC MTR Temp' sensors)
+  * On the MacBook Pro activate the fan on inaudible and fairly low speeds as soon as SoC temperature hits 60°C and increase rpm only later to fulfil first two rules. Same might apply to the Mac Mini.
+
+![](../media/M1-mbp-sensors-oberview.png)
+
+![](../media/M1-mbp-sensors-graphs.png)
+
+*(graphs plotted this time by [Check_MK](https://checkmk.de), [my macOS agent](https://github.com/ThomasKaiser/Check_MK/blob/master/agents/check_mk_agent.macosx) and [iStatistica](https://www.imagetasks.com/istatistica/))*
 
 #### Footnotes
 
