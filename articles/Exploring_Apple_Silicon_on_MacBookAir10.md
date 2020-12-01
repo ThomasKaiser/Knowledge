@@ -493,14 +493,54 @@ Throttling started as soon as the SoC temperature hit ~75°C which happened way 
 When performing various load tests (CPU or GPU and CPU+GPU) it *seems* there are 3 rules in place:
 
   * do not let 'SoC temperature' exceed 80°C (naively assuming that 'SoC temperature' can be determined by [collecting the value of each temperature sensor with 'SOC' in its name and calculating an average value from them](https://github.com/ThomasKaiser/Check_MK/blob/2b8139bd48f94219a441e879490354fd636973f9/agents/check_mk_agent.macosx#L419-L423))
-  * do net let temperature of a single thermal sensor exceed 95°C (this seems to affect the power management unit only right now, especially the 'pACC MTR Temp' sensors)
-  * On the MacBook Pro activate the fan on inaudible and fairly low speeds as soon as SoC temperature hits 60°C and increase rpm only later to fulfil first two rules. Same might apply to the Mac Mini.
+  * do not let temperature of a single thermal sensor exceed 95°C (this seems to affect the power management unit only right now, especially the `pACC MTR Temp` sensors)
+  * On the MacBook Pro activate the fan on inaudible and fairly low speeds as soon as SoC temperature hits 60°C and increase rpm only later to fulfil first two rules. Same *might* apply to the Mac Mini (not tested since we missed the chance to also order an Mini).
 
 ![](../media/M1-mbp-sensors-oberview.png)
 
 ![](../media/M1-mbp-sensors-graphs.png)
 
 *(graphs plotted this time by [Check_MK](https://checkmk.de), [my macOS agent](https://github.com/ThomasKaiser/Check_MK/blob/master/agents/check_mk_agent.macosx) and [iStatistica](https://www.imagetasks.com/istatistica/))*
+
+### Comparing power cores with efficiency cores
+
+I didn't find a method to assign certain tasks to specific cores (like with `taskset` on Linux or `pbind` on Solaris) since the XNU kernel does all the process scheduling entirely on its own so for now only a pretty unscientific approach choosing a few multi-threaded utilities that can be configured to run on only 4 threads and then comparing both consumption and performance figures to 'running on all 8 cores' seems to be possible.
+
+I chose the following tools for this test:
+
+  * [pigz 2.4](https://zlib.net/pigz/): `-p4` vs. `-p8`
+  * pixz (version 1.0.6 bundled with macOS): `-p4` vs. `-p8`
+  * pbzip2 (version 1.1.13 from homebrew): `-p4` vs. `-p8`
+  * 7z b (version 16.02 from homebrew): `-mmt4` vs. `-mmt8`
+
+The three compressors all take [Linux v5.10-rc4 kernel source](https://github.com/torvalds/linux/releases/tag/v5.10-rc4) as uncompressed tarball concatenated 4 times as input (4.1 GB file size, buffered in RAM) and throw results away to `/dev/null`. No I/O involved.
+
+Explaining the table below: `pigz` when running on all cores finishes in 13.2 seconds while needing 19.1 sec when using the power cores only (`-p4` switch). Adding efficiency cores adds 1270mW to overall consumption. So using the additional 4 efficiency cores  performance improves from 100% to 145% while consumption increase is from 100% to 109%. With `pixz` it's 21.7 sec vs. 29.7 sec so performance increase is 137% and consumption increase is 108%. With `pbzip2` it's 52 vs. 38 seconds: performance increase again to 137% and consumption is at 107.5% compared to 'power cores only'.
+
+7-zip's internal benchmark mode running with 4 vs. 8 threads makes a difference of 22000 vs. 33000 7-zip-MIPS (or 18500 vs. 27500 when running the x86_64 binary via Rosetta2). So the relative performance boost adding the efficiency cores is by 49%-50% with a consumption increase by 9%.
+
+| Tool | power (mW) | efficiency (mW) | performance (%) | consumption (%) |
+| ------ | -----: | -----: | -----: | -----: |
+| pigz | 13800 | 1270 | 45 | 9 |
+| pixz | 15600 | 1250 | 37 | 8 |
+| pbzip2 | 15900 | 1200 | 37 | 8 |
+| 7z b | 11000 | 980 | 50 | 9 |
+| 7z b (Rosetta2) | 12650 | 1100 | 49 | 9 |
+
+All test runs have been repeated at least 3 times and carefully monitored (47 thermal sensors and additional 34 sensors for consumption, frequencies and residency) and consumption values have been averaged over multiple runs.
+
+Interpreting the results is not that easy due to the very limited scope of the above tests/utilities. At least the following is obvious:
+
+  * efficiency cores are really power efficient. All four of them doing real heavy work fully utilized on their max cpufreq (2064 MHz) consume less than 1.5W according to `powermetrics` tool.
+  * In the tests above and in general with other demanding tasks running fully multi-threaded on all cores the efficiency cores always consume less than 10% compared to the power cores
+  * the efficiency cores while contributing less than 10% additional consumption add between 1/3 and 1/2 of the power cores' performance to truly multi-threaded jobs that scale well
+  * efficiency cores run at 2/3 clockspeed compared to power cores (3.2 GHz peak single threaded, 3.0 GHz sustained with more performance cores fully active until throttling starts on the Air). Due to their laughable consumption figures efficiency cores aren't affected by throttling and remain on full 2064 MHz while power cores are clocked down once thermal/power budget requires it.
+
+
+
+
+  
+
 
 #### Footnotes
 
