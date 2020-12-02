@@ -460,6 +460,22 @@ When activating the internal display but letting the laptop being totally idle c
 
 Summary: The internal 2560x1600 display when being active adds between ~2W and ~7W to the overall consumption depending on the brightness level. Keep this in mind when enjoying power consumption reviews of these devices. You get a 5W variation solely based on display brightness.
 
+### Charging behavior
+
+Quick check wrt charging behaviour with the MacBook Air and the bundled 30W charger: 47:30 min from `75%; charging; 1:20 remaining` until `99%; finishing charge; 0:13 remaining`, then 21:30 min until `100%; charged`. The charger's own concumption starts with 27W-31W until the 90% mark, from then on wattage will be constantly reduced and at the end of the `99%` stage less than 5W are drawn from the wall.
+
+To quickly deplete the battery back to 75% I used Cinebench and GfxBench in parallel (for more insights with this combo see 'Looking at GPU utilization and prioritization' below). At the 75% mark I attached the charger cable and... this happened: `75%; AC attached; not charging`. Measured at the wall the USB-C charger consumes between 17W and 21W (that's the two benchmarks running on an overheated/throttled Air) so it seems macOS decided to not charge the battery if remaining power is less than 15W.
+
+Nope, seems to be related to the whole MacBook being overheated. As long as the `gas_gauge_battery` thermal sensor reported 44°C or above the MacBook refused to charge the battery. When temperature goes down, things go back to normal:
+
+![](../media/M1-gas_gauge_battery_sensor.png)
+
+When using a more powerful charger things do *not* get significantly faster: the 94W Apple charger for example draws 32W-33W and it takes almost the same time to recharge the battery.
+
+Different situation with the 13" MBP with its 60W charger and somewhat larger battery (according to `ioreg` the `DesignCapacity` is 4382 vs. 5103): 54 minutes from `75%; charging; 1:32 remaining present` until `99%; finishing charge; 0:16 remaining`, then 22 min until `100%; charged`. The charger's own consumption as follows: 75%: 69W, 78%: 63W, 90%: 58W, 93%: 44W, 99%: 24W and then slowly decreasing until 100% were reached.
+
+Please keep in mind that batteries in both laptops are brand new and some of the battery calibration stuff hasn't yet happened so I would believe those 'time remaining' messages become more precise over time.
+
 ### Throttling comparison between MacBook Air and 13" MBP
 
 We used Cinebench R23 as load generator. Some people also call this a representative benchmark for reasons unknown to me. It's a rendering benchmark using solely CPU cores, on Intel starting with release R23 utilizing AVX vector extensions if available. So no idea why/how this should be representative for anything other than doing work in Cinema 4D.
@@ -536,7 +552,7 @@ Interpreting the results is not that easy due to the very limited scope of the a
   * the efficiency cores while contributing less than 10% additional consumption add between 1/3 and 1/2 of the power cores' performance to truly multi-threaded jobs that scale well
   * efficiency cores run at 2/3 clockspeed compared to power cores (3.2 GHz peak single threaded, limited to 3.0 GHz with more performance cores fully active until throttling starts on the Air). Due to their laughable consumption figures efficiency cores aren't affected by throttling and remain on full 2064 MHz while power cores are clocked down once thermal/power budget requires it.
 
-## Looking at GPU utilization and prioritization
+### Looking at GPU utilization and prioritization
 
 As said in the chapter above process scheduling is a black box the OS takes care of. This applies to where processes run (power or efficiency cores), how high the power cores are clocked if the thermal/power envelope needs adjustments and this also applies to decisions how high GPU cores are clocked in which situation.
 
@@ -566,7 +582,7 @@ Finally the famous 'pillow test' to simulate 'working from bed':
 
 At 13:08 and again at 13:32 GfxBench has been started in addition to Cinebench with the Air sitting on a huge pillow from 13:32 on. Power cores clock as low as 900 MHz and GPU cores below 600 MHz in 'full load' mode. Therefore accessories like [this](https://www.ikea.com/gb/en/p/braeda-laptop-support-black-60150176/) or [that](https://www.ikea.com/gb/en/p/byllan-laptop-support-ebbarp-black-white-90403511/) can result in increased full load performance when working away from flat surfaces like tables. 
 
-## Interpreting 7-zip benchmark scores
+### Interpreting 7-zip benchmark scores
 
 *Important: this section has nothing to do at all with what normal users of these laptops and Mini PCs will do with their devices. It's about 'server workloads' where integer/memory performance is key and for this 7-zip scores are a good estimate. A device with twice the 7-zip MIPS will probably handle twice as much server threads as long as we're talking about stuff being CPU bound only.*
 
@@ -585,13 +601,13 @@ The performance/watt ratio makes them pretty interesting for server tasks so let
 
 The MacBook 16" I'm typing this on has an [i7-9750H](https://ark.intel.com/content/www/de/de/ark/products/191045/intel-core-i7-9750h-processor-12m-cache-up-to-4-50-ghz.html) inside with 3.6 GHz base clock. Power consumption has been measured both on the wall (substracting idle from 'fully loaded') and according to averaged `powermetrics` output (60W-65W).
 
-The Cisco server features 2 x [Xeon Gold 6248R](https://ark.intel.com/content/www/de/de/ark/products/199351/intel-xeon-gold-6248r-processor-35-75m-cache-3-00-ghz.html) with a TDP of 205W each which doesn't mean much until measured properly (TDP just like 'process node' is partially marketing BS). 
+The Cisco server features 2 x [Xeon Gold 6248R](https://ark.intel.com/content/www/de/de/ark/products/199351/intel-xeon-gold-6248r-processor-35-75m-cache-3-00-ghz.html) with a TDP of 205W each which doesn't mean much until measured properly (TDP just like 'process node' is partially marketing BS). See the i7 directly above being a '45W TDP' labeled CPU drawing 60W-65W when running the 7-zip benchmark.
 
 Amazon's m6g.8xlarge instance is based on a Graviton2 CPU with A64 RM Neoverse N1 cores limited to 32 cores.
 
 The ODROID N2+ Single Board Computer is equipped with an Amlogic S922X 12nm ARM SoC consisting of four Cortex-A73 'performance' cores clocking at 2.4 GHz and two Cortex-A55 efficiency cores at 2.0 GHz. All six cores working together end up with a 7-zip-MIPS score 10% lower compared to Apple's four efficiency cores.
 
-While Apple's efficiency cores have a rather low 'per core' score they're way more power efficient than anything else. Over 5 times more efficient than Apple's power cores and over 30 times better than the Intel cores inside the i7-9750H. 
+While Apple's efficiency cores have a rather low 'per core' score they're way more power efficient than anything else. Over 5 times more efficient than Apple's power cores and over 30 times better than the Intel cores inside the i7-9750H.
 
 Again: this only applies to 'server workloads in general' (which is nothing one would do on these Apple Silicon machines *today*) and should be taken with a huge grain of salt since solely based on a single benchmark result. But some trends are obvious and if Apple is ever going to design a server CPU I clearly opt for a ton of efficiency cores inside and maybe a few power cores for 'burst loads'.
 
