@@ -1,7 +1,5 @@
 # Exploring Apple Silicon on a MacBookAir10,1
 
-**WORK IN PROGRESS**
-
 ## Basics
 
 As of Nov 2020 Apple startet to produce Mac computers based on their own SoCs instead of relying on Intel/AMD CPUs/GPUs. Below the M1 SoC with two LPDDRX4 modules soldered right next to it on a Mac Mini mainboard ([image source](https://egpu.io/forums/desktop-computing/teardown-late-2020-mac-mini-apple-silicon-m1-thunderbolt-4-usb4-pcie-4/)):
@@ -462,7 +460,7 @@ Summary: The internal 2560x1600 display when being active adds between ~2W and ~
 
 ### Charging behavior
 
-Quick check wrt charging behaviour with the MacBook Air and the bundled 30W charger: 47:30 min from `75%; charging; 1:20 remaining` until `99%; finishing charge; 0:13 remaining`, then 21:30 min until `100%; charged`. The charger's own concumption starts with 27W-31W until the 90% mark, from then on wattage will be constantly reduced and at the end of the `99%` stage less than 5W are drawn from the wall.
+Quick check wrt charging behaviour with the MacBook Air and the bundled 30W charger: 47:30 min from `75%; charging; 1:20 remaining` until `99%; finishing charge; 0:13 remaining`, then 21:30 min until `100%; charged`. The charger's own consumption starts with 27W-31W until the 90% mark, from then on wattage will be constantly reduced and at the end of the `99%` stage less than 5W are drawn.
 
 To quickly deplete the battery back to 75% I used Cinebench and GfxBench in parallel (for more insights with this combo see 'Looking at GPU utilization and prioritization' below). At the 75% mark I attached the charger cable and... this happened: `75%; AC attached; not charging`. Measured at the wall the USB-C charger consumes between 17W and 21W (that's the two benchmarks running on an overheated/throttled Air) so it seems macOS decided to not charge the battery if remaining power is less than 15W.
 
@@ -470,11 +468,19 @@ Nope, seems to be related to the whole MacBook being overheated. As long as the 
 
 ![](../media/M1-gas_gauge_battery_sensor.png)
 
-When using a more powerful charger things do *not* get significantly faster: the 94W Apple charger for example draws 32W-33W and it takes almost the same time to recharge the battery.
+When using a more powerful PSU charging does *not* get significantly faster on the MacBook Air: the 94W Apple charger for example draws 32W-33W and as such it takes almost the same time to recharge the battery.
 
 Different situation with the 13" MBP with its 60W charger and somewhat larger battery (according to `ioreg` the `DesignCapacity` is 4382 vs. 5103): 54 minutes from `75%; charging; 1:32 remaining present` until `99%; finishing charge; 0:16 remaining`, then 22 min until `100%; charged`. The charger's own consumption as follows: 75%: 69W, 78%: 63W, 90%: 58W, 93%: 44W, 99%: 24W and then slowly decreasing until 100% were reached.
 
 Please keep in mind that batteries in both laptops are brand new and some of the battery calibration stuff hasn't yet happened so I would believe those 'time remaining' messages become more precise over time.
+
+### Sleep / Deep Idle
+
+With disabled LCD backlight the new M1 laptops idle already at around 0.5W. If the lid will be closed the laptop enters 'Deep Idle' mode. Measured at the wall this is 0.1W or in other words: too low to be measured precisely with my setup. At least it's really low.
+
+Waking up from this sleep state is almost immediately and can not be compared to the situation with Intel MacBooks where entering sleep states or waking up takes ages compared to the M1 thingies.
+
+While sleeping the Mac will wake up periodically into 'DarkWake' mode with disabled display to perform maintainance tasks like refreshing network registrations or TimeMachine backups. `pmset -g log` tells the whole story.
 
 ### Throttling comparison between MacBook Air and 13" MBP
 
@@ -588,7 +594,7 @@ At 13:08 and again at 13:32 GfxBench has been started in addition to Cinebench w
 
 Let's hope *BSD and Linux communities overcome the hurdles (e.g. iBoot, different interrupt controller than ARM's GIC) to boot/run other operating systems on those M1 machines so once they do not receive security fixes from Apple any more in a couple of years (AKA 'most recent macOS version') we can still use them with another OS.
 
-The performance/watt ratio makes them pretty interesting for server tasks so let's look a bit closer what to expect and compare [with other platforms/systems](https://s1.hoffart.de/7zip-bench/). Sorting by 6th column (7-zip MIPS per core -- please be aware that 7-zip just like a lot of server applications greatly benefits from SMT like Intel's 'Hyper Threading' and will run with 2 threads per core on such systems).
+The performance/watt ratio makes them pretty interesting for server tasks so let's look a bit closer what to expect and compare [with other platforms/systems](https://s1.hoffart.de/7zip-bench/). Power and efficiency cores are listed separately and results are sorted by 6th column (7-zip MIPS per core -- please be aware that 7-zip just like a lot of server applications greatly benefits from SMT like Intel's 'Hyper Threading' and will run with 2 threads per core on such systems).
 
 | Core | cpufreq | cores | threads | 7-zip MIPS | per core | per core/MHz | per core/mW |
 | ---- | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
@@ -599,11 +605,11 @@ The performance/watt ratio makes them pretty interesting for server tasks so let
 | M1 efficiency cores | 2064 MHz | 4 | 4 | 11000 | 2750 | 1.33 | 2.8 |
 | [ODROID N2+](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) | 2266 MHz | 6 | 6 | 9660 | 1610 | 1.4 | n/a |
 
-The MacBook 16" I'm typing this on has an [i7-9750H](https://ark.intel.com/content/www/de/de/ark/products/191045/intel-core-i7-9750h-processor-12m-cache-up-to-4-50-ghz.html) inside with 3.6 GHz base clock. Power consumption has been measured both on the wall (substracting idle from 'fully loaded') and according to averaged `powermetrics` output (60W-65W).
+The MacBook 16" I'm typing this on has an [i7-9750H](https://ark.intel.com/content/www/de/de/ark/products/191045/intel-core-i7-9750h-processor-12m-cache-up-to-4-50-ghz.html) inside with 3.6 GHz base clock. Power consumption has been measured both at wall (substracting idle from 'fully loaded') and according to averaged `powermetrics` output (60W-65W).
 
 The Cisco server features 2 x [Xeon Gold 6248R](https://ark.intel.com/content/www/de/de/ark/products/199351/intel-xeon-gold-6248r-processor-35-75m-cache-3-00-ghz.html) with a TDP of 205W each which doesn't mean much until measured properly (TDP just like 'process node' is partially marketing BS). See the i7 directly above being a '45W TDP' labeled CPU drawing 60W-65W when running the 7-zip benchmark.
 
-Amazon's m6g.8xlarge instance is based on a Graviton2 CPU with A64 RM Neoverse N1 cores limited to 32 cores.
+Amazon's m6g.8xlarge instance is a virtual machine limited to 32 cores based on a Graviton2 CPU with 64 ARM Neoverse N1 cores.
 
 The ODROID N2+ Single Board Computer is equipped with an Amlogic S922X 12nm ARM SoC consisting of four Cortex-A73 'performance' cores clocking at 2.4 GHz and two Cortex-A55 efficiency cores at 2.0 GHz. All six cores working together end up with a 7-zip-MIPS score 10% lower compared to Apple's four efficiency cores.
 
