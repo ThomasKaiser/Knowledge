@@ -519,28 +519,49 @@ Explaining the table below: `pigz` when running on all cores finishes in 13.2 se
 
 7-zip's internal benchmark mode running with 4 vs. 8 threads makes a difference of 22000 vs. 33000 7-zip-MIPS (or 18500 vs. 27500 when running the x86_64 binary via Rosetta2). So the relative performance boost adding the efficiency cores is by 49%-50% with a consumption increase by 9%.
 
-| Tool | power (mW) | efficiency (mW) | performance (%) | consumption (%) |
+| Tool | power cores | efficiency cores | performance increase | consumption increase |
 | ------ | -----: | -----: | -----: | -----: |
-| pigz | 13800 | 1270 | 45 | 9 |
-| pixz | 15600 | 1250 | 37 | 8 |
-| pbzip2 | 15900 | 1200 | 37 | 8 |
-| 7z b | 11000 | 980 | 50 | 9 |
-| 7z b (Rosetta2) | 12650 | 1100 | 49 | 9 |
+| pigz | 13800 mW | 1270 mW | 45% | 9% |
+| pixz | 15600 mW | 1250 mW | 37% | 8% |
+| pbzip2 | 15900 mW | 1200 mW | 37% | 8% |
+| 7z b | 11000 mW | 980 mW | 50% | 9% |
+| 7z b (Rosetta2) | 12650 mW | 1100 mW | 49% | 9% |
 
 All test runs have been repeated at least 3 times and carefully monitored (47 thermal sensors and additional 34 sensors for consumption, frequencies and residency) and consumption values have been averaged over multiple runs.
 
 Interpreting the results is not that easy due to the very limited scope of the above tests/utilities. At least the following is obvious:
 
-  * efficiency cores are really power efficient. All four of them doing real heavy work fully utilized on their max cpufreq (2064 MHz) consume less than 1.5W according to `powermetrics` tool.
-  * In the tests above and in general with other demanding tasks running fully multi-threaded on all cores the efficiency cores always consume less than 10% compared to the power cores
+  * efficiency cores are really power efficient. All four of them doing real heavy work fully utilized on their max cpufreq (2064 MHz) consume less than 1.5W according to `powermetrics` output.
+  * In the tests above and with other demanding tasks running fully multi-threaded on all cores the efficiency cores always consume less than 10% compared to the power cores
   * the efficiency cores while contributing less than 10% additional consumption add between 1/3 and 1/2 of the power cores' performance to truly multi-threaded jobs that scale well
-  * efficiency cores run at 2/3 clockspeed compared to power cores (3.2 GHz peak single threaded, 3.0 GHz sustained with more performance cores fully active until throttling starts on the Air). Due to their laughable consumption figures efficiency cores aren't affected by throttling and remain on full 2064 MHz while power cores are clocked down once thermal/power budget requires it.
+  * efficiency cores run at 2/3 clockspeed compared to power cores (3.2 GHz peak single threaded, limited to 3.0 GHz with more performance cores fully active until throttling starts on the Air). Due to their laughable consumption figures efficiency cores aren't affected by throttling and remain on full 2064 MHz while power cores are clocked down once thermal/power budget requires it.
 
+## Interpreting 7-zip benchmark scores
 
+*Important: this section has nothing to do at all with what normal users of these laptops and Mini PCs will do with their devices. It's about 'server workloads' where integer/memory performance is key and for this 7-zip scores are a good estimate. A device with twice the 7-zip MIPS will probably handle twice as much server threads as long as we're talking about stuff being CPU bound only.*
 
+Let's hope *BSD and Linux communities overcome the hurdles (e.g. iBoot, different interrupt controller than ARM's GIC) to boot/run other operating systems on those M1 machines so once they do not receive security fixes from Apple any more in a couple of years (AKA 'most recent macOS version') we can still use them with another OS.
 
-  
+The performance/watt ratio makes them pretty interesting for server tasks so let's look a bit closer what to expect and compare [with other platforms/systems](https://s1.hoffart.de/7zip-bench/). Sorting by 6th column (7-zip MIPS per core -- please be aware that 7-zip just like a lot of server applications greatly benefits from SMT like Intel's 'Hyper Threading' and will run with 2 threads per core on such systems).
 
+| Core | cpufreq | cores | threads | 7-zip MIPS | per core | per core/MHz | per core/mW |
+| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+| M1 power cores | 3000 MHz | 4 | 4 | 22000 | 5500 | 1.83 | 0.5 |
+| MacBook 16" | 3600 MHz | 6 | 12 | 30000 | 5000 | 1.39 | 0.08 |
+| [Cisco UCS B200-M5 07](https://s1.hoffart.de/7zip-bench/) | 3000 MHz | 48 | 96 | 230464 | 4800 | 1.6 | n/a |
+| [Amazon m6g.8xlarge](https://github.com/ThomasKaiser/sbc-bench/commit/88a34e5305c639b8206f2fd821234b232abe4623) | 2500 MHz | 32 | 32 | 109000 | 3406 | 1.36 | n/a |
+| M1 efficiency cores | 2064 MHz | 4 | 4 | 11000 | 2750 | 1.33 | 2.8 |
+| [ODROID N2+](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) | 2266 MHz | 6 | 6 | 9660 | 1610 | 1.4 | n/a |
+
+The Cisco server features 2 x Xeon Gold 6248R with a TDP of 205W each which doesn't mean much until measured properly (TDP just like 'process node' is partially marketing BS). 
+
+The MacBook 16" I'm typing this on right now runs on an i7-9750H with 3.6 GHz base clock and power consumption has been measured both on the wall (substracting idle from 'fully loaded') and according to averaged `powermetrics` output (60W-65W).
+
+The ODROID N2+ Single Board Computer is equipped with an Amlogic S922X 12nm ARM SoC containing four Cortex-A73 'performance' cores clocking at 2.4 GHz and two Cortex-A55 efficiency cores at 2.0 GHz. All six cores working together end up with a 7-zip-MIPS score 10% lower compared to Apple's four efficiency cores.
+
+While Apple's efficiency cores have a rather low 'per core' score they're way more power efficient than anything else. Over 5 times more efficient than Apple's power cores and over 30 times higher compared to the Intel cores inside the i7-9750H. 
+
+Again: this only applies to 'server workloads in general' (which is nothing one would do on these M1 machines *today*) and should be taken with a huge grain of salt since solely based on a single benchmark result. But some trends are obvious and if Apple is ever going to design a server CPU I clearly opt for a ton of efficiency cores and maybe a few power cores for 'burst loads'.
 
 #### Footnotes
 
