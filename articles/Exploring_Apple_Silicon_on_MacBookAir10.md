@@ -56,9 +56,9 @@ I gave it a try just for a quick efficiency comparison with my Intel MacBook. `/
 
 The very same benchmark running natively on my Intel i7-9750H MacBook Pro (6 cores, 12 threads) results in roughly 30000 7-zip MIPS while the system draws ~80W from the wall, the fan kicks in after a minute and screams at +5000 rpm and a little later the CPU thermal sensor reports temperatures above 90°C (still with fan on maximum speed).
 
-I won't do any further CPU performance testing since 'fast enough' or let's better say *simply impressive* considering the thermal behaviour and that I tested an Intel binary on the ARM laptop running via binary translation. I'll focus on performance/watt measurements solely later on.
+I won't do any further real CPU performance testing since 'fast enough' or let's better say *simply impressive* considering the thermal behaviour and that I tested an Intel binary on the ARM laptop running via binary translation. I'll focus on performance/watt measurements solely later on.
 
-Update: When running a native `arm64e` 7-zip binary we're at slightly above 33000 7-zip MIPS (at below 14W consumption) or in other words: only 20% faster compared to Rosetta2 'emulation' mode and ~10% faster than a 6C/12T i7-9750H.
+Update: When running a native `arm64e` 7-zip binary we're at slightly above 33000 7-zip MIPS (at below 14W consumption without any throttling) or in other words: only 20% faster compared to Rosetta2 'emulation' mode and ~10% faster than a 6C/12T i7-9750H.
 
 ### Internal storage
 
@@ -494,7 +494,7 @@ When performing various load tests (CPU or GPU and CPU+GPU) it *seems* there are
 
   * do not let 'SoC temperature' exceed 80°C (naively assuming that 'SoC temperature' can be determined by [collecting the value of each temperature sensor with 'SOC' in its name and calculating an average value from them](https://github.com/ThomasKaiser/Check_MK/blob/2b8139bd48f94219a441e879490354fd636973f9/agents/check_mk_agent.macosx#L419-L423))
   * do not let temperature of a single thermal sensor exceed 95°C (this seems to affect the power management unit only right now, especially the `pACC MTR Temp` sensors)
-  * On the MacBook Pro activate the fan on inaudible and fairly low speeds as soon as SoC temperature hits 60°C and increase rpm only later to fulfil first two rules. Same *might* apply to the Mac Mini (not tested since we missed the chance to also order an Mini).
+  * On the MacBook Pro activate the fan on inaudible and fairly low speeds as soon as SoC temperature hits 60°C and increase rpm only later to fulfil first two rules. Same *might* apply to the Mac Mini (not tested since we missed the chance to also order a Mini).
 
 ![](../media/M1-mbp-sensors-oberview.png)
 
@@ -536,6 +536,36 @@ Interpreting the results is not that easy due to the very limited scope of the a
   * the efficiency cores while contributing less than 10% additional consumption add between 1/3 and 1/2 of the power cores' performance to truly multi-threaded jobs that scale well
   * efficiency cores run at 2/3 clockspeed compared to power cores (3.2 GHz peak single threaded, limited to 3.0 GHz with more performance cores fully active until throttling starts on the Air). Due to their laughable consumption figures efficiency cores aren't affected by throttling and remain on full 2064 MHz while power cores are clocked down once thermal/power budget requires it.
 
+## Looking at GPU utilization and prioritization
+
+As said in the chapter above process scheduling is a black box the OS takes care of. This applies to where processes run (power or efficiency cores), how high the power cores are clocked if the thermal/power envelope needs adjustments and this also applies to decisions how high GPU cores are clocked in which situation.
+
+Let's have a look with both MBP and the MacBook Air since the 30W charger and the passive cooling are limiting factors here. As *load generator* I used again Cinebench R23 (solely CPU bound) and [GfxBench](https://gfxbench.com/) which also utilizes the GPU cores and DRAM more. Those two tools running together could be representative for some 'pro' Apps making intensive use of other engines than just the CPU cores (GPU and the Neural Engine).
+
+![](../media/M1-Air-CPU_GPU_full_load_mhz.png)
+
+![](../media/M1-Air-CPU_GPU_full_load_mw.png)
+
+  * My assumption in the chapter above based on 'CPU only' workloads was wrong: the averaged SoC temperature with this combined test exceeded 80°C on the Air easily (92°C max reported by the sensors, the actively cooled MacBook Pro showed peak temperatures of above 81°C with the fan running at audible 7200 rpm)
+  * GPU has higher priority than CPU power cores. To stay within the thermal limits the OS prefers to downclock the power cores and let the GPU cores remain on higher frequencies
+  * with this test the MacBook Air is thermally limited and not by consumption (having to stay within the 30W power budget). Though throughout the whole test `pmset -g batt` reported to run entirely off AC: `Now drawing from 'AC Power'`.
+
+Now let's compare Air and MacBook Pro:
+
+![](../media/M1-Air-vs-MBP-GPU-RAM-consumption.png)
+
+![](../media/M1-Air-vs-MBP-overall-consumption.png)
+
+  * Looking at power consumption caused by memory the Cinebench CPU test is rather lightweight just generating 200mW while with GfXBench and especially the last tests RAM consumptions peaks at 1.5W
+  * The MacBook Air almost immediately starts to throttle with both CPU and GPU cores being fully utilized. At the beginning of the test both Air and MBP show an overall SoC consumption of 25W but the Air needs to immediately throttle GPU and CPU power cores and consumption drops as low as 12W after 10 minutes full load
+  * The MBP remains at much higher GPU and power core clockspeeds so if you're really after sustained performance forget about the fanless Air
+
+Finally the famous 'pillow test' to simulate 'working from bed':
+
+![](../media/M1-Air-on-pillow.png)
+
+At 13:08 and again at 13:32 GfxBench has been started in addition to Cinebench with the Air sitting on a huge pillow from 13:32 on. Power cores clock as low as 900 MHz and GPU cores below 600 MHz in 'full load' mode. Therefore accessories like [this](https://www.ikea.com/gb/en/p/braeda-laptop-support-black-60150176/) or [that](https://www.ikea.com/gb/en/p/byllan-laptop-support-ebbarp-black-white-90403511/) can result in increased full load performance when working away from flat surfaces like tables. 
+
 ## Interpreting 7-zip benchmark scores
 
 *Important: this section has nothing to do at all with what normal users of these laptops and Mini PCs will do with their devices. It's about 'server workloads' where integer/memory performance is key and for this 7-zip scores are a good estimate. A device with twice the 7-zip MIPS will probably handle twice as much server threads as long as we're talking about stuff being CPU bound only.*
@@ -545,7 +575,7 @@ Let's hope *BSD and Linux communities overcome the hurdles (e.g. iBoot, differen
 The performance/watt ratio makes them pretty interesting for server tasks so let's look a bit closer what to expect and compare [with other platforms/systems](https://s1.hoffart.de/7zip-bench/). Sorting by 6th column (7-zip MIPS per core -- please be aware that 7-zip just like a lot of server applications greatly benefits from SMT like Intel's 'Hyper Threading' and will run with 2 threads per core on such systems).
 
 | Core | cpufreq | cores | threads | 7-zip MIPS | per core | per core/MHz | per core/mW |
-| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+| ---- | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
 | M1 power cores | 3000 MHz | 4 | 4 | 22000 | 5500 | 1.83 | 0.5 |
 | MacBook 16" | 3600 MHz | 6 | 12 | 30000 | 5000 | 1.39 | 0.08 |
 | [Cisco UCS B200-M5 07](https://s1.hoffart.de/7zip-bench/) | 3000 MHz | 48 | 96 | 230464 | 4800 | 1.6 | n/a |
@@ -553,15 +583,17 @@ The performance/watt ratio makes them pretty interesting for server tasks so let
 | M1 efficiency cores | 2064 MHz | 4 | 4 | 11000 | 2750 | 1.33 | 2.8 |
 | [ODROID N2+](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) | 2266 MHz | 6 | 6 | 9660 | 1610 | 1.4 | n/a |
 
-The Cisco server features 2 x Xeon Gold 6248R with a TDP of 205W each which doesn't mean much until measured properly (TDP just like 'process node' is partially marketing BS). 
+The MacBook 16" I'm typing this on has an [i7-9750H](https://ark.intel.com/content/www/de/de/ark/products/191045/intel-core-i7-9750h-processor-12m-cache-up-to-4-50-ghz.html) inside with 3.6 GHz base clock. Power consumption has been measured both on the wall (substracting idle from 'fully loaded') and according to averaged `powermetrics` output (60W-65W).
 
-The MacBook 16" I'm typing this on right now runs on an i7-9750H with 3.6 GHz base clock and power consumption has been measured both on the wall (substracting idle from 'fully loaded') and according to averaged `powermetrics` output (60W-65W).
+The Cisco server features 2 x [Xeon Gold 6248R](https://ark.intel.com/content/www/de/de/ark/products/199351/intel-xeon-gold-6248r-processor-35-75m-cache-3-00-ghz.html) with a TDP of 205W each which doesn't mean much until measured properly (TDP just like 'process node' is partially marketing BS). 
 
-The ODROID N2+ Single Board Computer is equipped with an Amlogic S922X 12nm ARM SoC containing four Cortex-A73 'performance' cores clocking at 2.4 GHz and two Cortex-A55 efficiency cores at 2.0 GHz. All six cores working together end up with a 7-zip-MIPS score 10% lower compared to Apple's four efficiency cores.
+Amazon's m6g.8xlarge instance is based on a Graviton2 CPU with A64 RM Neoverse N1 cores limited to 32 cores.
 
-While Apple's efficiency cores have a rather low 'per core' score they're way more power efficient than anything else. Over 5 times more efficient than Apple's power cores and over 30 times higher compared to the Intel cores inside the i7-9750H. 
+The ODROID N2+ Single Board Computer is equipped with an Amlogic S922X 12nm ARM SoC consisting of four Cortex-A73 'performance' cores clocking at 2.4 GHz and two Cortex-A55 efficiency cores at 2.0 GHz. All six cores working together end up with a 7-zip-MIPS score 10% lower compared to Apple's four efficiency cores.
 
-Again: this only applies to 'server workloads in general' (which is nothing one would do on these M1 machines *today*) and should be taken with a huge grain of salt since solely based on a single benchmark result. But some trends are obvious and if Apple is ever going to design a server CPU I clearly opt for a ton of efficiency cores and maybe a few power cores for 'burst loads'.
+While Apple's efficiency cores have a rather low 'per core' score they're way more power efficient than anything else. Over 5 times more efficient than Apple's power cores and over 30 times better than the Intel cores inside the i7-9750H. 
+
+Again: this only applies to 'server workloads in general' (which is nothing one would do on these Apple Silicon machines *today*) and should be taken with a huge grain of salt since solely based on a single benchmark result. But some trends are obvious and if Apple is ever going to design a server CPU I clearly opt for a ton of efficiency cores inside and maybe a few power cores for 'burst loads'.
 
 #### Footnotes
 
