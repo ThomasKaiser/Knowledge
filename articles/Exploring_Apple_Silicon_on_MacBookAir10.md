@@ -1,5 +1,33 @@
 # Exploring Apple Silicon on a MacBookAir10,1
 
+   * [Basics](#basics)
+   * [Gathering information](#gathering-information)
+      * [The lazy way](#the-lazy-way)
+      * [First impressions](#first-impressions)
+      * [Basic collection of information](#basic-collection-of-information)
+      * [CPU performance assessment](#cpu-performance-assessment)
+      * [Internal storage](#internal-storage)
+      * [USB / Thunderbolt / PCIe](#usb--thunderbolt--pcie)
+      * [Wireless capabilities](#wireless-capabilities)
+   * [Software](#software)
+      * [Universal Binaries](#universal-binaries)
+      * [top](#top)
+      * [pmset](#pmset)
+      * [powermetrics](#powermetrics)
+   * [Testing in detail](#testing-in-detail)
+      * [Moving from Intel to ARM](#moving-from-intel-to-arm)
+      * [Headless mode](#headless-mode)
+      * [LCD backlight consumption](#lcd-backlight-consumption)
+      * [Charging behavior](#charging-behavior)
+      * [Sleep / Deep Idle](#sleep--deep-idle)
+      * [Throttling comparison between MacBook Air and 13" MBP](#throttling-comparison-between-macbook-air-and-13-mbp)
+      * [Throttling strategy observations](#throttling-strategy-observations)
+      * [Comparing power cores with efficiency cores](#comparing-power-cores-with-efficiency-cores)
+      * [Energy aware computing](#energy-aware-computing)
+      * [Looking at GPU utilization and prioritization](#looking-at-gpu-utilization-and-prioritization)
+      * [Virtualization](#virtualization)
+      * [Interpreting 7-zip benchmark scores](#interpreting-7-zip-benchmark-scores)
+
 ## Basics
 
 As of Nov 2020 Apple startet to produce Mac computers based on their own SoCs instead of relying on Intel/AMD CPUs/GPUs. Below the M1 SoC with two LPDDRX4 modules soldered right next to it on a Mac Mini mainboard ([image source](https://egpu.io/forums/desktop-computing/teardown-late-2020-mac-mini-apple-silicon-m1-thunderbolt-4-usb4-pcie-4/)):
@@ -558,6 +586,38 @@ Interpreting the results is not that easy due to the very limited scope of the a
   * the efficiency cores while contributing less than 10% additional consumption add between 1/3 and 1/2 of the power cores' performance to truly multi-threaded jobs that scale well
   * efficiency cores run at 2/3 clockspeed compared to power cores (3.2 GHz peak single threaded, limited to 3.0 GHz with more performance cores fully active until throttling starts on the Air). Due to their laughable consumption figures efficiency cores aren't affected by throttling and remain on full 2064 MHz while power cores are clocked down once thermal/power budget requires it.
 
+### Energy aware computing
+
+Having the capabilities to trace power consumption in detail (`powermetrics` + some primitive monitoring, way more detailed than on Intel before) software developers and server admins can enter next level: caring about consumption of tools and algorithms even when they're just sitting in front of a MacBook Air.
+
+Let's take the task from above (compressing a file 4.1GB in size containing 4 times [Linux v5.10-rc4 kernel source](https://github.com/torvalds/linux/releases/tag/v5.10-rc4)). There exists a variety of formats and tools, in the table below lines 1-4 are about 'good old' PKZip, further below `.bz2`, `.xz`, `.7z` and `.zstd` variants.
+
+It's all about lossless compression and stuffing the 4.1GB in a) as less size as possible and/or b) in as less time as possible and/or c) with as less energy consumption as possible.
+
+Some tools are single-threaded while others use all cores available (as we've seen directly above adding the efficiency cores to the mix is highly desirable). The 'consumption' column is average consumption while compressing (CPU cores + DRAM) and the 'total W' column is the former value multiplied by duration and converted from mW to W:
+
+| Tool | archive size | threads | duration | consumption | total W 
+| ----: | :----: | :----: | :----: | :----: | :----: |
+| pigz -K | 770268 | 8 | 13.5 sec | 15500 mW | 209 W |
+| ditto | 770332 | 1 | 70 sec | 3600 mW | 252 W |
+| zip | 770308 | 1 | 88 sec | 4550 mW | 400 W |
+| pigz -K -9 | 753696 | 8 | 25 | 14200 mW | 355 W |
+| zstd -3 | 707444 | 1 | 10 sec | 4800 mW | 48 W |
+| zstd -9 | 606272 | 1 | 46 sec | 4800 mW | 221 W |
+| pbzip2 | 573996 | 8 | 39 sec | 18400 mW | 717 W |
+| zstd -13 | 573504 | 1 | 196 sec | 4800 mW | 941 W |
+| 7-zip -mx=3 | 568620 | 8 | 70 sec | 8300 mW | 581 W |
+| zstd -16 | 524352 | 1 | 460 sec | 4600 mW | 2116 W |
+| pixz | 491584 | 8 | 220 sec | 14800 mW | 3256 W |
+| 7-zip -mx=9 | 476332 | 8 | 315 sec | 12500 mW | 3937 W |
+| brotli | n/a | 1 | takes ages | 4300 mW | n/a |
+
+If the challenge is providing a PKZip archive the winner is multi-threaded `pigz` both by time and consumption though macOS' `ditto` has some unique capabilities (especially preserving macOS metadata). Other old compression algorithms show their strength if it's about small archive size but at a cost: massive consumption increases.
+
+Choosing modern compression algorithms like ZStandard if possible is not only about faster processing and smaller archive sizes but also about energy efficiency: `zstd` with its default compression strength `-3` compresses slightly better than `pigz -K` performing more than 50% faster while running single-threaded and being over 4 times more energy efficient at the same time.
+
+And to get these insights all you need now is a simple laptop since power efficiency monitoring is built right into the machine and more exhaustive than Intel's PowerTOP. Of course results are not 1:1 comparable with x86 servers (where developer's local stuff might end up on later) but on the other hand developers starting to use ARM client machines will probably result in ARM based server (instances) used more frequently ([Linus Torvalds on this](https://www.realworldtech.com/forum/?threadid=183440&curpostid=183500))
+
 ### Looking at GPU utilization and prioritization
 
 As said in the chapter above process scheduling is a black box the OS takes care of. This applies to where processes run (power or efficiency cores), how high the power cores are clocked if the thermal/power envelope needs adjustments and this also applies to decisions how high GPU cores are clocked in which situation.
@@ -640,7 +700,7 @@ While Apple's efficiency cores have a rather low 'per core' score they're way mo
 
 Again: this only applies to 'server workloads in general' (which is nothing one would do on these Apple Silicon machines *today*) and should be taken with a huge grain of salt since solely based on a single benchmark result. But some trends are obvious and if Apple is ever going to design a server CPU I clearly opt for a ton of efficiency cores inside and maybe a few power cores for 'burst loads'.
 
-#### Footnotes
+### Footnotes
 
 1. <span id="f1"></span>`for app in /System/Applications/*.app ; do Sizes=$(lipo -detailed_info "${app}/Contents/MacOS/$(basename "${app}" .app)" 2>/dev/null | awk -F" " '/size/ {print $2}'); set $Sizes; echo -e "${app##*/}\t$1\t$2"; done >/Users/tk/app-sizes.txt` [(back)](#a1)
 2. <span id="f2"></span>`find /System/Library/Frameworks -name "*dylib" | while read ; do Sizes=$(lipo -detailed_info ${REPLY} 2>/dev/null | awk -F" " '/size/ {print $2}'); [ -z $Sizes ] || set $Sizes; echo -e "${REPLY##*/}\t$1\t$2"; done >/Users/tk/framework-sizes.txt` [(back)](#a2)
