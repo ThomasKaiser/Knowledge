@@ -592,31 +592,33 @@ Having the capabilities to trace power consumption in detail (`powermetrics` + s
 
 Let's take the task from above (compressing a file 4.1GB in size containing 4 times [Linux v5.10-rc4 kernel source](https://github.com/torvalds/linux/releases/tag/v5.10-rc4)). There exists a variety of formats and tools, in the table below lines 1-4 are about 'good old' PKZip, further below `.bz2`, `.xz`, `.7z` and `.zstd` variants.
 
-It's all about lossless compression and stuffing the 4.1GB in a) as less size as possible and/or b) in as less time as possible and/or c) with as less energy consumption as possible.
+It's all about lossless compression and stuffing the 4.1GB in a) as less size as possible and/or b) in as less time as possible and/or c) with as less energy consumption as possible. Obviously the use case is important for prioritization: creating static archives that get downloaded over and over again vs. dynamically compressing variable contents.
 
-Some tools are single-threaded while others use all cores available (as we've seen directly above adding the efficiency cores to the mix is highly desirable). The 'consumption' column is average consumption while compressing (CPU cores + DRAM) and the 'total W' column is the former value multiplied by duration and converted from mW to W:
+Some tools are single-threaded while others use all cores available (as we've seen directly above adding the efficiency cores to the mix is highly desirable). Single-threaded tools suffer from the DVFS dilemma: the higher the power cores are clocked the more inefficient they become since highest clockspeeds require massive supply voltage boosts for the cores to function still stable.
 
-| Tool | archive size | threads | duration | consumption | total W 
+The 'consumption' column is average consumption while compressing (CPU cores + DRAM) and the 'total W' column is the former value multiplied by duration and converted from mW to W:
+
+| Tool | archive size (KB) | threads | duration | consumption | total W 
 | ----: | :----: | :----: | :----: | :----: | :----: |
-| pigz -K | 770268 | 8 | 13.5 sec | 15500 mW | 209 W |
-| ditto | 770332 | 1 | 70 sec | 3600 mW | 252 W |
-| zip | 770308 | 1 | 88 sec | 4550 mW | 400 W |
-| pigz -K -9 | 753696 | 8 | 25 | 14200 mW | 355 W |
-| zstd -3 | 707444 | 1 | 10 sec | 4800 mW | 48 W |
-| zstd -9 | 606272 | 1 | 46 sec | 4800 mW | 221 W |
-| pbzip2 | 573996 | 8 | 39 sec | 18400 mW | 717 W |
-| zstd -13 | 573504 | 1 | 196 sec | 4800 mW | 941 W |
-| 7-zip -mx=3 | 568620 | 8 | 70 sec | 8300 mW | 581 W |
-| zstd -16 | 524352 | 1 | 460 sec | 4600 mW | 2116 W |
-| pixz | 491584 | 8 | 220 sec | 14800 mW | 3256 W |
-| 7-zip -mx=9 | 476332 | 8 | 315 sec | 12500 mW | 3937 W |
-| brotli | n/a | 1 | takes ages | 4300 mW | n/a |
+| `ditto` | 770332 | 1 | 70 sec | 3600 mW | 252 W |
+| `zip` | 770308 | 1 | 88 sec | 4550 mW | 400 W |
+| `pigz -K` | 770268 | 8 | 13.5 sec | 15500 mW | 209 W |
+| `pigz -K -9` | 753696 | 8 | 25 sec | 14200 mW | 355 W |
+| `zstd -3` | 707444 | 1 | 10 sec | 4800 mW | 48 W |
+| `zstd -9` | 606272 | 1 | 46 sec | 4800 mW | 221 W |
+| `pbzip2` | 573996 | 8 | 39 sec | 18400 mW | 717 W |
+| `zstd -13` | 573504 | 1 | 196 sec | 4800 mW | 941 W |
+| `7-zip -mx=3` | 568620 | 8 | 70 sec | 8300 mW | 581 W |
+| `zstd -16` | 524352 | 1 | 460 sec | 4600 mW | 2116 W |
+| `zstd -19` | 507964 | 1 | 1097 sec | 4500 mW | 4936 W |
+| `pixz` | 491584 | 8 | 220 sec | 14800 mW | 3256 W |
+| `7-zip -mx=9` | 476332 | 8 | 315 sec | 12500 mW | 3937 W |
 
 If the challenge is providing a PKZip archive the winner is multi-threaded `pigz` both by time and consumption though macOS' `ditto` has some unique capabilities (especially preserving macOS metadata). Other old compression algorithms show their strength if it's about small archive size but at a cost: massive consumption increases.
 
 Choosing modern compression algorithms like ZStandard if possible is not only about faster processing and smaller archive sizes but also about energy efficiency: `zstd` with its default compression strength `-3` compresses slightly better than `pigz -K` performing more than 50% faster while running single-threaded and being over 4 times more energy efficient at the same time.
 
-And to get these insights all you need now is a simple laptop since power efficiency monitoring is built right into the machine and more exhaustive than Intel's PowerTOP. Of course results are not 1:1 comparable with x86 servers (where developer's local stuff might end up on later) but on the other hand developers starting to use ARM client machines will probably result in ARM based server (instances) used more frequently ([Linus Torvalds on this](https://www.realworldtech.com/forum/?threadid=183440&curpostid=183500))
+And to get these insights all you need now is a simple laptop since power efficiency monitoring is built right into the machine and more exhaustive than Intel's PowerTOP. Of course results are not 1:1 comparable with x86 servers (where developer's local stuff might end up on later) but on the other hand developers starting to use ARM client machines will probably result in ARM based server (instances) used more frequently ([Linus Torvalds on this](https://www.realworldtech.com/forum/?threadid=183440&curpostid=183500)).
 
 ### Looking at GPU utilization and prioritization
 
