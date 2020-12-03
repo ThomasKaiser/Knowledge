@@ -588,6 +588,29 @@ Finally the famous 'pillow test' to simulate 'working from bed':
 
 At 13:08 and again at 13:32 GfxBench has been started in addition to Cinebench with the Air sitting on a huge pillow from 13:32 on. Power cores clock as low as 900 MHz and GPU cores below 600 MHz in 'full load' mode. Therefore accessories like [this](https://www.ikea.com/gb/en/p/braeda-laptop-support-black-60150176/) or [that](https://www.ikea.com/gb/en/p/byllan-laptop-support-ebbarp-black-white-90403511/) can result in increased full load performance when working away from flat surfaces like tables. 
 
+### Virtualization
+
+Apple Silicon provides hardware virtualization support and macOS 11 contains a Hypervisor.framework to ease making use of these features. Projects like [SimpleVM](https://github.com/KhaosT/SimpleVM) are *really simple* and rather early implementations of this and you can already run Aarch64/Arm64 based guest operating systems inside VMs (of course [Windows on ARM too](https://gist.github.com/osy86/10d0ac0210f0eb99474ae31cf8d6dd9e) though without GPU acceleration so doesn't make that much sense right now).
+
+Quick test basing on SimpleVM with a single core VM and 2GB of RAM using my standard [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) shows proper performance arriving in the VM (*excellent* memory performance, CPU performance at 85%-90% compared to running bare metal, AES acceleration works efficiently in guests)
+
+Whether the VM is executed on a power or efficiency core is still macOS' decision. Through the [sbc-bench run](http://ix.io/2Gj8) it has been executed on a power core at 3.2GHz since no other tasks were running in the background. Only at the end when the `mhz` utility was called a 2nd time to measure real clockspeeds the VM has obviously been moved to an efficiency core in between.
+
+With monitoring in place we can also have a look at power consumption of the various benchmark tasks inside the Linux VM (this also confirms running on a power core since those efficiency cores are not able to exceed 0.5W when running fully loaded):
+
+![](../media/M1-sbc-bench-in-ubuntu.png)
+
+| Benchmark | CPU consumption | DRAM consumption |
+| ----: | :----: | :----: |
+| tinymembench | up to 6000 mW | up to 1600 mW |
+| OpenSSL | ~1500 mW | 20 mW |
+| 7-Zip | ~3000 mW | ~200 mW
+| cpuminer | ~3000 mW | 20 mW |
+
+Please keep in mind once there is more than one demanding task running, power cores get downclocked from 3.2 GHz to 3.0 GHz and if you overload the machine with too much tasks in parallel this will of course affect performance inside VMs also (and the containers running within, I would assume it's only a couple of weeks/months until Linux Docker arm64 containers run 'directly' using the Hypervisor.framework – no need for Parallels & Co.)
+
+Quick check whether a 32-bit Linux userland is also possible ([way less memory footprint compared to arm64 userlands](https://github.com/nodesource/distributions/issues/375#issuecomment-290440706)): After `dpkg --add-architecture armhf` and `apt install p7zip:armhf` I only got an `Exec format error` so most probably rumours are true Apple removed Aarch32 capabilities from their SoCs already a while ago.
+
 ### Interpreting 7-zip benchmark scores
 
 *Important: this section has nothing to do at all with what normal users of these laptops and Mini PCs will do with their devices. It's about 'server workloads' where integer/memory performance is key and for this 7-zip scores are a good estimate. A device with twice the 7-zip MIPS will probably handle twice as much server threads as long as we're talking about stuff being CPU bound only.*
