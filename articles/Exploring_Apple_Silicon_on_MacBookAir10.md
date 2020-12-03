@@ -478,7 +478,7 @@ Please keep in mind that batteries in both laptops are brand new and some of the
 
 With disabled LCD backlight the new M1 laptops idle already at around 0.5W. If the lid will be closed the laptop enters 'Deep Idle' mode. Measured at the wall this is 0.1W or in other words: too low to be measured precisely with my setup. At least it's really low.
 
-Waking up from this sleep state is almost immediately and can not be compared to the situation with Intel MacBooks where entering sleep states or waking up takes ages compared to the M1 thingies.
+Waking up from this sleep state is almost instantly and can not be compared to the situation with Intel MacBooks where entering sleep states or waking up takes ages compared to the M1 thingies.
 
 While sleeping the Mac will wake up periodically into 'DarkWake' mode with disabled display to perform maintainance tasks like refreshing network registrations or TimeMachine backups. `pmset -g log` tells the whole story.
 
@@ -594,7 +594,7 @@ Apple Silicon provides hardware virtualization support and macOS 11 contains a H
 
 Quick test basing on SimpleVM with a single core VM and 2GB of RAM using my standard [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) shows proper performance arriving in the VM (*excellent* memory performance, CPU performance at 85%-90% compared to running bare metal, AES acceleration works efficiently in guests)
 
-Whether the VM is executed on a power or efficiency core is still macOS' decision. Through the [sbc-bench run](http://ix.io/2Gj8) it has been executed on a power core at 3.2GHz since no other tasks were running in the background. Only at the end when the `mhz` utility was called a 2nd time to measure real clockspeeds the VM has obviously been moved to an efficiency core in between.
+Whether the VM is executed on a power or efficiency core is still macOS' decision. Through the [sbc-bench run](http://ix.io/2Gjg) it has been executed on a power core at 3.2GHz since no other tasks were running in the background. Only at the end when the `mhz` utility was called a 2nd time to measure real clockspeeds the VM has obviously been moved to an efficiency core in between.
 
 With monitoring in place we can also have a look at power consumption of the various benchmark tasks inside the Linux VM (this also confirms running on a power core since those efficiency cores are not able to exceed 0.5W when running fully loaded):
 
@@ -607,9 +607,9 @@ With monitoring in place we can also have a look at power consumption of the var
 | 7-Zip | ~3000 mW | ~200 mW
 | cpuminer | ~3000 mW | 20 mW |
 
-Please keep in mind once there is more than one demanding task running, power cores get downclocked from 3.2 GHz to 3.0 GHz and if you overload the machine with too much tasks in parallel this will of course affect performance inside VMs also (and the containers running within, I would assume it's only a couple of weeks/months until Linux Docker arm64 containers run 'directly' using the Hypervisor.framework – no need for Parallels & Co.)
+Please keep in mind that once there is more than one demanding task running, power cores get downclocked from 3.2 GHz to 3.0 GHz and if you overload the machine with too much tasks in parallel this will of course affect performance inside VMs also (and the containers running within, I would assume it's only a couple of weeks/months until Linux Docker arm64 containers run 'directly' using the Hypervisor.framework – no need for Parallels & Co.)
 
-Quick check whether a 32-bit Linux userland is also possible ([way less memory footprint compared to arm64 userlands](https://github.com/nodesource/distributions/issues/375#issuecomment-290440706)): After `dpkg --add-architecture armhf` and `apt install p7zip:armhf` I only got an `Exec format error` so most probably rumours are true Apple removed Aarch32 capabilities from their SoCs already a while ago.
+Quick check whether a 32-bit Linux userland is also possible ([way less memory footprint compared to arm64 userlands](https://github.com/nodesource/distributions/issues/375#issuecomment-290440706)): After `dpkg --add-architecture armhf` and `apt install p7zip:armhf` I only got an `Exec format error` when trying to execute the binary so most probably rumours are true and Apple removed Aarch32 capabilities from their SoCs already a while ago.
 
 ### Interpreting 7-zip benchmark scores
 
