@@ -36,7 +36,7 @@ As of Nov 2020 Apple startet to produce Mac computers based on their own SoCs in
 
 While most people talk about the ISA only (switching from Intel to ARM) the transition is a bit more than this since those Apple SoCs also contain a lot more than just CPU cores (GPU and Machine Learning cores, SSD and memory controller, various accelerators for video, crypto, etc.)
 
-For a more broad overview what to expect with the new platform check [Anandtech](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested) or others. For some closer looks inside the new laptops visit [iFixit](https://www.ifixit.com/News/46884/m1-macbook-teardowns-something-old-something-new). I try to focus on the stuff that is not mentioned everywhere else on the Internet.
+For a more broad overview what to expect with the new platform check [Anandtech](https://www.anandtech.com/show/16252/mac-mini-apple-m1-tested) or others. For some closer looks inside the new laptops visit [iFixit](https://www.ifixit.com/News/46884/m1-macbook-teardowns-something-old-something-new). **I try to focus on the stuff that is not mentioned everywhere else on the Internet**.
 
 ## Gathering information
 
@@ -460,11 +460,11 @@ But the good news is we get very detailed information around everything consumpt
 
 ### Moving from Intel to ARM
 
-Easy as expected, see above.
+Easy as expected, see [above](#the-lazy-way).
 
 ### Headless mode
 
-The MacBook Air when being idle for some time after showing a screensaver on the LCD shuts down the backlight while being fully active and e.g. accessible via SSH. Consumption numbers below done with a Brennenstuhl Primera Line PM 231E known to be somewhat precise even in low load conditions. This means measurements at the wall taking into account all losses by the charger and USB-C cable.
+The MacBook Air when being idle for some time after showing a screensaver on the LCD shuts down the backlight while being fully active and e.g. accessible via SSH. Consumption numbers below done with a Brennenstuhl Primera Line PM 231E powermeter known to be somewhat precise even in low load conditions. This means measurements at the wall taking into account all losses by the charger and USB-C cable.
 
 The MacBook has established a Wi-Fi connection (ac/Wi-Fi 5, 80 MHz, WPA2, 2x2) and is fully responsive when being queried by ping/ICMP or using an interactive SSH session. Charger behavior is checked constantly by running `while true ; do pmset -g batt; sleep 5; done` via SSH.
 
@@ -482,7 +482,7 @@ Summary: Without activated display but with an *active* 802.11ac wireless networ
 
 ### LCD backlight consumption
 
-When activating the internal display but letting the laptop being totally idle consumption varies between 2.4W (lowest brightness) and 7.3W. The `powermetrics` tool unfortunately isn't able to report power usage for the display since reporting `unable to get backlight node`.
+When activating the internal display but letting the laptop being totally idle consumption varies between 2.4W (lowest brightness) and 7.3W. The `powermetrics` tool unfortunately isn't able to report power usage for the display since just telling `unable to get backlight node`.
 
 Summary: The internal 2560x1600 display when being active adds between ~2W and ~7W to the overall consumption depending on the brightness level. Keep this in mind when enjoying power consumption reviews of these devices. You get a 5W variation solely based on display brightness.
 
@@ -594,7 +594,7 @@ Let's take the task from above (compressing a file 4.1GB in size containing 4 ti
 
 It's all about lossless compression and stuffing the 4.1GB in a) as less size as possible and/or b) in as less time as possible and/or c) with as less energy consumption as possible. Obviously the use case is important for prioritization: creating static archives that get downloaded over and over again vs. dynamically compressing variable contents.
 
-Some tools are single-threaded while others use all cores available (as we've seen directly above adding the efficiency cores to the mix is highly desirable). Single-threaded tools suffer from the DVFS dilemma: the higher the power cores are clocked the more inefficient they become since highest clockspeeds require massive supply voltage boosts for the cores to function still stable.
+Some tools are single-threaded while others use all cores available (as we've seen directly above adding the efficiency cores to the mix is highly desirable). Single-threaded tools suffer from the DVFS dilemma: the higher the power cores are clocked the more inefficient they become since highest clockspeeds require massive supply voltage boosts for the cores to function still stably.
 
 The 'consumption' column is average consumption while compressing (CPU cores + DRAM) and the 'total W' column is the former value multiplied by duration and converted from mW to W:
 
@@ -618,11 +618,13 @@ If the challenge is providing a PKZip archive the winner is multi-threaded `pigz
 
 Choosing modern compression algorithms like ZStandard if possible is not only about faster processing and smaller archive sizes but also about energy efficiency: `zstd` with its default compression strength `-3` compresses slightly better than `pigz -K` performing more than 50% faster while running single-threaded and being over 4 times more energy efficient at the same time.
 
+`zstd` with higher compression rates seems to become more inefficient but this is due to the tool being single-threaded and therefore trapped in DVFS behavior (dynamic voltage frequency scaling). While it looks like `7-zip -mx=3` would be a lot more efficient compared to `zstd -13` as soon as compression tasks need to be run in parallel things change immediately and `zstd` will be at least twice as efficient as `7-zip`.
+
 And to get these insights all you need now is a simple laptop since power efficiency monitoring is built right into the machine and more exhaustive than Intel's PowerTOP. Of course results are not 1:1 comparable with x86 servers (where developer's local stuff might end up on later) but on the other hand developers starting to use ARM client machines will probably result in ARM based server (instances) used more frequently ([Linus Torvalds on this](https://www.realworldtech.com/forum/?threadid=183440&curpostid=183500)).
 
 ### Looking at GPU utilization and prioritization
 
-As said in the chapter above process scheduling is a black box the OS takes care of. This applies to where processes run (power or efficiency cores), how high the power cores are clocked if the thermal/power envelope needs adjustments and this also applies to decisions how high GPU cores are clocked in which situation.
+As said two chapters above process scheduling is a black box the OS takes care of. This applies to where processes run (power or efficiency cores), how high the power cores are clocked if the thermal/power envelope needs adjustments and this also applies to decisions how high GPU cores are clocked in which situation.
 
 Let's have a look with both MBP and the MacBook Air since the 30W charger and the passive cooling are limiting factors here. As *load generator* I used again Cinebench R23 (solely CPU bound) and [GfxBench](https://gfxbench.com/) which also utilizes the GPU cores and DRAM more. Those two tools running together could be representative for some 'pro' Apps making intensive use of other engines than just the CPU cores (GPU and the Neural Engine).
 
@@ -630,7 +632,7 @@ Let's have a look with both MBP and the MacBook Air since the 30W charger and th
 
 ![](../media/M1-Air-CPU_GPU_full_load_mw.png)
 
-  * My assumption in the chapter above based on 'CPU only' workloads was wrong: the averaged SoC temperature with this combined test exceeded 80°C on the Air easily (92°C max reported by the sensors, the actively cooled MacBook Pro showed peak temperatures of above 81°C with the fan running at audible 7200 rpm)
+  * My assumption two chapters above based on 'CPU only' workloads was wrong: the averaged SoC temperature with this combined test exceeded 80°C on the Air easily (92°C max reported by the sensors, the actively cooled MacBook Pro showed peak temperatures of above 81°C with the fan running at audible 7200 rpm)
   * GPU has higher priority than CPU power cores. To stay within the thermal limits the OS prefers to downclock the power cores and let the GPU cores remain on higher frequencies
   * with this test the MacBook Air is thermally limited and not by consumption (having to stay within the 30W power budget). Though throughout the whole test `pmset -g batt` reported to run entirely off AC: `Now drawing from 'AC Power'`.
 
@@ -702,7 +704,7 @@ While Apple's efficiency cores have a rather low 'per core' score they're way mo
 
 Again: this only applies to 'server workloads in general' (which is nothing one would do on these Apple Silicon machines *today*) and should be taken with a huge grain of salt since solely based on a single benchmark result. But some trends are obvious and if Apple is ever going to design a server CPU I clearly opt for a ton of efficiency cores inside and maybe a few power cores for 'burst loads'.
 
-### Footnotes
+#### Footnotes
 
 1. <span id="f1"></span>`for app in /System/Applications/*.app ; do Sizes=$(lipo -detailed_info "${app}/Contents/MacOS/$(basename "${app}" .app)" 2>/dev/null | awk -F" " '/size/ {print $2}'); set $Sizes; echo -e "${app##*/}\t$1\t$2"; done >/Users/tk/app-sizes.txt` [(back)](#a1)
 2. <span id="f2"></span>`find /System/Library/Frameworks -name "*dylib" | while read ; do Sizes=$(lipo -detailed_info ${REPLY} 2>/dev/null | awk -F" " '/size/ {print $2}'); [ -z $Sizes ] || set $Sizes; echo -e "${REPLY##*/}\t$1\t$2"; done >/Users/tk/framework-sizes.txt` [(back)](#a2)
