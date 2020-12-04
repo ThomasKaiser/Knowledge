@@ -9,6 +9,8 @@
       * [Internal storage](#internal-storage)
       * [USB / Thunderbolt / PCIe](#usb--thunderbolt--pcie)
       * [Wireless capabilities](#wireless-capabilities)
+      * [Startup sequences](#startup-sequences)
+      * [Testing different hardware configurations](#testing-different-hardware-configurations)
    * [Software](#software)
       * [Universal Binaries](#universal-binaries)
       * [top](#top)
@@ -30,7 +32,7 @@
 
 ## Basics
 
-As of Nov 2020 Apple startet to produce Mac computers based on their own SoCs instead of relying on Intel/AMD CPUs/GPUs. Below the M1 SoC with two LPDDRX4 modules soldered right next to it on a Mac Mini mainboard ([image source](https://egpu.io/forums/desktop-computing/teardown-late-2020-mac-mini-apple-silicon-m1-thunderbolt-4-usb4-pcie-4/)):
+As of Nov 2020 Apple startet to sell Mac computers based on their own SoCs instead of relying on Intel/AMD CPUs/GPUs. Below the M1 SoC with two LPDDRX4 modules soldered right next to it on a Mac Mini logicboard ([image source](https://egpu.io/forums/desktop-computing/teardown-late-2020-mac-mini-apple-silicon-m1-thunderbolt-4-usb4-pcie-4/)):
 
 ![](../media/m1-with-lpddr4x-ram.jpg)
 
@@ -221,7 +223,7 @@ Let's compare with the Intel MacBook equipped with a T2 chip containing the SSD 
 | MaxPowerState | 3 | 1 |
 | Controller Characteristics | detailed info | basic info |
 
-So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some internal/proprietary solution. Macs with M1 SoC expose a lot more about the SSD internals compared to T2 (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba" or "vendor-name"="Sandisk" in colleague's 13" MacBook Pro).
+So Apple is still using NVMe logically but not over PCIe any more. NVMe power management capabilities (active power states, power state transitions) seem to have been replaced entirely by some Apple proprietary solution. Macs with M1 SoC expose a lot more about the SSD internals compared to T2 (e.g. "default-bits-per-cell"=3, "pages-per-block-mlc"=1152, "page-size"=16384, "vendor-name"="Toshiba" or "vendor-name"="Sandisk" in colleague's 13" MacBook Pro).
 
 As with the T2 controller in previous Intel Macs the SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys live all inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results for recent Apple machines you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is actually going to happen when you enter a wrong FileVault passphrase too often at boot time).
 
@@ -264,6 +266,22 @@ But maybe Apple chooses a chiplet approach instead and combines several M1 dies 
 Not really related to "Apple Silicon" but to the 3 Macs in question: Wi-Fi 6 (802.11ax) and Bluetooth 5.0 are provided by an 'Apple USI 339S00758' chip most probably made in an advanced process technology with BroadCom/Cypress tech inside (BCM4378 via a single PCIe Gen2 lane). MacBook Air und MBP 13" unfortunately are 2T2R only, the Mac Mini's mainboard has connectors for 3 antennas.
 
 Measuring wireless performance in kitchen-sink benchmark style is pointless as always since way too much external factors determine performance in a setup like mine (with tons of neighbours and their wireless networks around). Since my access point is still only capable of Wi-Fi 5 (802.11ac) the Air due to only supporting 2T2R MIMO is currently a downgrade compared to the Intel MacBook Pro that is able to establish a 3x3 connection. With a new 802.11ax capable access point this might change.
+
+### Startup sequences
+
+The startup behavior on M1 Macs has changed: you simply press and hold the Power button until the display shows *Loading Startup Options*, then release it and [continue with whatever you need to do](https://eclecticlight.co/2020/11/28/startup-modes-for-m1-macs/) (entering Diagnostics or Recovery Mode, browsing the web on a brocked Mac to search for help, secure erasing the internal SSD and so on)
+
+### Testing different hardware configurations on the same machine
+
+After disabling System Integrity Protection (requires entering 'Recovery Mode' as outlined directly above and entering `csrutil disable`) NVRAM variables can be set that take effect after the next reboot. With e.g. `sudo nvram boot-args="maxmem=8192"` you can limit the available RAM to 8GB to [monitor](https://github.com/ThomasKaiser/Check_MK) whether '8GB are enough' prior to buying a fleet of new machines for your users.
+
+Using `sudo nvram boot-args="maxmem=2048 cpus=4"` for example you can even travel back in time since this ends up with the Mac accessing just 2 GB RAM and having only the efficiency cores active clocking in at 600 MHz for reasons unknown to me. Feels horribly slow even if still a fast SSDs makes the user experiences not as bad as it was a decade ago when we booted off of HDDs back then.
+
+![](../media/M1-MacBook-Air_with_4GB-RAM.png)
+
+With `"cpus=5"` and `"cpus=6"` you get 4 efficiency cores showing their normal behavior (maxing out at 2064 MHz) and one or two power cores clocking at 3200 MHz max. `"cpus=7"` gets you one power core more but this time limited to 3000 MHz when all three power cores are fully loaded just like when all cores are active (according to Anandtech this does not apply to the M1 Mini that remains on 3.2GHz even with all power cores fully active).
+
+`sudo nvram -d boot-args` will clear boot arguments (don't forget to enable SIP back again using `csrutil` in Recovery Mode).
 
 ## Software
 
@@ -671,7 +689,7 @@ With monitoring in place we can also have a look at power consumption of the var
 | 7-Zip | ~3000 mW | ~200 mW
 | cpuminer | ~3000 mW | 20 mW |
 
-Please keep in mind that once there is more than one demanding task running, power cores get downclocked from 3.2 GHz to 3.0 GHz and if you overload the machine with too much tasks in parallel this will of course affect performance inside VMs also (and the containers running within, I would assume it's only a couple of weeks/months until Linux Docker arm64 containers run 'directly' using the Hypervisor.framework – no need for Parallels & Co.)
+Please keep in mind that once there is more than one demanding task running, power cores get downclocked from 3.2 GHz to 3.0 GHz on MacBook Air and Pro (the M1 Mini seems to remain at 3.2GHz with multi-threaded loads as long as there's thermal headroom) and if you overload the machine with too much tasks in parallel this will of course affect performance inside VMs also (and the containers running within, I would assume it's only a couple of weeks/months until Linux Docker arm64 containers run 'directly' using the Hypervisor.framework – no need for Parallels & Co.)
 
 Quick check whether a 32-bit Linux userland is also possible ([way less memory footprint compared to arm64 userlands](https://github.com/nodesource/distributions/issues/375#issuecomment-290440706)): After `dpkg --add-architecture armhf` and `apt install p7zip:armhf` I only got an `Exec format error` when trying to execute the binary so most probably rumours are true and Apple removed Aarch32 capabilities from their SoCs already a while ago.
 
