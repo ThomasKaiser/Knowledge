@@ -10,7 +10,7 @@
       * [USB / Thunderbolt / PCIe](#usb--thunderbolt--pcie)
       * [Wireless capabilities](#wireless-capabilities)
       * [Startup sequences](#startup-sequences)
-      * [Testing different hardware configurations](#testing-different-hardware-configurations)
+      * [Testing different hardware configurations](#testing-different-hardware-configurations-on-the-same-machine)
    * [Software](#software)
       * [Universal Binaries](#universal-binaries)
       * [top](#top)
@@ -269,19 +269,19 @@ Measuring wireless performance in kitchen-sink benchmark style is pointless as a
 
 ### Startup sequences
 
-The startup behavior on M1 Macs has changed: you simply press and hold the Power button until the display shows *Loading Startup Options*, then release it and [continue with whatever you need to do](https://eclecticlight.co/2020/11/28/startup-modes-for-m1-macs/) (entering Diagnostics or Recovery Mode, browsing the web on a brocked Mac to search for help, secure erasing the internal SSD and so on)
+The startup behavior on M1 Macs has changed: you simply press and hold the Power button until the display shows *Loading Startup Options*, then release it and [continue with whatever you need to do](https://eclecticlight.co/2020/11/28/startup-modes-for-m1-macs/) (entering Diagnostics or Recovery Mode, browsing the web on a bricked Mac to search for help, secure erasing the internal SSD and so on).
 
 ### Testing different hardware configurations on the same machine
 
 After disabling System Integrity Protection (requires entering 'Recovery Mode' as outlined directly above and entering `csrutil disable`) NVRAM variables can be set that take effect after the next reboot. With e.g. `sudo nvram boot-args="maxmem=8192"` you can limit the available RAM to 8GB to [monitor](https://github.com/ThomasKaiser/Check_MK) whether '8GB are enough' prior to buying a fleet of new machines for your users.
 
-Using `sudo nvram boot-args="maxmem=2048 cpus=4"` for example you can even travel back in time since this ends up with the Mac accessing just 2 GB RAM and having only the efficiency cores active clocking in at 600 MHz for reasons unknown to me. Feels horribly slow even if still a fast SSDs makes the user experiences not as bad as it was a decade ago when we booted off of HDDs back then.
+Using `sudo nvram boot-args="maxmem=2048 cpus=4"` for example you can even travel back in time since this ends up with the Mac accessing just 2 GB RAM and having only the efficiency cores active clocking in at 600 MHz for reasons unknown to me. Feels horribly slow even if still a fast SSD makes the user experience not as bad as it was a decade ago when we booted off of HDDs with their ultra low random I/O performance.
 
 ![](../media/M1-MacBook-Air_with_4GB-RAM.png)
 
 With `"cpus=5"` and `"cpus=6"` you get 4 efficiency cores showing their normal behavior (maxing out at 2064 MHz) and one or two power cores clocking at 3200 MHz max. `"cpus=7"` gets you one power core more but this time limited to 3000 MHz when all three power cores are fully loaded just like when all cores are active (according to Anandtech this does not apply to the M1 Mini that remains on 3.2GHz even with all power cores fully active).
 
-`sudo nvram -d boot-args` will clear boot arguments (don't forget to enable SIP back again using `csrutil` in Recovery Mode).
+`sudo nvram -d boot-args` will clear boot arguments again (don't forget to enable SIP back again using `csrutil` in Recovery Mode).
 
 ## Software
 
