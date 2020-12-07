@@ -638,50 +638,48 @@ Choosing modern compression algorithms like ZStandard if possible is not only ab
 
 `zstd` with higher compression rates seems to become more inefficient but this is due to the tool being single-threaded and therefore trapped in DVFS behavior (dynamic voltage frequency scaling). While it looks like `7-zip -mx=3` would be a lot more efficient compared to `zstd -13` as soon as compression tasks need to be run in parallel things change immediately and `zstd` will be at least twice as efficient as `7-zip`.
 
-And to get these insights all you need now is a simple laptop since power efficiency monitoring is built right into the machine and more exhaustive than Intel's PowerTOP. Of course results are not 1:1 comparable with x86 servers (where developer's local stuff might end up on later) but on the other hand developers starting to use ARM client machines will probably result in ARM based server (instances) used more frequently ([Linus Torvalds on this](https://www.realworldtech.com/forum/?threadid=183440&curpostid=183500)).
+And to get these insights all you need now is a simple laptop since power efficiency monitoring is built right into the machine and more exhaustive than Intel's PowerTOP. Unfortunately as can be seen below results are not just directly but not even remotely comparable with x86 servers (where developer's local stuff might end up on later) but on the other hand developers starting to use ARM client machines will probably result in ARM based server (instances) used more frequently ([Linus Torvalds on this](https://www.realworldtech.com/forum/?threadid=183440&curpostid=183500)).
 
-Do insights about power efficiency of various tools/algorithms can be tranferred to other microarchitectures/platforms? Short answer: unfortunately not.
+Let's compare with the Core i7-9750H in the 16" Intel MacBook Pro. The following is **not** an energy efficiency comparison of 'ARM vs. Intel' or 'Apple Silicon vs. PCs' but just two specific laptops using two specific CPU designs performing somewhat similar with most of the compressors tested ('performance' means duration in seconds).
 
-Let's compare with the Core i7-9750H in the 16" Intel MacBook Pro. The following is **not** an energy efficiency comparison of 'ARM vs. Intel' or 'Apple Silicon vs. PCs' but just two specific laptops using two specific CPU microarchitectures performing somewhat similar with most of the compressors tested.
+The threads, duration, consumption and 'total W' columns list M1 numbers on the left and i7 numbers on the right. Results are sorted after last column called 'M1 win' which shows how many times more energy efficient the M1 MacBook Air is compared to the 16" i7 MacBook Pro with the same specific task:
 
-The 'threads' column lists the numbers of threads the tools were running with on each platform. Results sorted after last column called 'M1 win' which shows how many times more power efficient the M1 MacBook Air is compared to the 16" i7 MacBook Pro with the same specific task:
-
-| Tool | threads | M1 time | M1 mW | M1 total | i7 time | i7 mW | i7 total | M1 win |
-| ----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
-| `zstd -9` | 1/1 | 46 sec | 4800 | 221 W | 75 sec | 34000 | 2550 W | 11.54 |
-| `zstd -3` | 1/1 | 10 sec | 4800 | 48 W | 13 sec | 40000 | 520 W | 10.83 |
-| `ditto` | 1/1 | 70 sec | 3600 | 252 W | 81 sec | 32000 | 2592 W | 10,29 | 
-| `zip` | 1/1 | 88 sec | 4550 | 400 W | 83 sec | 34000 | 2822 W | 7.06 |
-| `zstd -13` | 1/1 | 196 sec | 4800 | 941 W | 291 sec | 21000 | 6111 W | 6.49 |
-| `pigz -K -9` | 8/12 | 25 sec | 14200 | 355 W | 22 sec | 86000 | 1892 W | 5.33 |
-| `zstd -19` | 1/1 | 1097 sec | 4500 | 4936 W | 1545 sec | 17000 | 26265 W | 5.32 |
-| `zstd -16` | 1/1 | 460 sec | 4600 | 2116 W | 620 sec | 18000 | 11160 W | 5.27 |
-| `pbzip2` | 8/12 | 39 sec | 18400 | 717 W | 43 sec | 84000 | 3612 W | 5.04 |
-| `pigz -K` | 8/12 | 13.5 sec | 15500 | 209 W | 12 sec | 86000 | 1032 W | 4.94 |
-| `7-zip -mx=9` | 8/12 | 315 sec | 12500 | 3937 W | 320 sec | 48000 | 15360 W | 3.90 | 
-| `7-zip -mx=3` | 8/12 | 70 sec | 8300 | 581 W | 80 sec | 26000 | 2080 W | 3.58 |
-| `pixz` | 8/12 | 220 sec | 14800 | 3256 W | 196 sec | 58000 | 11368 W | 3.49 |
+| Tool | threads | duration | consumption | total W | M1 win |
+| ----: | :----: | :----: | :----: | :----: | :----: |
+| `zstd -9` | 1 / 1 | 46 / 75 sec | 4800 / 34000 mW | 221 / 2550 W | 11.54 |
+| `zstd -3` | 1 / 1 | 10 / 13 sec | 4800 / 40000 mW | 48 / 520 W | 10.83 |
+| `ditto` | 1 / 1 | 70 / 81 sec | 3600 / 32000 mW | 252 / 2592 W  | 10,29 | 
+| `zip` | 1 / 1 | 88 / 83 sec | 4550 / 34000 mW | 400 / 2822 W | 7.06 |
+| `zstd -13` | 1 / 1 | 196 / 291 sec | 4800 / 21000 mW | 941 / 6111 W | 6.49 |
+| `pigz -K -9` | 8 / 12 | 25 / 22 sec | 14200 / 86000 mW | 355 / 1892 W | 5.33 |
+| `zstd -19` | 1 / 1 | 1097 / 1545 sec | 4500 / 17000 mW | 4936 / 26265 W | 5.32 |
+| `zstd -16` | 1 / 1 | 460 / 620 sec | 4600 / 18000 mW | 2116 / 11160 W | 5.27 |
+| `pbzip2` | 8 / 12 | 39 / 43 sec | 18400 / 84000 mW | 717 / 3612 W | 5.04 |
+| `pigz -K` | 8 / 12 | 13.5 / 12 sec | 15500 / 86000 mW | 209 / 1032 W | 4.94 |
+| `7-zip -mx=9` | 8 / 12 | 315 / 320 sec | 12500 / 48000 mW | 3937 / 15360 W | 3.90 | 
+| `7-zip -mx=3` | 8 / 12 | 70 / 80 sec | 8300 / 26000 mW | 581 / 2080 W | 3.58 |
+| `pixz` | 8 / 12 | 220 / 196 sec | 14800 / 58000 mW | 3256 / 11368 W | 3.49 |
 
 The Intel i7 is a 6 core, 12 threads SKU (Hyper-Threading). Since this is distinctly different compared to the 4 power + 4 efficiency cores on the M1 I would have expected most differences with the multi-threaded tools. But interestingly it's the single-threaded tools `zstd`, `ditto` and `zip` where energy efficiency differs the most (maybe due to much faster caches/RAM with the M1). Looking at how many times more energy efficient the M1 is compared to the i7 we get a result variation of between 3.5 to 11.5 times. So it's not possible to transfer insights about overall energy consumption of various tools from 'Apple Silicon' to other CPU architectures.
 
 Same check with an ARM based Single Board Computer called NanoPi M4 (based on Rockchip's RK3399 SoC with two Cortex-A72 'big' cores clocking at 1.8 GHz and four Cortex-A53 'little' cores at 1.4GHz):
 
-| Tool | threads | M1 time | M1 mW | M1 total | M4 time | M4 mW | M4 total | M1 win |
-| ----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
-| `zstd -3` | 1/1 | 10 sec | 4800 | 48 W | 94 sec | 2800 | 263 W | 5.48 |
-| `zstd -9` | 1/1 | 46 sec | 4800 | 221 W | 376 sec | 2400 | 902 W | 4.08 |
-| `7-zip -mx=3` | 8/6 | 70 sec | 8300 | 581 W | 590 sec | 3400 | 2010 W | 3.46 |
-| `pbzip2` | 8/6 | 39 sec | 18400 | 717 W | 402 sec | 4500 | 1810 W | 2.52 |
-| `zstd -13` | 1/1 | 196 sec | 4800 | 941 W | 1052 sec | 2200 | 2314 W | 2.46 |
-| `pigz -K -9` | 8/6 | 25 sec | 14200 | 355 W | 190 sec | 4600 | 874 W | 2.46 |
-| `pigz -K` | 8/6 | 13.5 sec | 15500 | 209 W | 85 sec | 4800 | 408 W | 1.95 |
-| `7-zip -mx=9` | 8/6 | 315 sec | 12500 | 3937 W | 1852 sec | 3700 | 6852 W | 1.74 | 
-| `pixz` | 8/6 | 220 sec | 14800 | 3256 W | 1305 sec | 4100 | 5350 W | 1.64 |
-| `zstd -19` | 1/1 | 1097 sec | 4500 | 4936 W | 3216 sec | 2400 | 7718 W | 1.56 |
-| `zip` | 1/1 | 88 sec | 4550 | 400 W | 320 sec | 1800 | 576 W | 1.44 |
-| `zstd -16` | 1/1 | 460 sec | 4600 | 2116 W | 1800 sec | 2500 | 4500 W | 0.98 |
+| Tool | threads | duration | consumption | total W | M1 win |
+| ----: | :----: | :----: | :----: | :----: | :----: |
+| `zstd -3` | 1 / 1 | 10 / 94 sec | 4800 / 2800 mW | 48 / 263 W | 5.48 |
+| `zstd -9` | 1 / 1 | 46 / 376 sec | 4800 / 2400 mW | 221 / 902 W | 4.08 |
+| `7-zip -mx=3` | 8 / 6 | 70 / 590 sec | 8300 / 3400 mW | 581 / 2010 W | 3.46 |
+| `pbzip2` | 8 / 6 | 39 / 402 sec | 18400 / 4500 mW | 717 / 1810 W | 2.52 |
+| `zstd -13` | 1 / 1 | 196 / 1052 sec | 4800 / 2200 mW | 941 / 2314 W | 2.46 |
+| `pigz -K -9` | 8 / 6 | 25 / 190 sec | 14200 / 4600 mW | 355 / 874 W | 2.46 |
+| `pigz -K` | 8 / 6 | 13.5 / 85 sec | 15500 / 4800 mW | 209 / 408 W | 1.95 |
+| `7-zip -mx=9` | 8 / 6 | 315 / 1852 sec | 12500 / 3700 mW | 3937 / 6852 W | 1.74 | 
+| `pixz` | 8 / 6 | 220 / 1305 sec | 14800 / 4100 mW | 3256 / 5350 W | 1.64 |
+| `zstd -19` | 1 / 1 | 1097 / 3216 sec | 4500 / 2400 mW | 4936 / 7718 W | 1.56 |
+| `zip` | 1 / 1 | 88 / 320 sec | 4550 / 1800 mW | 400 / 576 W | 1.44 |
+| `zstd -16` | 1 / 1 | 460 / 1800 sec | 4600 / 2500 mW | 2116 / 4500 W | 0.98 |
 
-Despite being 3 to over 10 times slower RK3399's design is somewhat comparable to the M1 (RK3399 is a classic ARM big.LITTLE implementation using two different standard Cortex-A core clusters) result variation based on the 'M1 win' column is even wider: 5.6 instead of 3.3 when comparing i7 with M1 again with single-threaded tools differing the most.
+Despite being 3 to over 10 times slower RK3399's design is somewhat comparable to the M1 (RK3399 is a classic ARM big.LITTLE implementation using two different Cortex-A clusters) result variation based on the 'M1 win' column is even wider: 5.6 instead of 3.3 when comparing i7 with M1 again with single-threaded tools differing the most.
 
 This means unfortunately M1 based Mac platforms (where measuring consumption pretty fine grained is as easy as it never was before) are not suitable to get *generic* insights about the energy efficiency of specific tools/algorithms unless they're supposed to run on Apple Silicon later.
 
