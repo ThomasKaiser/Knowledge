@@ -275,13 +275,13 @@ The startup behavior on M1 Macs has changed: you simply press and hold the Power
 
 After disabling System Integrity Protection (requires entering 'Recovery Mode' as outlined directly above and entering `csrutil disable`) NVRAM variables can be set that take effect after the next reboot. With e.g. `sudo nvram boot-args="maxmem=8192"` you can limit the available RAM to 8GB to [monitor](https://github.com/ThomasKaiser/Check_MK) whether '8GB are enough' prior to buying a fleet of new machines for your users.
 
-Using `sudo nvram boot-args="maxmem=2048 cpus=4"` for example you can even travel back in time since this ends up with the Mac accessing just 2 GB RAM and having only the efficiency cores active clocking in at 600 MHz for reasons unknown to me. Feels horribly slow even if still a fast SSD makes the user experience not as bad as it was a decade ago when we booted off of HDDs with their ultra low random I/O performance.
+Using `sudo nvram boot-args="maxmem=2048 cpus=4"` for example you can even travel back in time since this ends up with the Mac accessing just 2 GB RAM and having only the efficiency cores active at *600 MHz* for reasons unknown to me (same with `cpus=3` or less). Feels horribly slow even if still a fast SSD makes the user experience not as bad as it was a decade ago when we booted off of HDDs with their ultra low random I/O performance.
 
 ![](../media/M1-MacBook-Air_with_4GB-RAM.png)
 
 With `"cpus=5"` and `"cpus=6"` you get 4 efficiency cores showing their normal behavior (maxing out at 2064 MHz) and one or two power cores clocking at 3200 MHz max. `"cpus=7"` gets you one power core more but this time limited to 3000 MHz when all three power cores are fully loaded just like when all cores are active (according to Anandtech this does not apply to the M1 Mini that remains on 3.2GHz even with all power cores fully active).
 
-`sudo nvram -d boot-args` will clear boot arguments again (don't forget to enable SIP back again using `csrutil` in Recovery Mode).
+`sudo nvram -d boot-args` will clear boot arguments (don't forget to enable SIP back again using `csrutil` in Recovery Mode).
 
 ## Software
 
@@ -616,7 +616,7 @@ Some tools are single-threaded while others use all cores available (as we've se
 
 The 'consumption' column is average consumption while compressing (CPU cores + DRAM) and the 'total W' column is the former value multiplied by duration and converted from mW to W:
 
-| Tool | archive size (KB) | threads | duration | consumption | total W 
+| Tool | size (KB) | threads | time | consumption | total W |
 | ----: | :----: | :----: | :----: | :----: | :----: |
 | `ditto` | 770332 | 1 | 70 sec | 3600 mW | 252 W |
 | `zip` | 770308 | 1 | 88 sec | 4550 mW | 400 W |
@@ -639,6 +639,51 @@ Choosing modern compression algorithms like ZStandard if possible is not only ab
 `zstd` with higher compression rates seems to become more inefficient but this is due to the tool being single-threaded and therefore trapped in DVFS behavior (dynamic voltage frequency scaling). While it looks like `7-zip -mx=3` would be a lot more efficient compared to `zstd -13` as soon as compression tasks need to be run in parallel things change immediately and `zstd` will be at least twice as efficient as `7-zip`.
 
 And to get these insights all you need now is a simple laptop since power efficiency monitoring is built right into the machine and more exhaustive than Intel's PowerTOP. Of course results are not 1:1 comparable with x86 servers (where developer's local stuff might end up on later) but on the other hand developers starting to use ARM client machines will probably result in ARM based server (instances) used more frequently ([Linus Torvalds on this](https://www.realworldtech.com/forum/?threadid=183440&curpostid=183500)).
+
+Do insights about power efficiency of various tools/algorithms can be tranferred to other microarchitectures/platforms? Short answer: unfortunately not.
+
+Let's compare with the Core i7-9750H in the 16" Intel MacBook Pro. The following is **not** an energy efficiency comparison of 'ARM vs. Intel' or 'Apple Silicon vs. PCs' but just two specific laptops using two specific CPU microarchitectures performing somewhat similar with most of the compressors tested.
+
+The 'threads' column lists the numbers of threads the tools were running with on each platform. Results sorted after last column called 'M1 win' which shows how many times more power efficient the M1 MacBook Air is compared to the 16" i7 MacBook Pro with the same specific task:
+
+| Tool | threads | M1 time | M1 mW | M1 total | i7 time | i7 mW | i7 total | M1 win |
+| ----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| `zstd -9` | 1/1 | 46 sec | 4800 | 221 W | 75 sec | 34000 | 2550 W | 11.54 |
+| `zstd -3` | 1/1 | 10 sec | 4800 | 48 W | 13 sec | 40000 | 520 W | 10.83 |
+| `ditto` | 1/1 | 70 sec | 3600 | 252 W | 81 sec | 32000 | 2592 W | 10,29 | 
+| `zip` | 1/1 | 88 sec | 4550 | 400 W | 83 sec | 34000 | 2822 W | 7.06 |
+| `zstd -13` | 1/1 | 196 sec | 4800 | 941 W | 291 sec | 21000 | 6111 W | 6.49 |
+| `pigz -K -9` | 8/12 | 25 sec | 14200 | 355 W | 22 sec | 86000 | 1892 W | 5.33 |
+| `zstd -19` | 1/1 | 1097 sec | 4500 | 4936 W | 1545 sec | 17000 | 26265 W | 5.32 |
+| `zstd -16` | 1/1 | 460 sec | 4600 | 2116 W | 620 sec | 18000 | 11160 W | 5.27 |
+| `pbzip2` | 8/12 | 39 sec | 18400 | 717 W | 43 sec | 84000 | 3612 W | 5.04 |
+| `pigz -K` | 8/12 | 13.5 sec | 15500 | 209 W | 12 sec | 86000 | 1032 W | 4.94 |
+| `7-zip -mx=9` | 8/12 | 315 sec | 12500 | 3937 W | 320 sec | 48000 | 15360 W | 3.90 | 
+| `7-zip -mx=3` | 8/12 | 70 sec | 8300 | 581 W | 80 sec | 26000 | 2080 W | 3.58 |
+| `pixz` | 8/12 | 220 sec | 14800 | 3256 W | 196 sec | 58000 | 11368 W | 3.49 |
+
+The Intel i7 is a 6 core, 12 threads SKU (Hyper-Threading). Since this is distinctly different compared to the 4 power + 4 efficiency cores on the M1 I would have expected most differences with the multi-threaded tools. But interestingly it's the single-threaded tools `zstd`, `ditto` and `zip` where energy efficiency differs the most (maybe due to much faster caches/RAM with the M1). Looking at how many times more energy efficient the M1 is compared to the i7 we get a result variation of between 3.5 to 11.5 times. So it's not possible to transfer insights about overall energy consumption of various tools from 'Apple Silicon' to other CPU architectures.
+
+Same check with an ARM based Single Board Computer called NanoPi M4 (based on Rockchip's RK3399 SoC with two Cortex-A72 'big' cores clocking at 1.8 GHz and four Cortex-A53 'little' cores at 1.4GHz):
+
+| Tool | threads | M1 time | M1 mW | M1 total | M4 time | M4 mW | M4 total | M1 win |
+| ----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| `zstd -3` | 1/1 | 10 sec | 4800 | 48 W | 94 sec | 2800 | 263 W | 5.48 |
+| `zstd -9` | 1/1 | 46 sec | 4800 | 221 W | 376 sec | 2400 | 902 W | 4.08 |
+| `7-zip -mx=3` | 8/6 | 70 sec | 8300 | 581 W | 590 sec | 3400 | 2010 W | 3.46 |
+| `pbzip2` | 8/6 | 39 sec | 18400 | 717 W | 402 sec | 4500 | 1810 W | 2.52 |
+| `zstd -13` | 1/1 | 196 sec | 4800 | 941 W | 1052 sec | 2200 | 2314 W | 2.46 |
+| `pigz -K -9` | 8/6 | 25 sec | 14200 | 355 W | 190 sec | 4600 | 874 W | 2.46 |
+| `pigz -K` | 8/6 | 13.5 sec | 15500 | 209 W | 85 sec | 4800 | 408 W | 1.95 |
+| `7-zip -mx=9` | 8/6 | 315 sec | 12500 | 3937 W | 1852 sec | 3700 | 6852 W | 1.74 | 
+| `pixz` | 8/6 | 220 sec | 14800 | 3256 W | 1305 sec | 4100 | 5350 W | 1.64 |
+| `zstd -19` | 1/1 | 1097 sec | 4500 | 4936 W | 3216 sec | 2400 | 7718 W | 1.56 |
+| `zip` | 1/1 | 88 sec | 4550 | 400 W | 320 sec | 1800 | 576 W | 1.44 |
+| `zstd -16` | 1/1 | 460 sec | 4600 | 2116 W | 1800 sec | 2500 | 4500 W | 0.98 |
+
+Despite being 3 to over 10 times slower RK3399's design is somewhat comparable to the M1 (RK3399 is a classic ARM big.LITTLE implementation using two different standard Cortex-A core clusters) result variation based on the 'M1 win' column is even wider: 5.6 instead of 3.3 when comparing i7 with M1 again with single-threaded tools differing the most.
+
+This means unfortunately M1 based Mac platforms (where measuring consumption pretty fine grained is as easy as it never was before) are not suitable to get *generic* insights about the energy efficiency of specific tools/algorithms unless they're supposed to run on Apple Silicon later.
 
 ### Looking at GPU utilization and prioritization
 
@@ -674,7 +719,7 @@ At 13:08 and again at 13:32 GfxBench has been started in addition to Cinebench w
 
 Apple Silicon provides hardware virtualization support and macOS 11 contains a Hypervisor.framework to ease making use of these features. Projects like [SimpleVM](https://github.com/KhaosT/SimpleVM) are *really simple* and rather early implementations of this and you can already run Aarch64/Arm64 based guest operating systems inside VMs (of course [Windows on ARM too](https://gist.github.com/osy86/10d0ac0210f0eb99474ae31cf8d6dd9e) though without GPU acceleration so doesn't make that much sense right now).
 
-Quick test basing on SimpleVM with a single core VM and 2GB of RAM using my standard [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) shows proper performance arriving in the VM (*excellent* memory performance, CPU performance at 85%-90% compared to running bare metal, AES acceleration works efficiently in guests)
+Quick test basing on SimpleVM with a single core VM and 2GB of RAM using my standard [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) shows proper performance arriving in the VM (*excellent* memory performance, CPU performance at 90%-95% compared to running bare metal, AES acceleration works efficiently in guests)
 
 Whether the VM is executed on a power or efficiency core is still macOS' decision. Through the [sbc-bench run](http://ix.io/2Gjg) it has been executed on a power core at 3.2GHz since no other tasks were running in the background. Only at the end when the `mhz` utility was called a 2nd time to measure real clockspeeds the VM has obviously been moved to an efficiency core in between.
 
