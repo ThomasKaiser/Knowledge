@@ -227,6 +227,18 @@ So Apple is still using NVMe logically but not over PCIe any more. NVMe power ma
 
 As with the T2 controller in previous Intel Macs the SSD controller, crypto acceleration and 'Secure Enclave' (SE) to store encryption keys live all inside the same chip. Every storage access on those Macs always implies 'full disk encryption' at the controller level (this applies also to all SSD storage benchmark results for recent Apple machines you find somewhere on the net). In theory encryption keys never leave the SE and a secure erase operation can be performed by destroying the encryption keys inside the SE (which is actually going to happen when you enter a wrong FileVault passphrase too often at boot time).
 
+From an energy efficiency point of view think about this:
+
+![](https://gzhls.at/i/65/19/1726519-n0.jpg)
+
+Why do such large heatsinks for M.2 SSDs exist? And how should a passively cooled laptop be designed to have openings for the M.2 SSD heatsink 15mm in height?
+
+Common M.2 NVMe SSDs are optimized for high benchmark scores and low prices wasting an insane amount of energy. PCIe PHYs waste energy, unflexible NVMe power management wastes energy, optimization just for 'consumer expectations' wastes energy (consumers trained to stare at benchmark charts showing rather irrelevant sequential transfer speeds). 
+
+The Apple approach with those M1 thingies in contrary shows high sequential and also random I/O performance at a fraction of energy consumption with SSD controller, Crypto acceleration and also 'Apple Fabric' interconnect all living inside the SoC (made in an advanced/efficient fab node). 
+
+This 'soldered' design does not only allow to charge customers insane amounts of money for more flash capacity but also due to tight integration between software and hardware an extended battery life (*race to idle* concept resulting in storage access happening in short burst scenarios immediately sending everthing storage back to deep sleep for almost all the time).
+
 ### USB / Thunderbolt / PCIe
 
 The new M1 Macs are advertised as USB4/TB3 capable and all three models only have two USB-C ports. It's important to understand that 'USB4' is the name of a protocol revision and not the synonym for a certain type of link speed.
@@ -648,7 +660,7 @@ The threads, duration, consumption and 'total W' columns list M1 numbers on the 
 | ----: | :----: | :----: | :----: | :----: | :----: |
 | `zstd -9` | 1 / 1 | 46 / 75 sec | 4800 / 34000 mW | 221 / 2550 W | 11.54 |
 | `zstd -3` | 1 / 1 | 10 / 13 sec | 4800 / 40000 mW | 48 / 520 W | 10.83 |
-| `ditto` | 1 / 1 | 70 / 81 sec | 3600 / 32000 mW | 252 / 2592 W  | 10,29 | 
+| `ditto` | 1 / 1 | 70 / 81 sec | 3600 / 32000 mW | 252 / 2592 W  | 10.29 | 
 | `zip` | 1 / 1 | 88 / 83 sec | 4550 / 34000 mW | 400 / 2822 W | 7.06 |
 | `zstd -13` | 1 / 1 | 196 / 291 sec | 4800 / 21000 mW | 941 / 6111 W | 6.49 |
 | `pigz -K -9` | 8 / 12 | 25 / 22 sec | 14200 / 86000 mW | 355 / 1892 W | 5.33 |
