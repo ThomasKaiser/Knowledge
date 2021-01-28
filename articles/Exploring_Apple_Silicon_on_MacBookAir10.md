@@ -684,12 +684,12 @@ Same check with an ARM based Single Board Computer called NanoPi M4 (based on Ro
 | `pbzip2` | 8 / 6 | 39 / 402 sec | 18400 / 4500 mW | 717 / 1810 W | 2.52 |
 | `zstd -13` | 1 / 1 | 196 / 1052 sec | 4800 / 2200 mW | 941 / 2314 W | 2.46 |
 | `pigz -K -9` | 8 / 6 | 25 / 190 sec | 14200 / 4600 mW | 355 / 874 W | 2.46 |
+| `zstd -16` | 1 / 1 | 460 / 1800 sec | 4600 / 2500 mW | 2116 / 4500 W | 2.13 |
 | `pigz -K` | 8 / 6 | 13.5 / 85 sec | 15500 / 4800 mW | 209 / 408 W | 1.95 |
 | `7-zip -mx=9` | 8 / 6 | 315 / 1852 sec | 12500 / 3700 mW | 3937 / 6852 W | 1.74 | 
 | `pixz` | 8 / 6 | 220 / 1305 sec | 14800 / 4100 mW | 3256 / 5350 W | 1.64 |
 | `zstd -19` | 1 / 1 | 1097 / 3216 sec | 4500 / 2400 mW | 4936 / 7718 W | 1.56 |
 | `zip` | 1 / 1 | 88 / 320 sec | 4550 / 1800 mW | 400 / 576 W | 1.44 |
-| `zstd -16` | 1 / 1 | 460 / 1800 sec | 4600 / 2500 mW | 2116 / 4500 W | 0.98 |
 
 Despite being 3 to over 10 times slower RK3399's design is somewhat comparable to the M1 (RK3399 is a classic ARM big.LITTLE implementation using two different Cortex-A clusters) result variation based on the 'M1 win' column is even wider: 5.6 instead of 3.3 when comparing i7 with M1 again with single-threaded tools differing the most.
 
