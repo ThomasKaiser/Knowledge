@@ -25,6 +25,7 @@
 * Rockchip RK3568 (1 x Gen3 x2 or 2 x Gen3 x1, 1 x Gen2 x1)
 * Rockchip RK3588 (4 Gen3 lanes: x4, x2+x2, x1+x1+x1+x1, 3 x Gen2 x1)
 * Samsung Exynos 9810 (1 x Gen3 x1, 1 x Gen2 x1)
+* Texas Instruments AM64x (1 x Gen2 x1)
 * Texas Instruments AM654 (2 x Gen3 x1)
 * Texas Instruments J721E/AM752x (4 x Gen3 x2)
 
