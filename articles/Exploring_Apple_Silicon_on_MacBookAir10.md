@@ -71,7 +71,7 @@ The "Apple Silicon" MacBook Air feels faster than my 16" Intel MacBook ([Core i7
 
 ### Basic collection of information
 
-  * `ioregl -l` output: https://raw.githubusercontent.com/ThomasKaiser/Knowledge/master/media/ioreg-MacBookAir10.txt
+  * `ioreg -l` output: https://raw.githubusercontent.com/ThomasKaiser/Knowledge/master/media/ioreg-MacBookAir10.txt
   * `hidutil list` output: http://ix.io/2EUV (19 thermal sensors listed but actually [it's 47](https://github.com/ThomasKaiser/Check_MK/blob/da500f3fe4a57382ace3d150630d04bc06879e1b/helpers/process-powermetrics-output.sh#L103-L149))
   * `system_profiler` output: http://ix.io/2EVx
   * When looking at CPU utilization (be it with `htop`, `Activity Monitor` or `powermetrics`) it's important to realize that cpu0-cpu3 are efficiency cores and cpu4-cpu7 are the performance cores.
