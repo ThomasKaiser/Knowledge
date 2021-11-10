@@ -1,5 +1,9 @@
 # Random stuff about 'small and energy efficient' computing.
 
+#### 2021/11/11
+
+* [A quick look at RPi Zero 2 W](articles/Quick_Review_of_RPi_Zero_2_W.md)
+
 #### 2020/12/02
 
 * [Exploring Apple Silicon on a MacBookAir10,1](articles/Exploring_Apple_Silicon_on_MacBookAir10.md)
