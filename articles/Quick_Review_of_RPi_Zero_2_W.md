@@ -273,8 +273,10 @@ Adding the dongle to the board with a short network cable and an established GbE
 
 Quick test using `iperf3` using a direct connection (important to get link local addresses so measurements will not be negatively affected by a network stack trying to route packets through Wi-Fi since both devices are connected to the same wireless network) between Zero 2 and MacBook shows the following numbers:
 
-  * Incoming: stable 338 Mbits/sec utilising `cpu0` at 55%-60% (at 1000 MHz) and 2380mW (+1620mW compared to idle w/o USB NIC)
-  * Outgoing: stable 311 MBits/sec with a CPU utilization less than 10% (at 1000 MHz) and 2200mW (+1440mW compared to idle w/o USB NIC)
+  * Incoming: stable 338 Mbits/sec utilising `cpu0` at 55%-60% (at 1000 MHz) and ~2380mW consumption (+1620mW compared to idle w/o USB NIC)
+  * Outgoing: stable 311 MBits/sec with a CPU utilization less than 10% (at 1000 MHz) and ~2200mW consumption (+1440mW compared to idle w/o USB NIC)
+
+These are pretty good throughput numbers for USB2 attached GbE, at least faster than what you get with [RPi 3B+ and its crippled network chip](https://forums.raspberrypi.com/viewtopic.php?t=208512).
 
     pi@raspberrypi:~ $ iperf3 -c mac-tk.local ; iperf3 -R -c mac-tk.local
     Connecting to host mac-tk.local, port 5201
@@ -317,4 +319,4 @@ Quick test using `iperf3` using a direct connection (important to get link local
     
     iperf Done.
 
-Repeating the measurement after locking down CPU cores to 600 MHz (`echo 600000 > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq`) ends up with 328 Mbits/sec incoming (maxing out one CPU core fully) and 305 Mbits/sec outgoing. I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` to move your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
+Repeating the measurement after locking down CPU cores to 600 MHz (`echo 600000 > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq`) ends up with 328 Mbits/sec incoming (maxing out one CPU core) and 305 Mbits/sec outgoing (CPU utilization less than 15%). I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` moving your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
