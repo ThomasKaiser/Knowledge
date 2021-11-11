@@ -71,10 +71,10 @@ In case your computer's OS is not crappy you can now simply access the Zero as `
 All you need to do now is the following
 
     passwd # set a secure password
-    nano /etc/hostname  # assign a unique name to the board, e.g. 'zero2'
+    sudo nano /etc/hostname  # assign a unique name to the board, e.g. 'zero2'
     sudo raspi-config # set country code and Wi-Fi details
-    apt install zram-tools # avoid silly swapping to SD card
-    shutdown -h now
+    sudo apt install zram-tools # avoid silly swapping to SD card
+    sudo shutdown -h now
 
 You might revoke the changes to `/boot/config.txt` and `/boot/cmdline.txt` (might save you 20mW) but then you'd need to redo this again to flawlessly SSH into your board via the USB port. Otherwise just attach the Zero 2 now to a normal power source using the power Micro USB port and login through Wi-Fi via `ssh pi@zero2` (given you assigned this hostname in the step before and you run a non-crappy DNS/DHCP server combo at home / in your lab)
 
@@ -82,9 +82,9 @@ You might revoke the changes to `/boot/config.txt` and `/boot/cmdline.txt` (migh
 
 The Zero2 is way more performant than its predecessor but also needs a little more juice. The official power requirement of 5V@2.5A (12.5W) is BS or most probably RPi Trading Ltd. trying to sell old Micro USB wall warts they've still in stock for RPi 3B/3B+. When CPU cores are fully utilized the consumption does not exceed 2.5W (or 500mA) so even when you also utilize the VideoCore (e.g. to encode a video stream coming from the CSI camera or decoding video to be displayed) and have an USB consumer you'll have a hard time to exceed 5W (1000mA).
 
-Asides that ordering a Micro USB from RPi Trading Ltd. is a good idea if you want to attach USB consumers to Zero 2 not because of the amperage rating but since this PSU with a fixed and thick cable really provides stable 5V to the board in contrast to majority of USB charging variants where huge voltage drops under load happen (and this – *undervoltage* – is the real issue in 5V powered SBC land).
+Asides that ordering a Micro USB PSU from RPi Trading Ltd. is a good idea if you want to attach USB consumers to Zero 2. Not due to the high amperage rating but since this PSU with a fixed and thick cable really provides stable +5V to the board in contrast to majority of USB charging variants where huge voltage drops under load happen (and this – *undervoltage* – is the real issue in a 5V powered world).
 
-Zero 2's single threaded performance is higher than the original Zero's even when comparing Zero 2 at 600 MHz with Zero at 1000 MHz. The latter shows a 7-ZIP MIPS score of 450 @ 1000 MHz while with Zero 2 it's as follows iterating through 600-1000 MHz:
+Zero 2's single threaded performance is higher than the original Zero's even when comparing Zero 2 at 600 MHz with Zero at 1000 MHz. The latter shows a 7-ZIP MIPS score of 450 @ 1000 MHz while with Zero 2 it's as follows iterating through 600-1000 MHz with one CPU core fully utilized:
 
     Sysfs/ThreadX/Tested:  MIPS / Temp /  Watt
      600 /   600 /   600:   511  37.4°C  1280mW
@@ -136,7 +136,7 @@ With the Bullseye image the ARM cores are always fed with a higher voltage even 
 
 ## Overclocking
 
-While not the best idea when you want to lower consumption it's possible but at the cost of stability or low consumption. For higher clockspeeds to work stably the main OS needs to be told to increase Vcore voltage for the ARM cores via the `over_voltage` parameter in `config.txt` (this is the major config file for ThreadX running on the VideoCore and fully controlling the ARM domain ([details](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/))).
+While not the best idea when you want to lower consumption it's possible but at the cost of stability or low consumption. For higher clockspeeds to work stably the main OS needs to be told to increase Vcore voltage for the ARM cores via the `over_voltage` parameter in `config.txt` (this is the major config file for ThreadX running on the VideoCore and fully controlling the ARM domain – [details](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/)).
 
 For e.g. 1200 MHz to work stably you might need to define `over_voltage=2` which increases Vcore voltage the ARM cores are fed with. A quick test through 7 different settings ends up with these voltage values (they differ slightly between reboots for reasons unknown to me):
 
@@ -148,7 +148,7 @@ For e.g. 1200 MHz to work stably you might need to define `over_voltage=2` which
   * `over_voltage=5`: 1.3625V
   * `over_voltage=6`: 1.3875V - 1.3938V
 
-With the Buster image this only affects situations where the CPU is rather utilised and clockspeeds have been ramped up by the cpufreq driver while idle mode remains unaffected (1.2V at 600 MHz). But with the Bullseye image and overvolting the ARM cores are fried all the time and even when idling at 600 MHz:
+With the Buster image this only affects situations where the CPU is rather utilised and clockspeeds have been ramped up by the cpufreq driver while idle mode remains unaffected (1.2V at 600 MHz). But with the Bullseye image + overvolting the ARM cores are fried all the time and even when idling at 600 MHz:
 
 ![](../media/RPI_Zero_2_over_voltage_6_bullseye_klein.png)
 
@@ -178,7 +178,7 @@ RPi 3B+ with same Cortex-A53 in 40nm process:
       33554432 :  185.5 ns          /   224.7 ns 
       67108864 :  188.5 ns          /   227.2 ns
 
-And now Zero 2 W... lower latency and much better memcopy score:
+Compared to Zero 2 W... lower latency and much better memcopy score:
     
      standard memcpy                                      :   1295.5 MB/s (2.6%)
      standard memset                                      :   1570.9 MB/s (0.9%)
@@ -202,45 +202,44 @@ And now Zero 2 W... lower latency and much better memcopy score:
       33554432 :  171.2 ns          /   206.2 ns 
       67108864 :  175.3 ns          /   209.3 ns 
 
-BTW: All measurements above made with a [Netio PowerBOX 4K](https://www.netio-products.com/en/device/powerbox-4kx) which means 'wall wart included' and also all losses in the Micro USB cable. That's in contrast to most other consumption numbers on the net that are made with USB powermeters attached directly to the board. Jeff Geerling measured 620 mW idle consumption, my number is ~750 mW with active Wi-Fi connection but disabled HDMI (~770 mW with USB gadget mode and network on USB OTG port). In my numbers included are a 7 years old USB charger and an AWG20 rated 1.8m Micro USB cable.
+BTW: All power measurements above made with a [Netio PowerBOX 4K](https://www.netio-products.com/en/device/powerbox-4kx) which means 'wall wart included' and also all losses in the Micro USB cable. That's in contrast to most other consumption numbers on the net that are made with USB powermeters attached directly to the board. Jeff Geerling measured 620 mW idle consumption, my number is ~750 mW with active Wi-Fi connection but disabled HDMI (~770 mW with USB gadget mode and network on USB OTG port). In my numbers included are a 7 years old USB charger and an AWG20 rated 1.8m Micro USB cable.
 
 ## 32-bit or 64-bit?
 
-The ARM cores in the RP3A0-AU SoC are Cortex-A53 (64-bit capable ARMv8 designs) while 'Raspberry Pi OS' is still built for 1st Gen RPi models like the original Zero (ARM11/ARMv6). Usually it's a good idea to build software with CPU features enabled.
+The ARM cores in the RP3A0-AU SoC are Cortex-A53 (64-bit capable ARMv8 designs) while 'Raspberry Pi OS' is still built for 1st Gen RPi models like the original Zero (ARM11/ARMv6). Usually it's a good idea to build software with available CPU features enabled.
 
 As an example: when running a 64-bit/ARMv8 userland on any of the ARMv8 RPi (3B/3B+/4B/Zero2) then the infamous 'sysbench cpu' benchmark reports scores *at least 15 times* better. That's probably the main reason why RPi fanboys want 64-bit asides other 'benchmarking gone wrong' adventures like the Phoronix test suite.
 
-Another reason why running an `arm64` userland is desired is massively improved AES crypto performance since almost all ARMv8 SoCs licensed 'ARMv8 Crypto Extensions'. Only known exceptions: Amlogic S905 as used on ODROID C2 and every SoC RPi Trading Ltd. ever used.
-
-AES performance of any RPi simply sucks compared to almost every other modern ARM SoC out there (check column 7 in [sbc-bench results list](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md)). 
+Another reason why running an `arm64` userland is desired is massively improved AES crypto performance since almost all ARMv8 SoCs licensed 'ARMv8 Crypto Extensions'. Only known exceptions: Amlogic S905 as used on ODROID C2 and every SoC RPi Trading Ltd. ever used. AES performance of any RPi simply sucks compared to almost every other modern ARM SoC out there (check column 7 in [sbc-bench results list](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md)). 
 
 That's an el cheapo RPi Zero 2 competitor called [Radxa Zero](https://www.cnx-software.com/2021/11/01/raspberry-pi-zero-2-w-vs-radxa-zero-features-and-benchmarks-comparison/) with a quad core Cortex-A53 and ARMv8 Crypto Extensions:
 
+    type              16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
     aes-256-cbc     140278.26k   374453.87k   634580.22k   780679.17k   836960.26k   840592.04k
 
-That's a RPi 4 (lacking ARMv8 Crypto Extensions) at 1.8GHz achieving not even 10% of the above performance:
+That's a RPi 4 (lacking ARMv8 Crypto Extensions) at 1.8GHz achieving not even 10% of the above performance when looking at relevant chunk sizes:
 
     aes-256-cbc      60956.92k    72050.71k    76405.85k    77508.95k    77957.80k    77824.00k
 
-But when switching to a 64-bit userland on RPi 4 it gets even worse:
+And when switching to a 64-bit userland on RPi 4 it gets even worse:
 
     aes-256-cbc      33526.93k    35271.89k    36004.01k    36201.13k    36263.25k    36257.79k
 
 Now we're at less than 5% of the performance of another ARM SoC where the manufacturer spent the few cents (per SoC) to license ARMv8 Crypto Extensions.
 
-But ruined AES crypto performance is not the only reason why a 64-bit userland sucks on RPi Zero 2. The device has only 512 MB RAM that is shared between the primary OS (ThreadX) and any secondary OS like Linux. Processes/services built for 64-bit have a *much much larger* memory footprint compared to the standard Raspberry Pi OS (which is not just 32-bit but specifically built for ARMv6! Please keep this in mind when you read somewhere on the Internet about '32-bit vs. 64-bit' and folks run their comparisons on an RPi).
+But ruined AES crypto performance is not the only reason why a 64-bit userland sucks on RPi Zero 2. The device has only 512 MB RAM that is shared between the primary OS (ThreadX) and any secondary OS like Linux. Processes/services built for 64-bit have a *much much larger* memory footprint compared to the standard Raspberry Pi OS (which is _not_ just 32-bit but specifically built for ARMv6! Please keep this in mind when you read somewhere on the Internet about '32-bit vs. 64-bit' and folks run their comparisons on an RPi).
 
-As a rule of thumb any process needs almost twice as much memory in 64-bit mode compared to 32-bit. You can see your Zero 2 swapping all day long running a 64-bit userland while everything runs off RAM smoothly with 32-bit. Your 64-bit apps are handled by the `oom-killer` (a daemon killing processes that need 'too much RAM') while they will happily do what they should when running a 32-bit OS. If you build a cluster out of Raspberries and your processes are memory constrained, then you'll need almost twice as much cluster nodes (Raspberries) when running 64-bit compared to standard userland.
+As a rule of thumb any process needs almost twice as much memory in 64-bit mode compared to 32-bit. You can see your Zero 2 swapping all day long running a 64-bit userland while everything runs off RAM smoothly with 32-bit. Your 64-bit apps are handled by the `oom-killer` (a daemon killing processes that need 'too much RAM') while they will happily do what they should when running a 32-bit OS. If you build a cluster out of Raspberries and your processes are memory constrained, then you'll need almost twice as much cluster nodes (RPi thingies to be bought) when running 64-bit compared to standard userland.
 
 And no, 64-bit is not faster. Only some weird benchmarks show higher scores (sysbench or Phoronix stuff that benefits from totally different `CFLAGS` here or there).
 
-Why no 64-bit numbers to proof the concerns? Since numbers already exist (see RPi 4 scores above from sbc-bench results list or this [Github issue](https://github.com/armbian/build/issues/645) showing the horrible memory requirements when running 64-bit userland).
+Why no 64-bit numbers from Zero 2? Since a waste of time and numbers already exist (see RPi 4 scores above from sbc-bench results list or this [Github issue](https://github.com/armbian/build/issues/645) showing the horrible memory requirements when running 64-bit userland).
 
 Ok, no 64-bit userland. What about using a 64-bit kernel? Sure, why not. Adding `arm_64bit=1` to `config.txt` will do the job and after a reboot 50MB RAM are missing (in other words: 10% of available RAM on RPi Zero 2). Performance will remain the same though.
 
 ## Storage
 
-The SD card interface is SDXC compliant and can as such cope with up to 2TB cards once available. Unfortunately a voltage switch from 3.3V to 1.8V has not been implemented and as such SD card access is limited to [High Speed (HS) mode](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md#benchmarking-the-cards). Quick test via `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2` on a 64GB SanDisk Extreme Pro A2:
+The SD card interface is SDXC compliant and can as such cope with SD cards up to 2TB once available. Unfortunately a voltage switch from 3.3V to 1.8V has not been implemented and as such SD card access is limited to [High Speed (HS) mode](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md#benchmarking-the-cards). Quick test via `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2` on a 64GB SanDisk Extreme Pro A2:
     
                                                            random    random
            kB  reclen    write  rewrite    read    reread    read     write
