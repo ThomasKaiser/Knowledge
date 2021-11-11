@@ -231,9 +231,9 @@ Now we're at less than 5% of the performance of another ARM SoC where the manufa
 
 But ruined AES crypto performance is not the only reason why a 64-bit userland sucks on RPi Zero 2. The device has only 512 MB RAM that is shared between the primary OS (ThreadX) and any secondary OS like Linux. Processes/services built for 64-bit have a *much much larger* memory footprint compared to the standard Raspberry Pi OS (which is _not_ just 32-bit but specifically built for ARMv6! Please keep this in mind when you read somewhere on the Internet about '32-bit vs. 64-bit' and folks run their comparisons on an RPi).
 
-As a rule of thumb any process needs almost twice as much memory in 64-bit mode compared to 32-bit. You can see your Zero 2 swapping all day long running a 64-bit userland while everything runs off RAM smoothly with 32-bit. Your 64-bit apps are handled by the `oom-killer` (a daemon killing processes that need 'too much RAM') while they will happily do what they should when running a 32-bit OS. If you build a cluster out of Raspberries and your processes are memory constrained, then you'll need almost twice as much cluster nodes (RPi thingies to be bought and powered) when running 64-bit compared to standard userland.
+As a rule of thumb any process needs almost twice as much memory in 64-bit mode compared to 32-bit. You can see your Zero 2 swapping all day long running a 64-bit userland while everything runs off RAM smoothly with 32-bit. Your 64-bit apps are handled by the `oom-killer` (a process killing other processes that need 'too much RAM') while they will happily do what they should when built for 32-bit. If you build a cluster out of Raspberries and your processes are memory constrained, then you'll need almost twice as much cluster nodes (RPi thingies to be bought and powered) when running 64-bit compared to standard userland.
 
-And no, 64-bit is not faster. Only some weird benchmarks show higher scores (sysbench or Phoronix stuff that benefits from totally different `CFLAGS` here or there).
+And no, 64-bit is not faster in general. Mostly some weird benchmarks show higher scores (sysbench or Phoronix stuff that benefits from totally different `CFLAGS` here or there).
 
 Why no 64-bit numbers from Zero 2? Since a waste of time and numbers already exist (see RPi 4 scores above from sbc-bench results list or this [Github issue](https://github.com/armbian/build/issues/645) showing the horrible memory requirements when running 64-bit userland).
 
@@ -260,3 +260,61 @@ Sequential reads/writes max out at 23/20 MB/s, random IO performance courtesy of
        102400     512    33134    32580    42697    42699    42688    18364
        102400    1024    32545    33856    43555    43554    43536    32343
        102400   16384    32885    34067    44351    44351    44350    33558
+
+## Wireless network performance
+
+Not able to test since living in a rural are with a lot of neighbours (+250 wireless networks spottable)
+
+## Wired network performance
+
+Since the SoC has no (RG)MII interface exposed our only options are SPI (horribly low performance) or USB2. When choosing an USB NIC it's important to get one with good features and driver support so the only real choice for Gigabit Ethernet today is a dongle with an RTL8153B inside.
+
+Adding the dongle to the board with a short network cable and an established GbE link to an EEE enabled switch port nearby adds 950 mW to the board's consumption. This number will vary of course if a different dongle is used, a longer network cable or a switch port not supporting EEE.
+
+Quick test using `iperf3` using a direct connection (important to get link local addresses so measurements will not be negatively affected by a network stack trying to route packets through Wi-Fi since both devices are connected to the same wireless network) between Zero 2 and MacBook shows the following numbers:
+
+  * Incoming: stable 338 Mbits/sec utilising `cpu0` at 55%-60% (at 1000 MHz) and 2380mW (+1620mW compared to idle w/o USB NIC)
+  * Outgoing: stable 311 MBits/sec with a CPU utilization less than 10% (at 1000 MHz) and 2200mW (+1440mW compared to idle w/o USB NIC)
+
+    pi@raspberrypi:~ $ iperf3 -c mac-tk.local ; iperf3 -R -c mac-tk.local
+    Connecting to host mac-tk.local, port 5201
+    [  5] local 169.254.53.178 port 44194 connected to 169.254.175.23 port 5201
+    [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+    [  5]   0.00-1.00   sec  37.5 MBytes   314 Mbits/sec    0    174 KBytes       
+    [  5]   1.00-2.00   sec  37.0 MBytes   310 Mbits/sec    0    174 KBytes       
+    [  5]   2.00-3.00   sec  37.0 MBytes   311 Mbits/sec    0    174 KBytes       
+    [  5]   3.00-4.00   sec  37.0 MBytes   311 Mbits/sec    0    187 KBytes       
+    [  5]   4.00-5.00   sec  37.2 MBytes   312 Mbits/sec    0    187 KBytes       
+    [  5]   5.00-6.00   sec  37.0 MBytes   310 Mbits/sec    0    187 KBytes       
+    [  5]   6.00-7.00   sec  37.2 MBytes   312 Mbits/sec    0    187 KBytes       
+    [  5]   7.00-8.00   sec  37.0 MBytes   310 Mbits/sec    0    187 KBytes       
+    [  5]   8.00-9.00   sec  37.0 MBytes   310 Mbits/sec    0    187 KBytes       
+    [  5]   9.00-10.00  sec  37.1 MBytes   311 Mbits/sec    0    187 KBytes       
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bitrate         Retr
+    [  5]   0.00-10.00  sec   371 MBytes   311 Mbits/sec    0             sender
+    [  5]   0.00-10.01  sec   371 MBytes   311 Mbits/sec                  receiver
+    
+    iperf Done.
+    Connecting to host mac-tk.local, port 5201
+    Reverse mode, remote host mac-tk.local is sending
+    [  5] local 169.254.53.178 port 44200 connected to 169.254.175.23 port 5201
+    [ ID] Interval           Transfer     Bitrate
+    [  5]   0.00-1.00   sec  40.4 MBytes   338 Mbits/sec                  
+    [  5]   1.00-2.00   sec  40.3 MBytes   338 Mbits/sec                  
+    [  5]   2.00-3.00   sec  40.3 MBytes   338 Mbits/sec                  
+    [  5]   3.00-4.00   sec  40.4 MBytes   339 Mbits/sec                  
+    [  5]   4.00-5.00   sec  40.3 MBytes   338 Mbits/sec                  
+    [  5]   5.00-6.00   sec  40.3 MBytes   338 Mbits/sec                  
+    [  5]   6.00-7.00   sec  40.1 MBytes   336 Mbits/sec                  
+    [  5]   7.00-8.00   sec  40.3 MBytes   338 Mbits/sec                  
+    [  5]   8.00-9.00   sec  40.3 MBytes   338 Mbits/sec                  
+    [  5]   9.00-10.00  sec  40.0 MBytes   336 Mbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bitrate
+    [  5]   0.00-10.01  sec   404 MBytes   339 Mbits/sec                  sender
+    [  5]   0.00-10.00  sec   403 MBytes   338 Mbits/sec                  receiver
+    
+    iperf Done.
+
+Repeating the measurement after locking down CPU cores to 600 MHz (`echo 600000 > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq`) ends up with 328 Mbits/sec incoming (maxing out one CPU core fully) and 305 Mbits/sec outgoing. I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` to move your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
