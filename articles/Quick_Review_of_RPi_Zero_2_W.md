@@ -134,6 +134,8 @@ Different picture with the newly released Bullseye image: SoC temp +5°C and con
 
 With the Bullseye image the ARM cores are always fed with a higher voltage even when idle and at 600 MHz. But less than 50mV difference are IMO not enough to explain almost 200mW higher idle consumption. Needs more research.
 
+BTW: If you want to use the old Buster image be prepared for 'hacks' (manually adding and renaming the device-tree files with `bcm2710-rpi-zero-2` in their name from [here](https://github.com/raspberrypi/firmware/tree/master/boot)) or you need an older RPi model to once boot and perform all updates there and only then the necessary support files for Zero 2 become part of the installation on this SD card. Otherwise the board simply won't boot.
+
 ## Overclocking
 
 While not the best idea when you want to lower consumption it's possible but at the cost of stability or low consumption. For higher clockspeeds to work stably the main OS needs to be told to increase Vcore voltage for the ARM cores via the `over_voltage` parameter in `config.txt` (this is the major config file for ThreadX running on the VideoCore and fully controlling the ARM domain – [details](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/)).
@@ -152,9 +154,9 @@ With the Buster image this only affects situations where the CPU is rather utili
 
 ![](../media/RPI_Zero_2_over_voltage_6_bullseye_klein.png)
 
-Anyway: with a slight overclock to 1.2 GHz the Zero 2 performs almost at the same level than the unfortunate RPi 3B+ at 1.4 GHz. Partially related to memory performance that improved with Zero 2:
+Anyway: with a slight overclock to 1.2 GHz the Zero 2 performs almost at the same level than the unfortunate RPi 3B+ at 1.4 GHz. Partially related to memory performance that improved with Zero 2 (or maybe with all RPi models due to firmware/ThreadX optimisations?):
 
-RPi 3B+ with same Cortex-A53 in 40nm process:
+RPi 3B+ (old measurements with firmware/ThreadX version from 'Jun  7 2018'):
 
      standard memcpy                                      :   1050.1 MB/s
      standard memset                                      :   1505.7 MB/s (0.2%)
@@ -178,7 +180,7 @@ RPi 3B+ with same Cortex-A53 in 40nm process:
       33554432 :  185.5 ns          /   224.7 ns 
       67108864 :  188.5 ns          /   227.2 ns
 
-Compared to Zero 2 W... lower latency and much better memcopy score:
+Compared to Zero 2 W with recent software: lower latency and much better memcopy score.
     
      standard memcpy                                      :   1295.5 MB/s (2.6%)
      standard memset                                      :   1570.9 MB/s (0.9%)
@@ -229,7 +231,7 @@ Now we're at less than 5% of the performance of another ARM SoC where the manufa
 
 But ruined AES crypto performance is not the only reason why a 64-bit userland sucks on RPi Zero 2. The device has only 512 MB RAM that is shared between the primary OS (ThreadX) and any secondary OS like Linux. Processes/services built for 64-bit have a *much much larger* memory footprint compared to the standard Raspberry Pi OS (which is _not_ just 32-bit but specifically built for ARMv6! Please keep this in mind when you read somewhere on the Internet about '32-bit vs. 64-bit' and folks run their comparisons on an RPi).
 
-As a rule of thumb any process needs almost twice as much memory in 64-bit mode compared to 32-bit. You can see your Zero 2 swapping all day long running a 64-bit userland while everything runs off RAM smoothly with 32-bit. Your 64-bit apps are handled by the `oom-killer` (a daemon killing processes that need 'too much RAM') while they will happily do what they should when running a 32-bit OS. If you build a cluster out of Raspberries and your processes are memory constrained, then you'll need almost twice as much cluster nodes (RPi thingies to be bought) when running 64-bit compared to standard userland.
+As a rule of thumb any process needs almost twice as much memory in 64-bit mode compared to 32-bit. You can see your Zero 2 swapping all day long running a 64-bit userland while everything runs off RAM smoothly with 32-bit. Your 64-bit apps are handled by the `oom-killer` (a daemon killing processes that need 'too much RAM') while they will happily do what they should when running a 32-bit OS. If you build a cluster out of Raspberries and your processes are memory constrained, then you'll need almost twice as much cluster nodes (RPi thingies to be bought and powered) when running 64-bit compared to standard userland.
 
 And no, 64-bit is not faster. Only some weird benchmarks show higher scores (sysbench or Phoronix stuff that benefits from totally different `CFLAGS` here or there).
 
@@ -239,7 +241,7 @@ Ok, no 64-bit userland. What about using a 64-bit kernel? Sure, why not. Adding 
 
 ## Storage
 
-The SD card interface is SDXC compliant and can as such cope with SD cards up to 2TB once available. Unfortunately a voltage switch from 3.3V to 1.8V has not been implemented and as such SD card access is limited to [High Speed (HS) mode](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md#benchmarking-the-cards). Quick test via `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2` on a 64GB SanDisk Extreme Pro A2:
+The SD card interface is SDXC compliant and can as such cope with SD cards up to 2TB once available. Unfortunately a voltage switch from 3.3V to 1.8V has not been implemented so SD card access is limited to [High Speed (HS) mode](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md#benchmarking-the-cards). Quick test via `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2` on a 64GB SanDisk Extreme Pro A2:
     
                                                            random    random
            kB  reclen    write  rewrite    read    reread    read     write
@@ -249,7 +251,7 @@ The SD card interface is SDXC compliant and can as such cope with SD cards up to
        102400    1024    20388    20124    22847    22900    22904    18276
        102400   16384    20351    19905    23036    23037    23036    19711
 
-Sequential reads/writes max out at 23/20 MB/s, random IO performance courtesy of a more expensive A2 rated card made for the use case. Same SD card with same installation in a RPi 4 capable of SDR50 shows way better sequential and slightly better random IO performance:
+Sequential reads/writes max out at 23/20 MB/s, random IO performance courtesy of a more expensive A2 rated card made for the use case. Same SD card with same installation in a RPi 4 capable of SDR50 shows better sequential and slightly better random IO performance:
 
                                                            random    random
            kB  reclen    write  rewrite    read    reread    read     write
