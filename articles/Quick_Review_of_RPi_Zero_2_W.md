@@ -95,7 +95,7 @@ Zero 2's single threaded performance is higher than the original Zero's even whe
 
 ![](../media/RPI_Zero_2_7-zip-only-cpu0.png)
 
-When utilizing all 4 cores it looks like this:
+When utilizing all 4 cores it looks like this (a fan blowing over the SoC's surface which explains the low temperatures – for temps with 'convection only' see below):
 
     Sysfs/ThreadX/Tested:  MIPS / Temp /  Watt
      600 /   600 /   600:  1870  42.7°C  1700mW
@@ -239,6 +239,63 @@ Why no 64-bit numbers from Zero 2? Since a waste of time and numbers already exi
 
 Ok, no 64-bit userland. What about using a 64-bit kernel? Sure, why not. Adding `arm_64bit=1` to `config.txt` will do the job and after a reboot 50MB RAM are missing (in other words: 10% of available RAM on RPi Zero 2). Performance will remain the same though.
 
+## Thermal performance and heatsink efficiency
+
+The Zero 2 has a really small PCB size and as such not that much heat could be transferred from the SoC through the ball grid array into a copper ground plane (that's what the RPi guys started to do on the larger boards from RPi 3B+ on). And unfortunately the SoC is made in an ancient 40nm process that is really not power efficient by today's standards.
+
+![](../media/RPI_Zero_2_with_heatsink.jpg)
+
+Applying my 'standard heatsink' with appropriate fin spacing for passive cooling (letting convection help) does not provide that much benefits as long as there's enough radiation possible: at an ambient temperature of 23°C the idle temp is just ~1.5°C lower (40.8°C vs. 39.2°C with heatsink applied). This is the board lying flat on a table without any enclosure.
+
+When walking through all available cpufreq OPP under load with `sbc-bench -p 0-3` (execute 7-Zip's internal benchmark 3 times at each clockspeed and report averages back) we see same performance but temperature differences between ~2.5°C at 600 MHz and ~5.5°C at 1000 MHz.
+
+Situation changes when we cramp the small board in a tiny enclosure like the official one since this functions somewhat like an oven. Idle temps are now at 44°C and of course other temperatures are also higher:
+
+![](../media/RPI_Zero_2_thermal_performance-1.png)
+
+Left column is w/o heatsink, middle with, right is heatsink in official enclosure:
+
+    cpufreq       7-Zip-MIPS          Temperature °C
+      600     1828 / 1829 / 1829    50.8 / 47.2 / 56.4
+      700     2143 / 2145 / 2132    57.6 / 53.0 / 60.9
+      800     2440 / 2446 / 2427    62.8 / 58.0 / 64.5
+      900     2746 / 2742 / 2745    66.9 / 62.1 / 67.7
+     1000     3027 / 3034 / 2992    71.8 / 66.1 / 71.4
+
+After some load peak it also takes a long time to get temps back to normal/idle (approx. half an hour with Buster, on Bullseye with different idle VCore behaviour it will both take longer and idle temps will be higher too):
+
+![](../media/RPI_Zero_2_thermal_performance-2.png)
+
+With a small load peak we've seen temperatures going up above 70°C to decline afterwards slowly. But what about constant full load? With heatsink but inside the tiny enclosure it will throttle for sure. Of course it won't tell you unless you query the primary operating system via `vcgencmd` (which is what `sbc-bench -m` is doing on Raspberries):
+
+    root@raspberrypi:~# sbc-bench -m
+    Time        fake/real   load %cpu %sys %usr %nice %io %irq   Temp    VCore
+    14:20:27: 1000/1000MHz  2.98  62%   1%  60%   0%   0%   0%  79.5°C  1.2375V
+    14:20:33: 1000/ 941MHz  3.06  79%   2%  76%   0%   0%   0%  80.6°C  1.2375V
+    14:20:38: 1000/ 941MHz  3.14  87%   1%  85%   0%   0%   0%  80.6°C  1.2375V
+    14:20:43: 1000/ 941MHz  3.04  75%   2%  71%   0%   0%   0%  81.7°C  1.2375V
+    14:20:48: 1000/ 834MHz  3.20  75%   2%  73%   0%   0%   0%  81.7°C  1.2375V
+    14:20:53: 1000/1000MHz  3.27  71%   1%  69%   0%   0%   0%  79.5°C  1.2375V
+    14:20:59: 1000/1000MHz  3.24  49%   1%  47%   0%   0%   0%  79.5°C  1.2375V
+    14:21:04: 1000/ 887MHz  3.14  80%   2%  77%   0%   0%   0%  80.6°C  1.2375V
+    14:21:09: 1000/ 941MHz  3.21  88%   1%  86%   0%   0%   0%  81.1°C  1.2375V
+    14:21:14: 1000/ 941MHz  3.28  78%   3%  74%   0%   0%   0%  80.6°C  1.2375V
+    14:21:19: 1000/ 834MHz  3.41  78%   1%  77%   0%   0%   0%  80.6°C  1.2375V
+    14:21:25: 1000/ 995MHz  3.46  72%   1%  70%   0%   0%   0%  79.5°C  1.2375V
+    14:21:30: 1000/ 941MHz  3.34  72%   2%  69%   0%   0%   0%  81.1°C  1.2375V
+    14:21:35: 1000/ 834MHz  3.40  89%   1%  87%   0%   0%   0%  81.7°C  1.2375V
+    14:21:40: 1000/ 887MHz  3.29  74%   2%  71%   0%   0%   0%  81.7°C  1.2375V
+    14:21:45: 1000/ 834MHz  3.18  83%   2%  79%   0%   0%   0%  81.7°C  1.2375V
+    14:21:50: 1000/ 834MHz  3.09  86%   1%  84%   0%   0%   0%  81.1°C  1.2375V
+    14:21:55: 1000/ 834MHz  2.92  59%   3%  56%   0%   0%   0%  81.7°C  1.2375V
+    14:22:01: 1000/ 834MHz  3.01  85%   1%  84%   0%   0%   0%  81.7°C  1.2375V
+    14:22:06: 1000/ 834MHz  3.09  78%   2%  75%   0%   0%   0%  81.7°C  1.2375V
+    14:22:11: 1000/ 834MHz  3.32  79%   2%  77%   0%   0%   0%  81.7°C  1.2375V
+
+With full load it takes approximately ~15 min. for the board to reach the thermal threshold of 80°C, then silent throttling kicks in and maximum performance drops linearly with cpufreq. Even with a heatsink cramping this little thing in a tiny enclosure without any airflow is not the best idea when you want to operate it full load constantly. You will experience throttling for sure (and in parallel a drop in consumption – see [Performance and consumption](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Review_of_RPi_Zero_2_W.md#performance-and-consumption) above for what to expect at which clockspeed).
+
+![](../media/RPI_Zero_2_thermal_performance-3.png)
+
 ## Storage
 
 The SD card interface is SDXC compliant and can as such cope with SD cards up to 2TB once available. Unfortunately a voltage switch from 3.3V to 1.8V has not been implemented so SD card access is limited to [High Speed (HS) mode](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md#benchmarking-the-cards). Quick test via `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2` on a 64GB SanDisk Extreme Pro A2:
@@ -263,7 +320,7 @@ Sequential reads/writes max out at 23/20 MB/s, random IO performance courtesy of
 
 ## Wireless network performance
 
-Not able to test since living in a rural are with a lot of neighbours (+250 wireless networks spottable)
+Not able to test since living in an urban are with a lot of neighbours (+250 wireless networks spottable)
 
 ## Wired network performance
 
@@ -319,4 +376,4 @@ These are pretty good throughput numbers for USB2 attached GbE, at least faster 
     
     iperf Done.
 
-Repeating the measurement after locking down CPU cores to 600 MHz (`echo 600000 > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq`) ends up with 328 Mbits/sec incoming (maxing out one CPU core) and 305 Mbits/sec outgoing (CPU utilization less than 15%). I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` moving your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
+Repeating the measurement after locking down CPU cores to 600 MHz ends up with 328 Mbits/sec incoming (maxing out one CPU core) and 305 Mbits/sec outgoing (CPU utilization less than 15%). I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` moving your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
