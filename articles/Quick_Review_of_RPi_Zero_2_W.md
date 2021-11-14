@@ -1,5 +1,7 @@
 # A quick look at RPi Zero 2 W
 
+![](../media/RPI_Zero_2_with_heatsink.jpg)
+
 This small board [combines 512MB DRAM with the BCM2837 die known from RPi 3B](https://github.com/raspberrypi/documentation/blob/develop/documentation/asciidoc/computers/processors/rp3a0.adoc). It is the much more powerful successor to RPi Zero W and replaces a single ARM11 core with a quad core Cortex-A53 clocking by default between 600 MHz and 1000 MHz. Wireless capabilities remain almost the same compared to Zero W (minor BT revision update) and the chip is from the same family as before (Broadcom, then Cypress, now Synaptics) which is good news since RPi Trading Ltd. unlike almost all the other SBC makers out there [fix wireless security flaws by pushing new firmware BLOBs to their distribution](https://github.com/armbian/build/issues/1812#issuecomment-607643584).
 
 Board dimensions and connector placement is the same except location of most pogo pins on the backside. For pictures visit [Jeff Geerling](https://www.jeffgeerling.com/blog/2021/look-inside-raspberry-pi-zero-2-w-and-rp3a0-au) (but please ignore benchmark numbers, procedures and recommendations there). For a good comparison between both boards see [CNX-Software](https://www.cnx-software.com/2021/10/28/raspberry-pi-zero-2-w-and-zero-w-features-comparison/) (but please ignore the "2.5A power requirement" there).
@@ -80,7 +82,7 @@ All you need to do now is the following
 
 You might revoke the changes to `/boot/config.txt` and `/boot/cmdline.txt` (might save you 20mW) but then you'd need to redo this again to flawlessly SSH into your board via the USB port. Otherwise just attach the Zero 2 now to a normal power source using the power Micro USB port and login through Wi-Fi via `ssh pi@zero2` (given you assigned this hostname in the step before and you run a non-crappy DNS/DHCP server combo at home / in your lab).
 
-BTW: A better aproach than installing `zram-tools` will be [discussed at the end of this article](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Review_of_RPi_Zero_2_W.md#sd_card_endurance).
+BTW: A better aproach than installing `zram-tools` will be [discussed at the end of this article](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Review_of_RPi_Zero_2_W.md#sd-card-endurance).
 
 ## Performance and consumption
 
@@ -246,8 +248,6 @@ Ok, no 64-bit userland. What about using a 64-bit kernel? Sure, why not. Adding 
 ## Thermal performance and heatsink efficiency
 
 The Zero 2 has a really small PCB size and as such not that much heat could be transferred from the SoC through the ball grid array into a copper ground plane (that's what the RPi guys started to do on the larger boards from RPi 3B+ on). And unfortunately the SoC is made in an ancient 40nm process that is really not power efficient by today's standards.
-
-![](../media/RPI_Zero_2_with_heatsink.jpg)
 
 Applying my 'standard heatsink' with appropriate fin spacing for passive cooling (letting convection help) does not provide that much benefits as long as there's enough radiation possible: at an ambient temperature of 23°C the idle temp is just ~1.5°C lower (40.8°C vs. 39.2°C with heatsink applied). This is the board lying flat on a table without any enclosure.
 
@@ -435,6 +435,6 @@ Now 'enjoy the silence' on SD card:
 
 Before: 8 times within 60 seconds a few bytes were written to the card, now it took 12 minutes for 8 write attempts using larger data chunks. Write Amplification significantly decreased.
 
-In case you're logging tons of data consider editing `/etc/ztab` to switch compression algo for the log partition to `zstd` (see documentation therein for details). And of course you'll loose data in case the Zero doesn't shutdown/reboot properly. The higher commit interval of 10 minutes can result in general data loss and when no proper shutdown happens, then syncing back the log contents from zram to SD card won't happen.
+In case you're logging tons of data consider editing `/etc/ztab` to switch compression algo for the log partition to `zstd` (see documentation therein for details). And of course you'll loose data in case the Zero doesn't shutdown/reboot properly. The higher commit interval of 10 minutes can result in general data loss and when no proper shutdown happens then syncing back the log contents from zram to SD card won't happen.
 
 So if you're into unstable operation (crappy powering and the like) better live with a shorter SD card lifespan and skip these optimisations.
