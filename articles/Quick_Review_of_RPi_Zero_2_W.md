@@ -73,12 +73,14 @@ In case your computer's OS is not crappy you can now simply access the Zero as `
 All you need to do now is the following
 
     passwd # set a secure password
-    sudo nano /etc/hostname  # assign a unique name to the board, e.g. 'zero2'
+    sudo nano /etc/hostname # assign a unique name to the board, e.g. 'zero2'
     sudo raspi-config # set country code and Wi-Fi details
     sudo apt install zram-tools # avoid silly swapping to SD card
     sudo shutdown -h now
 
-You might revoke the changes to `/boot/config.txt` and `/boot/cmdline.txt` (might save you 20mW) but then you'd need to redo this again to flawlessly SSH into your board via the USB port. Otherwise just attach the Zero 2 now to a normal power source using the power Micro USB port and login through Wi-Fi via `ssh pi@zero2` (given you assigned this hostname in the step before and you run a non-crappy DNS/DHCP server combo at home / in your lab)
+You might revoke the changes to `/boot/config.txt` and `/boot/cmdline.txt` (might save you 20mW) but then you'd need to redo this again to flawlessly SSH into your board via the USB port. Otherwise just attach the Zero 2 now to a normal power source using the power Micro USB port and login through Wi-Fi via `ssh pi@zero2` (given you assigned this hostname in the step before and you run a non-crappy DNS/DHCP server combo at home / in your lab).
+
+BTW: A better aproach than installing `zram-tools` will be [discussed at the end of this article](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Review_of_RPi_Zero_2_W.md#sd_card_endurance).
 
 ## Performance and consumption
 
@@ -379,3 +381,60 @@ These are pretty good throughput numbers for USB2 attached GbE, at least faster 
     iperf Done.
 
 Repeating the measurement after locking down CPU cores to 600 MHz ends up with 328 Mbits/sec incoming (maxing out one CPU core) and 305 Mbits/sec outgoing (CPU utilization less than 15%). I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` moving your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
+
+## SD card endurance
+
+Raspberry Pi OS ships with teribble defaults if you love your SD card: swap on SD card, default ext4 commit interval and logging to card.
+
+Quick check with a default install (using the functionality I added to [armbianmonitor](https://github.com/armbian/build/blob/612529aa8f7321e10b4dbdbdfb57073900d0de30/packages/bsp/common/usr/bin/armbianmonitor#L489-L507) years ago to spot just this: continuous and damaging small writes to flash media):
+
+    root@raspberrypi:~# armbianmonitor -d mmcblk0p2
+    Sun Nov 14 14:43:14 GMT 2021       2/40 pages written after 5 sec
+    Sun Nov 14 14:43:24 GMT 2021       2/40 pages written after 5 sec
+    Sun Nov 14 14:43:25 GMT 2021       8/36 pages written after 1 sec
+    Sun Nov 14 14:43:36 GMT 2021       2/40 pages written after 7 sec
+    Sun Nov 14 14:43:41 GMT 2021       1/4 pages written after 1 sec
+    Sun Nov 14 14:43:45 GMT 2021       2/60 pages written after 4 sec
+    Sun Nov 14 14:43:55 GMT 2021       2/44 pages written after 5 sec
+    Sun Nov 14 14:44:06 GMT 2021       2/40 pages written after 6 sec
+
+Every few seconds a few bytes are written to SD card. This write pattern results in [high Write Amplification](https://forum.armbian.com/topic/6444-varlog-file-fills-up-to-100-using-pihole/#comment-50833) and the SD card will die way earlier than necessary.
+
+First step is to change ext4 commit interval from default (5 seconds) to 10 minutes:
+
+    sed -i -e 's/defaults,noatime/defaults,noatime,commit=600,errors=remount-ro/' /etc/fstab 
+
+Then [https://github.com/ecdye/zram-config](https://github.com/ecdye/zram-config#install) to the rescue. Simply follow the few install steps and remain with the config defaults for now. Afterwards
+
+    sudo apt purge zram-tools # only of you installed it before as suggested above
+    sudo dphys-swapfile swapoff # deactivates swap on SD card
+    sudo reboot
+
+Now there's a compressed zram device `/dev/zram0` for swap and the system logs with an overlayfs to `/dev/zram1` and not to SD card any more:
+
+    NAME       ALGORITHM DISKSIZE  DATA  COMPR TOTAL STREAMS MOUNTPOINT
+    /dev/zram1 lzo-rle       150M 17.2M 353.3K  756K       4 /opt/zram/zram1
+    /dev/zram0 lzo-rle       750M    4K    87B   12K       4 [SWAP]
+
+Now 'enjoy the silence' on SD card:
+
+    root@raspberrypi:/home/pi# date
+    Sun 14 Nov 15:09:28 GMT 2021
+    root@raspberrypi:/home/pi# armbianmonitor -d mmcblk0p2
+    Sun Nov 14 15:15:48 GMT 2021       2/196 pages written after 378 sec
+    Sun Nov 14 15:16:18 GMT 2021      33/152 pages written after 30 sec
+    Sun Nov 14 15:17:01 GMT 2021       1/60 pages written after 43 sec
+    Sun Nov 14 15:20:47 GMT 2021       1/12 pages written after 226 sec
+    Sun Nov 14 15:21:03 GMT 2021       2/16 pages written after 16 sec
+    Sun Nov 14 15:21:04 GMT 2021       2/8 pages written after 1 sec
+    Sun Nov 14 15:21:10 GMT 2021       4/36 pages written after 6 sec
+    Sun Nov 14 15:21:15 GMT 2021       3/20 pages written after 5 sec
+    ^C
+    root@raspberrypi:/home/pi# date
+    Sun 14 Nov 15:21:35 GMT 2021
+
+Before: 8 times within 60 seconds a few bytes were written to the card, now it took 12 minutes for 8 write attempts using larger data chunks. Write Amplification significantly decreased.
+
+In case you're logging tons of data consider editing `/etc/ztab` to switch compression algo for the log partition to `zstd` (see documentation therein for details). And of course you'll loose data in case the Zero doesn't shutdown/reboot properly. The higher commit interval of 10 minutes can result in general data loss and when no proper shutdown happens, then syncing back the log contents from zram to SD card won't happen.
+
+So if you're into unstable operation (crappy powering and the like) better live with a shorter SD card lifespan and skip these optimisations.
