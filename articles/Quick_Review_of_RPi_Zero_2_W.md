@@ -144,7 +144,7 @@ BTW: If you want to use the old Buster image be prepared for 'hacks' (manually a
 
 ## Overclocking
 
-While not the best idea when you want to lower consumption it's possible but at the cost of stability or low consumption. For higher clockspeeds to work stably the main OS needs to be told to increase Vcore voltage for the ARM cores via the `over_voltage` parameter in `config.txt` (this is the major config file for ThreadX running on the VideoCore and fully controlling the ARM domain – [details](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/)).
+While not the best idea when you want low consumption (why buying a Zero?) it's possible but at the cost of stability or power efficiency. For higher clockspeeds to work stably the main OS needs to be told to increase Vcore voltage for the ARM cores via the `over_voltage` parameter in `config.txt` (this is the major config file for ThreadX running on the VideoCore and fully controlling the ARM domain – [details](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/)).
 
 For e.g. 1200 MHz to work stably you might need to define `over_voltage=2` which increases Vcore voltage the ARM cores are fed with. A quick test through 7 different settings ends up with these voltage values (they differ slightly between reboots for reasons unknown to me):
 
@@ -160,7 +160,7 @@ With the Buster image this only affects situations where the CPU is rather utili
 
 ![](../media/RPI_Zero_2_over_voltage_6_bullseye_klein.png)
 
-Anyway: with a slight overclock to 1.2 GHz the Zero 2 performs almost at the same level than the unfortunate RPi 3B+ at 1.4 GHz. Partially related to memory performance that improved with Zero 2 (or maybe with all RPi models due to firmware/ThreadX optimisations?):
+Anyway: with a slight overclock to 1.2 GHz the Zero 2 performs almost at the same level than the unfortunate RPi 3B+ at 1.4 GHz. Partially related to memory performance that improved with Zero 2 (or maybe with all RPi models due to firmware/ThreadX optimisations within the last years? It's always somewhat stupid to compare benchmark results made in different years):
 
 RPi 3B+ (old measurements with firmware/ThreadX version from 'Jun  7 2018'):
 
@@ -382,12 +382,21 @@ These are pretty good throughput numbers for USB2 attached GbE, at least faster 
 
 Repeating the measurement after locking down CPU cores to 600 MHz ends up with 328 Mbits/sec incoming (maxing out one CPU core) and 305 Mbits/sec outgoing (CPU utilization less than 15%). I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` moving your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
 
-Speaking about USB... we've already talked about using the OTG port in USB gadget mode as 'network adapter' directly connecting the RPi to a computer's USB port. While this is nice for initial setup this can also be normal mode of operation. Testing this mode for performance ends up with ok-ish throughput numbers:
+Speaking about USB... we've already talked about using the OTG port in USB gadget mode as 'network adapter' directly connecting the RPi to a computer's USB port. While this is nice for initial setup this can also be normal mode of operation. Testing this for performance ends up with ok-ish throughput numbers:
 
   * Incoming: 220 Mbits/sec utilising `cpu0` at 15%-20% (at 1000 MHz)
   * Outgoing: 155 MBits/sec with a CPU utilization less than 5% (at 1000 MHz)
 
-Sorry, no consumption numbers for this mode available (yet) since I can not measure power my MacBook's USB ports are providing.
+Sorry, no consumption numbers for this mode available (yet) since I can not measure the power provided by my MacBook's USB ports. 2nd test against a Linux machine (RPi 4) showed different throughput numbers:
+
+  * Incoming: 185 Mbits/sec utilising `cpu0` at 15%-20% (at 1000 MHz)
+  * Outgoing: 260 MBits/sec with a CPU utilization at ~5% (at 1000 MHz)
+
+(when locking Zero's cores to 600 MHz throughput in TX direction dropped from 260 Mbits/sec to 208 while RX remained the same)
+
+So obviously driver support at the other end of the USB cable matters but at least 150 Mbit/sec should always be possible with Zero 2 regardless of the OS connected to and its own CPU clockspeeds. 
+
+Since RPi 4 powered the Zero in this setup I also recorded total consumption of both in idle and while performing the iperf3 tasks (15 minutes in each direction). Difference between idle and saturated network link was slightly less tha n 1000mW and I assume that majority of this consumption difference happened at the Zero's side. RPi 4 has an awful high basic consumption but the A72 cores made in a newer process are way more efficient than the A53 on the Zero. At least the exercise demonstrates that USB gadget mode can result in ok-ish throughput numbers at a significantly lower consumption compared to USB attached Gigabit Ethernet.
 
 ## Camera
 
@@ -398,7 +407,7 @@ Sorry, no consumption numbers for this mode available (yet) since I can not meas
     start_x=1
     gpu_mem=128
 
-All this does after next reboot is instructing the main operating system (a RTOS called [ThreadX running on the VideoCore CPU](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/)) to reserve more memory for the VideoCore and start the ThreadX routines dealing with the camera. Of course this memory is now missing at the guest OS:
+All this does after the mandatory reboot is instructing the main operating system (a RTOS called [ThreadX running on the VideoCore CPU](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/)) to reserve more memory for itself and start the ThreadX routines dealing with the camera. Of course this memory is now missing at the guest OS:
 
     root@raspberrypi:~# free -h
                   total        used        free      shared  buff/cache   available
@@ -411,13 +420,13 @@ Quick check with a half-sized videostream to be sent wirelessly via `netcat` to 
 
 The ARM cores and the guest OS are almost unaffected (cores remain at 600 MHz and average load jumps from below 0.02 to 0.15) while the VideoCore has been instructed by `raspivid` to do the heavy work. Consumption increases by 730mW and SoC temperature by 7.5°C with this task.
 
-Since overall consumption in this mode is below 1.5W it's also perfectly fine to skip Wi-Fi and operate the RPi on a server's USB port after locking the CPU cores to 600 MHz since this ensures that even if the ARM cores are totally busy overall consumption will not exceed the 2.5W an USB port has to provide. In this mode the Zero uses USB gadget mode and transfers the data directly over the USB wire.
+Since overall consumption in this mode is below 1.5W it's also perfectly fine to skip Wi-Fi and operate the RPi on a computer's USB port after locking the CPU cores to 600 MHz since this ensures that even if the ARM cores are fully busy total consumption will not exceed the 2.5W an USB port has to provide. In this mode the Zero uses USB gadget mode and transfers the data directly over the USB wire.
 
-Speaking of USB wires: the main problem with Micro USB cables is not amperage but voltage drops due to cable and contact resistance being way too high. Majority of Micro USB cables is crap and not meant to power anything that needs more than a few mW. You get either 5V at the device end of the cable or 1A but not both at the same time. Only do this if you're sure your cable is at least AWG22 rated since otherwise the RPi slows down or even freeze/crash. More on this [here](https://www.cnx-software.com/2017/04/27/selecting-a-micro-usb-cable-to-power-development-boards-or-charge-phones/) and [there](https://github.com/raspberrypi/linux/issues/2512).
+Speaking of USB wires: the main problem with Micro USB cables is not amperage but voltage drops with higher loads due to cable and contact resistance being way too high. Majority of Micro USB cables is crap and not meant to power anything that needs more than a few mW. You get either 5V at the device end of the cable or 1A but not both at the same time. Only do this if you're sure your cable is at least AWG22 rated since otherwise the RPi slows down or even freezes/crashes (more on this [here](https://www.cnx-software.com/2017/04/27/selecting-a-micro-usb-cable-to-power-development-boards-or-charge-phones/) and [there](https://github.com/raspberrypi/linux/issues/2512)).
 
 ## SD card endurance
 
-Raspberry Pi OS ships with teribble defaults if you love your SD card: swap on SD card, default ext4 commit interval and logging to card.
+If you love your SD card then Raspberry Pi OS defaults are not for you: swap on SD card, default ext4 commit interval and logging to card.
 
 Quick check with a default install (using the functionality I added to [armbianmonitor](https://github.com/armbian/build/blob/612529aa8f7321e10b4dbdbdfb57073900d0de30/packages/bsp/common/usr/bin/armbianmonitor#L489-L507) years ago to spot just this: continuous and damaging small writes to flash media):
 
@@ -468,6 +477,6 @@ Now 'enjoy the silence' on SD card:
 
 Before: 8 times within 60 seconds a few bytes were written to the card, now it took 12 minutes for 8 write attempts using larger data chunks. Write Amplification significantly decreased.
 
-In case you're logging tons of data consider editing `/etc/ztab` to switch compression algo for the log partition to `zstd` (see documentation therein for details). And of course you'll loose data in case the Zero doesn't shutdown/reboot properly. The higher commit interval of 10 minutes can result in general data loss and when no proper shutdown happens then syncing back the log contents from zram to SD card won't happen.
+In case you're logging tons of data consider editing `/etc/ztab` to switch compression algo for the log partition to `zstd` (see documentation therein for details). And of course you'll loose data in case the Zero doesn't shutdown/reboot properly. The higher commit interval of 10 minutes will almost ensure that power loss == general data loss and when no proper shutdown happens then syncing back the log contents from zram to SD card also won't happen.
 
 So if you're into unstable operation (crappy powering and the like) better live with a shorter SD card lifespan and skip these optimisations.
