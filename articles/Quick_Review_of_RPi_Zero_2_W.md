@@ -324,7 +324,7 @@ Sequential reads/writes max out at 23/20 MB/s, random IO performance courtesy of
 
 ## Wireless network performance
 
-Not able to test since living in an urban are with a lot of neighbours (+250 wireless networks spottable)
+Not able to test since living in an urban are with lots of neighbours (+250 wireless networks spottable)
 
 ## Wired network performance
 
@@ -381,6 +381,39 @@ These are pretty good throughput numbers for USB2 attached GbE, at least faster 
     iperf Done.
 
 Repeating the measurement after locking down CPU cores to 600 MHz ends up with 328 Mbits/sec incoming (maxing out one CPU core) and 305 Mbits/sec outgoing (CPU utilization less than 15%). I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` moving your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
+
+Speaking about USB... we've already talked about using the OTG port in USB gadget mode as 'network adapter' directly connecting the RPi to a computer's USB port. While this is nice for initial setup this can also be normal mode of operation. Testing this mode for performance ends up with ok-ish throughput numbers:
+
+  * Incoming: 220 Mbits/sec utilising `cpu0` at 15%-20% (at 1000 MHz)
+  * Outgoing: 155 MBits/sec with a CPU utilization less than 5% (at 1000 MHz)
+
+Sorry, no consumption numbers for this mode available (yet) since I can not measure power my MacBook's USB ports are providing.
+
+## Camera
+
+![](../media/RPI_Zero_2_with_camera.jpg)
+
+"Enabling" a connected camera can be done using `raspi-config` or directly by adding the following to `/boot/config.txt`:
+
+    start_x=1
+    gpu_mem=128
+
+All this does after next reboot is instructing the main operating system (a RTOS called [ThreadX running on the VideoCore CPU](https://ownyourbits.com/2019/02/02/whats-wrong-with-the-raspberry-pi/)) to reserve more memory for the VideoCore and start the ThreadX routines dealing with the camera. Of course this memory is now missing at the guest OS:
+
+    root@raspberrypi:~# free -h
+                  total        used        free      shared  buff/cache   available
+    Mem:          364Mi        54Mi       114Mi       4.0Mi       195Mi       256Mi
+    Swap:         849Mi          0B       849Mi
+
+Quick check with a half-sized videostream to be sent wirelessly via `netcat` to another host where the stream is stored and transcoded at the same time for live view:
+
+    raspivid -ih -b 4000000 -t 3600000 -fps 24 -w 960 -h 540 -o - | nc -k -l 2222
+
+The ARM cores and the guest OS are almost unaffected (cores remain at 600 MHz and average load jumps from below 0.02 to 0.15) while the VideoCore has been instructed by `raspivid` to do the heavy work. Consumption increases by 730mW and SoC temperature by 7.5°C with this task.
+
+Since overall consumption in this mode is below 1.5W it's also perfectly fine to skip Wi-Fi and operate the RPi on a server's USB port after locking the CPU cores to 600 MHz since this ensures that even if the ARM cores are totally busy overall consumption will not exceed the 2.5W an USB port has to provide. In this mode the Zero uses USB gadget mode and transfers the data directly over the USB wire.
+
+Speaking of USB wires: the main problem with Micro USB cables is not amperage but voltage drops due to cable and contact resistance being way too high. Majority of Micro USB cables is crap and not meant to power anything that needs more than a few mW. You get either 5V at the device end of the cable or 1A but not both at the same time. Only do this if you're sure your cable is at least AWG22 rated since otherwise the RPi slows down or even freeze/crash. More on this [here](https://www.cnx-software.com/2017/04/27/selecting-a-micro-usb-cable-to-power-development-boards-or-charge-phones/) and [there](https://github.com/raspberrypi/linux/issues/2512).
 
 ## SD card endurance
 
