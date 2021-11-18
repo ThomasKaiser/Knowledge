@@ -245,6 +245,34 @@ Why no 64-bit numbers from Zero 2? Since a waste of time and numbers already exi
 
 Ok, no 64-bit userland. What about using a 64-bit kernel? Sure, why not. Adding `arm_64bit=1` to `config.txt` will do the job and after a reboot 50MB RAM are missing (in other words: 10% of available RAM on RPi Zero 2). Performance will remain the same though.
 
+## Armbian / Ubuntu Jammy on Zero 2
+
+For whatever reasons the guy calling himself 'the face of Armbian' started to advertise 'Armbian for Raspberry Pi 4' (also suggesting this would be a great thing). At least there are OS images lying around at [https://github.com/rpardini/armbian-release/releases](https://github.com/rpardini/armbian-release/releases) so let's try it out.
+
+What is inside these images? A mixture of ThreadX blobs from RPi Trading Ltd. on the FAT partition (that's the main OS), then kernel packages from Ubuntu for the RPi family and an Armbian userland debootstrapped from Ubuntu package sources. Both kernel and userland are 64-bit and as such we already know how this excercise will end.
+
+I had to boot this 'Jammy Armbian' image on an RPi 4 first to
+
+  * update the primary operating system (copying over the ThreadX blobs from a Rasperry Pi OS install that has been updated to latest version using `rpi-update`)
+  * add the Zero 2 `dtb` files to the FAT partition
+  * add [firmware blobs](https://github.com/raspberrypi/linux/commit/c52581ffa49b9c0e5de3349436c283fe20128073#diff-ffce630590e253b5f402e964a1085c5709e56a2ba5e060579fe68cfd87988fe7) to the ext4 partition for Wi-Fi to work
+  * copy over kernel images and modules from the aforementioned Rasperry Pi OS install
+  * adjust `config.txt` to minimize ThreadX memory consumption, adjust the crazy overvolting/overclocking and also replace the memory hungry Ubuntu kernel with most recent from RPi guys (5.10.78-v8+ aarch64)
+  * add a wireless network with `nmtui`
+
+![](../media/RPI_Zero_2_nmtui.png)
+
+Only afterwards the Zero 2 was happy (see at the end of [armbianmonitor -u output](http://ix.io/3Fmh)). While for someone used to Armbian it's probably nice to have a familiar environment using this image on anything with less than 2 GB makes no sense at all since... 64-bit and therefore everything needing much much more memory compared to a 32-bit userland.
+
+Trying `sbc-bench` as an example: all 7-zip benchmarks have been killed due to out of memory: [http://ix.io/3Fmf](http://ix.io/3Fmf). And while accessing the CSI camera works in the meantime on 64-bit it still requires to give away 128GB RAM to ThreadX (camera details discussed later) and you end up with this little left on a Zero:
+
+    tk@zero-2:~$ free -h
+                   total        used        free      shared  buff/cache   available
+    Mem:           347Mi        91Mi       102Mi       1.0Mi       154Mi       246Mi
+    Swap:          173Mi          0B       173Mi
+
+Given that each and every process needs almost twice as much memory compared to a 32-bit/`armhf` userland there's not that much memory left for other processes. Adding to most processes performing lower on 64-bit as soon as swap/zram kicks in to fight 'out of memory' situations eveything slows down even more. As said already before: while being able to use a 64-bit userland has some advantages for certain use cases it makes not that much sense on this limited hardware with that low memory.
+
 ## Thermal performance and heatsink efficiency
 
 The Zero 2 has a really small PCB size and as such not that much heat could be transferred from the SoC through the ball grid array into a copper ground plane (that's what the RPi guys started to do on the larger boards from RPi 3B+ on). And unfortunately the SoC is made in an ancient 40nm process that is really not power efficient by today's standards.
@@ -253,11 +281,13 @@ Applying my 'standard heatsink' with appropriate fin spacing for passive cooling
 
 When walking through all available cpufreq OPP under load with `sbc-bench -p 0-3` (execute 7-Zip's internal benchmark 3 times at each clockspeed and report averages back) we see same performance but temperature differences between ~2.5°C at 600 MHz and ~5.5°C at 1000 MHz.
 
+### Heatsink and small enclosure
+
 Situation changes when we cramp the small board in a tiny enclosure like the official one since this functions somewhat like an oven. Idle temps are now at 44°C and of course other temperatures are also higher:
 
 ![](../media/RPI_Zero_2_thermal_performance-1.png)
 
-Left column is w/o heatsink, middle with, right is heatsink in official enclosure:
+Left column is board w/o heatsink on a table, middle with heatsink, right is heatsink in official enclosure:
 
     cpufreq       7-Zip-MIPS          Temperature °C
       600     1828 / 1829 / 1829    50.8 / 47.2 / 56.4
@@ -266,11 +296,11 @@ Left column is w/o heatsink, middle with, right is heatsink in official enclosur
       900     2746 / 2742 / 2745    66.9 / 62.1 / 67.7
      1000     3027 / 3034 / 2992    71.8 / 66.1 / 71.4
 
-After some load peak it also takes a long time to get temps back to normal/idle (approx. half an hour with Buster, on Bullseye with different idle VCore behaviour it will both take longer and idle temps will be higher too):
+After some load peak it also takes a long time to get temps back to normal/idle in a tiny enclosure (approx. half an hour with Buster, on Bullseye with different idle VCore behaviour it will both take longer and idle temps will be higher too):
 
 ![](../media/RPI_Zero_2_thermal_performance-2.png)
 
-With a small load peak we've seen temperatures going up above 70°C to decline afterwards slowly. But what about constant full load? With heatsink but inside the tiny enclosure it will throttle for sure. Of course it won't tell you unless you query the primary operating system via `vcgencmd` (which is what `sbc-bench -m` is doing on Raspberries):
+With a small load peak we've seen temperatures going up above 70°C to decline afterwards slowly. But what about constant full load? With heatsink but inside the tiny enclosure it will throttle for sure. Of course Linux won't tell you and you need to query the primary operating system via `vcgencmd` (which is what `sbc-bench -m` is doing on Raspberries):
 
     root@raspberrypi:~# sbc-bench -m
     Time        fake/real   load %cpu %sys %usr %nice %io %irq   Temp    VCore
@@ -296,7 +326,7 @@ With a small load peak we've seen temperatures going up above 70°C to decline a
     14:22:06: 1000/ 834MHz  3.09  78%   2%  75%   0%   0%   0%  81.7°C  1.2375V
     14:22:11: 1000/ 834MHz  3.32  79%   2%  77%   0%   0%   0%  81.7°C  1.2375V
 
-With full load it takes approximately ~15 min. for the board to reach the thermal threshold of 80°C, then silent throttling kicks in and maximum performance drops linearly with cpufreq. Even with a heatsink cramping this little thing in a tiny enclosure without any airflow is not the best idea when you want to operate it full load constantly. You will experience throttling for sure (and in parallel a drop in consumption – see [Performance and consumption](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Review_of_RPi_Zero_2_W.md#performance-and-consumption) above for what to expect at which clockspeed).
+With full load it takes approximately ~15 min. for the board to reach the thermal threshold of 80°C, then hidden throttling kicks in and maximum performance drops linearly with cpufreq. Even with a heatsink cramping this little thing in a tiny enclosure without any airflow is not the best idea when you want to operate it full load constantly. You will experience throttling for sure (and in parallel a drop in consumption – see [Performance and consumption](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Review_of_RPi_Zero_2_W.md#performance-and-consumption) above for what to expect at which clockspeed).
 
 ![](../media/RPI_Zero_2_thermal_performance-3.png)
 
@@ -382,21 +412,21 @@ These are pretty good throughput numbers for USB2 attached GbE, at least faster 
 
 Repeating the measurement after locking down CPU cores to 600 MHz ends up with 328 Mbits/sec incoming (maxing out one CPU core) and 305 Mbits/sec outgoing (CPU utilization less than 15%). I did not manage to move USB interrupts away from `cpu0` so if you plan on running the Zero 2 with GbE you might want to look into `cgroups` and/or `taskset` moving your application processes to `cpu1`-`cpu3` to not interfere with IRQ processing on the first ARM core.
 
-Speaking about USB... we've already talked about using the OTG port in USB gadget mode as 'network adapter' directly connecting the RPi to a computer's USB port. While this is nice for initial setup this can also be normal mode of operation. Testing this for performance ends up with ok-ish throughput numbers:
+Speaking about USB... we've already talked about using the OTG port in USB gadget mode as 'network adapter' directly connecting the RPi to a computer's USB port. While this is nice for initial setup this can also be normal mode of operation. Testing this for performance on my MacBook ends up with ok-ish throughput numbers:
 
   * Incoming: 220 Mbits/sec utilising `cpu0` at 15%-20% (at 1000 MHz)
   * Outgoing: 155 MBits/sec with a CPU utilization less than 5% (at 1000 MHz)
 
-Sorry, no consumption numbers for this mode available (yet) since I can not measure the power provided by my MacBook's USB ports. 2nd test against a Linux machine (RPi 4) showed different throughput numbers:
+Sorry, no consumption numbers for this mode available (yet) since I can not measure the power provided by my Mac's USB ports. 2nd test against a Linux machine (RPi 4) showed different throughput numbers:
 
   * Incoming: 185 Mbits/sec utilising `cpu0` at 15%-20% (at 1000 MHz)
   * Outgoing: 260 MBits/sec with a CPU utilization at ~5% (at 1000 MHz)
 
-(when locking Zero's cores to 600 MHz throughput in TX direction dropped from 260 Mbits/sec to 208 while RX remained the same)
+(when locking Zero's cores to 600 MHz the throughput in TX direction dropped from 260 Mbits/sec to 208 while RX remained the same)
 
 So obviously driver support at the other end of the USB cable matters but at least 150 Mbit/sec should always be possible with Zero 2 regardless of the OS connected to and its own CPU clockspeeds. 
 
-Since RPi 4 powered the Zero in this setup I also recorded total consumption of both in idle and while performing the iperf3 tasks (15 minutes in each direction). Difference between idle and saturated network link was slightly less tha n 1000mW and I assume that majority of this consumption difference happened at the Zero's side. RPi 4 has an awful high basic consumption but the A72 cores made in a newer process are way more efficient than the A53 on the Zero. At least the exercise demonstrates that USB gadget mode can result in ok-ish throughput numbers at a significantly lower consumption compared to USB attached Gigabit Ethernet.
+Since RPi 4 powered the Zero in this setup I also recorded total consumption of both in idle and while performing the iperf3 tasks (15 minutes in each direction). Difference between idle and saturated network link was slightly less than 1000mW and I assume that majority of this consumption difference happened at the Zero's side. RPi 4 has an awful high basic consumption but the A72 cores made in a newer process are way more efficient than the A53 on the Zero. At least the exercise demonstrates that USB gadget mode can result in ok-ish throughput numbers at a significantly lower consumption compared to USB attached Gigabit Ethernet.
 
 ## Camera
 
