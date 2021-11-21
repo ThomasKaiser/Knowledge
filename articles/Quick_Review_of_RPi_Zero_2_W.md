@@ -2,7 +2,7 @@
 
 ![](../media/RPI_Zero_2_with_heatsink.jpg)
 
-This small board [combines 512MB DRAM with the BCM2837 die known from RPi 3B](https://github.com/raspberrypi/documentation/blob/develop/documentation/asciidoc/computers/processors/rp3a0.adoc). It is the much more powerful successor to RPi Zero W and replaces a single ARM11 core with a quad core Cortex-A53 clocking by default between 600 MHz and 1000 MHz. Wireless capabilities remain almost the same compared to Zero W (minor BT revision update) and the chip is from the same family as before (Broadcom, then Cypress, now Synaptics) which is good news since RPi Trading Ltd. unlike almost all the other SBC makers out there [fix wireless security flaws by pushing new firmware BLOBs to their distribution](https://github.com/armbian/build/issues/1812#issuecomment-607643584).
+This small board [combines 512MB LPDDR2 RAM with the BCM2837 die known from RPi 3B](https://github.com/raspberrypi/documentation/blob/develop/documentation/asciidoc/computers/processors/rp3a0.adoc) as SiP (system-in-package). It is the much more powerful successor to RPi Zero W and replaces a single ARM11 core with a quad core Cortex-A53 clocking by default between 600 MHz and 1000 MHz. Wireless capabilities remain almost the same compared to Zero W (minor BT revision update) and the chip is from the same family as before (Broadcom, then Cypress, now Synaptics) which is good news since RPi Trading Ltd. unlike almost all the other SBC makers out there [fix wireless security flaws by pushing new firmware BLOBs to their distribution](https://github.com/armbian/build/issues/1812#issuecomment-607643584).
 
 Board dimensions and connector placement is the same except location of most pogo pins on the backside. For pictures visit [Jeff Geerling](https://www.jeffgeerling.com/blog/2021/look-inside-raspberry-pi-zero-2-w-and-rp3a0-au) (but please ignore benchmark numbers, procedures and recommendations there). For a good comparison between both boards see [CNX-Software](https://www.cnx-software.com/2021/10/28/raspberry-pi-zero-2-w-and-zero-w-features-comparison/) (but please ignore the "2.5A power requirement" there).
 
@@ -101,7 +101,7 @@ Zero 2's single threaded performance is higher than the original Zero's even whe
 
 ![](../media/RPI_Zero_2_7-zip-only-cpu0.png)
 
-When utilizing all 4 cores it looks like this (a fan blowing over the SoC's surface which explains the low temperatures – for temps with 'convection only' see below):
+When utilizing all 4 cores it looks like this (a fan blowing over the SiP's surface which explains the low temperatures – for temps with 'convection only' see below):
 
     Sysfs/ThreadX/Tested:  MIPS / Temp /  Watt
      600 /   600 /   600:  1870  42.7°C  1700mW
@@ -214,11 +214,11 @@ BTW: All power measurements above made with a [Netio PowerBOX 4K](https://www.ne
 
 ## 32-bit or 64-bit?
 
-The ARM cores in the RP3A0-AU SoC are Cortex-A53 (64-bit capable ARMv8 designs) while 'Raspberry Pi OS' is still built for 1st Gen RPi models like the original Zero (ARM11/ARMv6). Usually it's a good idea to build software with available CPU features enabled.
+The ARM cores in the RP3A0-AU SiP are Cortex-A53 (64-bit capable ARMv8 designs) while 'Raspberry Pi OS' is still built for 1st Gen RPi models like the original Zero (ARM11/ARMv6). Usually it's a good idea to build software with available CPU features enabled.
 
 As an example: when running a 64-bit/ARMv8 userland on any of the ARMv8 RPi (3B/3B+/4B/Zero2) then the infamous 'sysbench cpu' benchmark reports scores *at least 15 times* better. That's probably the main reason why RPi fanboys want 64-bit asides other 'benchmarking gone wrong' adventures like the Phoronix test suite.
 
-Another reason why running an `arm64` userland is desired is massively improved AES crypto performance since almost all ARMv8 SoCs licensed 'ARMv8 Crypto Extensions'. Only known exceptions: Amlogic S905 as used on ODROID C2 and every SoC RPi Trading Ltd. ever used. AES performance of any RPi simply sucks compared to almost every other modern ARM SoC out there (check column 7 in [sbc-bench results list](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md)). 
+Another reason why running an `arm64` userland is desired is massively improved AES crypto performance since almost all ARMv8 CPU designs licensed 'ARMv8 Crypto Extensions'. Only known exceptions: Amlogic S905 as used on ODROID C2 and every SoC/SiP RPi Trading Ltd. ever used. AES performance of any RPi simply sucks compared to almost every other modern ARM SoC out there (check column 7 in [sbc-bench results list](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md)). 
 
 That's an el cheapo RPi Zero 2 competitor called [Radxa Zero](https://www.cnx-software.com/2021/11/01/raspberry-pi-zero-2-w-vs-radxa-zero-features-and-benchmarks-comparison/) with a quad core Cortex-A53 and ARMv8 Crypto Extensions:
 
@@ -233,7 +233,7 @@ And when switching to a 64-bit userland on RPi 4 it gets even worse:
 
     aes-256-cbc      33526.93k    35271.89k    36004.01k    36201.13k    36263.25k    36257.79k
 
-Now we're at less than 5% of the performance of another ARM SoC where the manufacturer spent the few cents (per SoC) to license ARMv8 Crypto Extensions.
+Now we're at less than 5% of the performance of another ARM SoC where the manufacturer spent the few cents (per chip) to license ARMv8 Crypto Extensions.
 
 But ruined AES crypto performance is not the only reason why a 64-bit userland sucks on RPi Zero 2. The device has only 512 MB RAM that is shared between the primary OS (ThreadX) and any secondary OS like Linux. Processes/services built for 64-bit have a *much much larger* memory footprint compared to the standard Raspberry Pi OS (which is _not_ just 32-bit but specifically built for ARMv6! Please keep this in mind when you read somewhere on the Internet about '32-bit vs. 64-bit' and folks run their comparisons on an RPi).
 
@@ -275,7 +275,7 @@ Given that each and every process needs almost twice as much memory compared to 
 
 ## Thermal performance and heatsink efficiency
 
-The Zero 2 has a really small PCB size and as such not that much heat could be transferred from the SoC through the ball grid array into a copper ground plane (that's what the RPi guys started to do on the larger boards from RPi 3B+ on). And unfortunately the SoC is made in an ancient 40nm process that is really not power efficient by today's standards.
+The Zero 2 has a really small PCB size and as such not that much heat could be transferred from the SiP through the ball grid array into a copper ground plane (that's what the RPi guys started to do on the larger boards from RPi 3B+ on). And unfortunately the SoC die is made in an ancient 40nm process that is really not power efficient by today's standards.
 
 Applying my 'standard heatsink' with appropriate fin spacing for passive cooling (letting convection help) does not provide that much benefits as long as there's enough radiation possible: at an ambient temperature of 23°C the idle temp is just ~1.5°C lower (40.8°C vs. 39.2°C with heatsink applied). This is the board lying flat on a table without any enclosure.
 
@@ -358,7 +358,7 @@ Not able to test since living in an urban are with lots of neighbours (+250 wire
 
 ## Wired network performance
 
-Since the SoC has no (RG)MII interface exposed our only options are SPI (horribly low performance) or USB2. When choosing an USB NIC it's important to get one with good features and driver support so the only real choice for Gigabit Ethernet today is a dongle with an RTL8153B inside.
+Since the chip has no (RG)MII interface exposed our only options are SPI (horribly low performance) or USB2. When choosing an USB NIC it's important to get one with good features and driver support so the only real choice for Gigabit Ethernet today is a dongle with an RTL8153B inside.
 
 Adding the dongle to the board with a short network cable and an established GbE link to an EEE enabled switch port nearby adds 950 mW to the board's consumption. This number will vary of course if a different dongle is used, a longer network cable or a switch port not supporting EEE.
 
@@ -454,6 +454,47 @@ Since overall consumption in this mode is below 1.5W it's also perfectly fine to
 
 Speaking of USB wires: the main problem with Micro USB cables is not amperage but voltage drops with higher loads due to cable and contact resistance being way too high. Majority of Micro USB cables is crap and not meant to power anything that needs more than a few mW. You get either 5V at the device end of the cable or 1A but not both at the same time. Only do this if you're sure your cable is at least AWG22 rated since otherwise the RPi slows down or even freezes/crashes (more on this [here](https://www.cnx-software.com/2017/04/27/selecting-a-micro-usb-cable-to-power-development-boards-or-charge-phones/) and [there](https://github.com/raspberrypi/linux/issues/2512)).
 
+## Data Matrix code
+
+New with the Zero 2 is a [Data Matrix code](https://en.wikipedia.org/wiki/Data_Matrix) directly printed on the PCB back between the 2 Micro USB sockets containing some information (according to some sources also the SiP's serial number):
+
+![](../media/RPI_Zero_2_serial_number.png)
+
+In the picture above on the right there's the information silkscreened + data matrix codes from four different Zero 2 W (three early boards for reviewers/distributors, the upper one from a later production batch). The contents of the code as follows (decimal / hex):
+
+    0000911033950848 / 000000D41DDAE280 (bought Oct 2021)
+    0000011033654391 / 0000000291A83477 (review pi3g.com)
+    0000011033654550 / 0000000291A83516 (review hackster.io)
+    0000011033654544 / 0000000291A83510 (review cnx-software.com)
+
+[According to pi3g.com](https://picockpit.com/raspberry-pi/everything-about-raspberry-pi-zero-2-w/#datamatrix_code_to_identify_Pi_Zero_2_W_physically) this is a feature for industrial customers and it's also hinting the board's serial now being hopefully unique. In the past this number (from which the network MAC addresses are/were generated) was a random number burnt to the OTP memory at the factory while QA testing which [led to collisions in the wild](https://forums.raspberrypi.com/viewtopic.php?p=1565285#p1565285).
+
+If the contents of the code contain the serial number then there's additional info too since my Zero's serial number according to the OTP memory (One-Time Programmable) is different:
+
+<pre>pi@raspberrypi:~ $ vcgencmd otp_dump
+...
+27:00001f1f
+28:<b>037bd9b5</b>
+29:fc84264a
+...
+pi@raspberrypi:~ $ tail -n 4 /proc/cpuinfo 
+Hardware	: BCM2835
+Revision	: 902120
+Serial		: 00000000<b>037bd9b5</b>
+Model		: Raspberry Pi Zero 2 Rev 1.0</pre>
+
+
+## LED / boot indicator
+
+The single green LED on the board is not a power led but controlled by software. So unless there's a bootable OS on the SD card the led will remain off even if the device is correctly powered.
+
+Once the ARM cores are brought up and control is partially handed over to Linux with default RPi kernel the led behavior is `default-on` (check with `sudo modprobe configs ; zgrep CONFIG_LEDS_TRIGGER_DEFAULT_ON /proc/config.gz`). Of course this can be changed via sysfs and for a list of possible modes you can query `cat /sys/devices/platform/leds/leds/led0/trigger` (current value in brackets). Other modes can be set like this:
+
+    echo heartbeat >/sys/devices/platform/leds/leds/led0/trigger 
+    echo mmc0 >/sys/devices/platform/leds/leds/led0/trigger 
+
+The first indicates 'OS/board still alive' by blinking every second and the 2nd signals access to SD card – see the chapter below why this might be of interest to you.
+
 ## SD card endurance
 
 If you love your SD card then Raspberry Pi OS defaults are not for you: swap on SD card, default ext4 commit interval and logging to card.
@@ -479,7 +520,7 @@ First step is to change ext4 commit interval from default (5 seconds) to 10 minu
 Then [https://github.com/ecdye/zram-config](https://github.com/ecdye/zram-config#install) to the rescue. Simply follow the few install steps and remain with the config defaults for now. Afterwards
 
     sudo apt purge zram-tools # only of you installed it before as suggested above
-    sudo dphys-swapfile swapoff # deactivates swap on SD card
+    sudo systemctl disable dphys-swapfile # deactivates swap on SD card
     sudo reboot
 
 Now there's a compressed zram device `/dev/zram0` for swap and the system logs with an overlayfs to `/dev/zram1` and not to SD card any more:
