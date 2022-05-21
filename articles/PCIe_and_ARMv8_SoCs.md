@@ -27,9 +27,10 @@
 * RealTek RTD1395 (1 x Gen2 x1)
 * RealTek RTD1619 (2 x Gen2 x1)
 * Rockchip RK3399 (1 x Gen2 x4)
-* Rockchip RK3566 (1 x Gen2 x1)
-* Rockchip RK3568 (1 x Gen3 x2 or 2 x Gen3 x1, 1 x Gen2 x1)
-* Rockchip RK3588 (4 Gen3 lanes: x4, x2+x2, x1+x1+x1+x1, 3 x Gen2 x1)
+* Rockchip RK3566 (1 x Gen2 x1, multiplexed with SATA)
+* Rockchip RK3568 (1 x Gen3 x2 or 2 x Gen3 x1, 1 x Gen2 x1, [multiplexed with SATA/QSGMII](https://www.cnx-software.com/2020/12/16/rockchip-rk3566-and-rk3568-datasheets-and-features-comparison/))
+* Rockchip RK3588 (4 Gen3 lanes: x4, x2+x2, x1+x1+x1+x1, 3 x Gen2 x1, [multiplexed with SATA/USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/))
+* Rockchip RK3588S (2 x Gen2 x1, [multiplexed with SATA/USB3](https://www.cnx-software.com/2022/01/12/rockchip-rk3588s-cost-optimized-cortex-a76-a55-processor/))
 * Samsung Exynos 9810 (1 x Gen3 x1, 1 x Gen2 x1)
 * Texas Instruments AM64x (1 x Gen2 x1)
 * Texas Instruments AM654 (2 x Gen3 x1)
@@ -38,10 +39,11 @@
 ## Server SoCs
 
 * AMD A1100 (8 Gen3 lanes)
+* Ampere Altra / Altra Max (up to 128 Gen4 lanes)
 * AnnapurnaLabs (Amazon) Alpine AL-324
-* APM X-Gene 1 (17 PCIe Gen 3 lanes)
-* APM X-Gene 2 (17 PCIe Gen 3 lanes)
-* APM X-Gene 3 (42 PCIe Gen 3 lanes)
+* APM X-Gene 1 (17 PCIe Gen3 lanes)
+* APM X-Gene 2 (17 PCIe Gen3 lanes)
+* APM X-Gene 3 (42 PCIe Gen3 lanes)
 * Broadcom Vulcan AKA ThunderX2 (up to 56 PCIe Gen3 lanes with 14 controllers. Supported widths x1, x2, x4, x8 and x16)
 * Cavium ThunderX (multiple x4/x8 Gen3 ports)
 * HiSilicon Hi1610/Hi1612 (16 Gen3 lanes)
