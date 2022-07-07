@@ -34,7 +34,7 @@
 * Samsung Exynos 9810 (1 x Gen3 x1, 1 x Gen2 x1)
 * Texas Instruments AM64x (1 x Gen2 x1)
 * Texas Instruments AM654 (2 x Gen3 x1)
-* Texas Instruments J721E/AM752x (4 x Gen3 x2)
+* Texas Instruments J721E/AM752x (up to 4 x Gen3 x2)
 
 ## Server SoCs
 

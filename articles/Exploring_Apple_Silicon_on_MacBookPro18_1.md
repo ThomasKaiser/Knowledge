@@ -28,3 +28,8 @@ To use Rosetta2 in Terminal it's still necessary to start any `x86_64` only GUI 
 
 
 
+| Board | 7-zip | AES-128 (16 byte) | AES-256 (16 KB) | memcpy | memset | kH/s | URL |
+| ----- | ----: | ------: | ------: | -----: | -----: | ---: | --- |
+| QEMU | 38410 | 620660 | 1102500 | 29410 | 56570 | 39.35 | [http://ix.io/3Hzq](http://ix.io/3Hzq) |
+| Parallels | 43160 | 636470 | 1121980 | 32290 | 55220 | 41.66 | [http://ix.io/3HAw](http://ix.io/3HAw) |
+| VMWare | 44300 | 639040 | 1127210 | 32290 | 33010 | 42.46 | [http://ix.io/3HB3](http://ix.io/3HB3) |
