@@ -70,7 +70,7 @@ Real clockspeeds are a different thing since even if on my board the 2400 MHz OP
     [    2.626814] cpu cpu6: pvtm=1744
     [    2.630998] cpu cpu6: pvtm-volt-sel=6
 
-vs. @amazingfate's dev sample which might be even more restricted wrt clockspeeds on the A76 cores:
+vs. [amazingfate's dev sample](https://gist.github.com/amazingfate/17af25d7d543d253c9d608d1d90ff2c0) which might be even more restricted wrt clockspeeds on the A76 cores:
 
     [    5.539740] cpu cpu0: pvtm=1486
     [    5.539830] cpu cpu0: pvtm-volt-sel=4
@@ -85,7 +85,7 @@ RK3588's performance is amazing and so far the highest we've seen with any SBC. 
 
 
 | SBC | Clockspeed | 7-zip | aes-256-cbc | memcpy | memset | kH/s |
-| ----- | :--------: | ----: | ------: | ------: | -----: | -----: | ---: |
+| ----- | :--------: | ----: | ------: | ------: | -----: | -----: |
 | [RPi 4B](http://ix.io/3OBF) | 1800 | 5790 | 36260 | 2330 | 3120 | 8.74 |
 | [VIM4](http://ix.io/3Wvv) | 2200/1970 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
 | [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
