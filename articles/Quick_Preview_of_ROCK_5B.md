@@ -219,7 +219,7 @@ This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and pr
 
 [According to device-tree settings](https://github.com/radxa/kernel/blob/78d311de923fc0644e4700f30813120835fec9cf/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L426-L440) the SD card interface should be capable of SDR104 mode (switching from 3.3V to 1.8V with up to 104 MB/s sequential transfer speeds). Let's have a look with the usual `iozone` call and two cards:
 
-    older SanDisk Extreme 32GB A1                       random    random
+    SanDisk Extreme 32GB A1 from 2018                   random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       4     3393     3356    14523    14505    10301     4730
     102400      16    11243    11290    32969    32989    29710     5938
@@ -227,7 +227,7 @@ This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and pr
     102400    1024    59655    60323    65364    65524    65416    53838
     102400   16384    61178    61268    68165    68289    68287    61408
 
-    recent SanDisk Extreme 64GB A2                      random    random
+    SanDisk Extreme 64GB A2 from 2022                   random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       4     2450     2547    11890    11952     9230     4127
     102400      16     9485     9585    30536    30557    30332    13948
@@ -235,7 +235,7 @@ This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and pr
     102400    1024    57304    57351    65432    65439    65443    53929
     102400   16384    54927    54567    68243    68243    68247    53363
 
-We're nowhere near 104 MB/s since the interface is lower clocked for some safety headroom and therefore limited to below 70 MB/s sequential transfers but random IO benefits from SDR104 mode and depends on the SD card you buy anyway. [Check more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md).
+We're nowhere near 104 MB/s since the interface is lower clocked for some safety headroom and therefore limited to below 70 MB/s sequential transfers but random IO benefits from SDR104 mode and mostly depends on the SD card you buy anyway. [Check more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md).
 
 ## Networking
 

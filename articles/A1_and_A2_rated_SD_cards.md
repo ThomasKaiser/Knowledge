@@ -14,7 +14,7 @@ The stuff we do mostly on SBC requires high *random* IO but is not that much dep
 
 Some time ago SD Association tried to address this problem and defined also specs and 'speed classes' for random IO access patterns mainly with Android in mind: the [Application Performance Classes](https://www.sdcard.org/developers/overview/application/index.html) A1 and A2 were invented.
 
-![](https://www.sdcard.org/developers/overview/application/img/img_application.jpg)
+![](https://web.archive.org/web/20190105185249/https://www.sdcard.org/developers/overview/application/img/img_application.jpg)
 
 ### Application Performance Class 1 (A1)
 
