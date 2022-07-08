@@ -81,13 +81,13 @@ vs. [amazingfate's dev sample](https://gist.github.com/amazingfate/17af25d7d543d
 
 For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
 
-RK3588's performance is amazing and so far the highest we've seen with any SBC. Numbers are already in `sbc-bench`'s [results collection](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) but let's look directly at the 'most popular SBC in the world' (RPi 4B), ODROID-N2+, another recent octa-core newcomer ([Khadas VIM4](https://www.cnx-software.com/2021/10/21/khadas-vim4-amlogic-a311d2-sbc/) based on Amlogic A311D2) and ROCK 5B:
+RK3588's performance is amazing and so far the highest we've seen with any SBC. Numbers are already in `sbc-bench`'s [results collection](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) but let's look directly at the 'most popular SBC in the world' (RPi 4B), ODROID N2+, another recent octa-core newcomer ([Khadas VIM4](https://www.cnx-software.com/2021/10/21/khadas-vim4-amlogic-a311d2-sbc/) based on Amlogic A311D2) and ROCK 5B:
 
 
 | SBC | Clockspeed | 7-zip | aes-256-cbc | memcpy | memset | kH/s |
 | :-----: | :--------: | ----: | ------: | ------: | -----: | -----: |
 | [RPi 4B](http://ix.io/3OBF) | 1800 | 5790 | 36260 | 2330 | 3120 | 8.74 |
-| [ODROID-N2+](hhttp://ix.io/3DtN) | 2400/2015  | 9790 | 1366930 | 4300 | 7480 | - |
+| [ODROID N2+](http://ix.io/3DtN) | 2400/2015  | 9790 | 1366930 | 4300 | 7480 | - |
 | [VIM4](http://ix.io/3Wvv) | 2200/1970 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
 | [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
 
