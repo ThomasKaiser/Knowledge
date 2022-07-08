@@ -1,10 +1,10 @@
 # Quick Preview of ROCK 5B
 
-**Work in progress**
+**(Work in progress)**
 
 ![](../media/rock5b_front_back.jpg)
 
-On the beginning of July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long awaited ROCK 5B as part of a [Debug Party](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483). In the following we have a quick look on it focusing on Linux, headless operation and bring-up challenges so if you're interested in Android, gaming or similar stuff this is not for you.
+On the beginning of July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long awaited ROCK 5B as part of a [Debug Party](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483) to spot HW and SW problems. In the following we have a quick look on it focusing on Linux, headless operation and bring-up challenges so if you're interested in Android, gaming or similar stuff this is not for you.
 
 ## Overview
 
@@ -14,7 +14,7 @@ The board fortunately leaves the RPi form factor behind and measures 100 x 72mm 
   * System Memory: 4GB, 8GB, or 16GB LPDDR4x (32GB possible but currently no 128Gb LPDDR4x modules available)
   * M.2 2280 key M socket for NVMe SSD (PCIe Gen3 x4)
   * MicroSD card socket
-  * eMMC socket (pinout compatible to ODROID and Pine64)
+  * eMMC socket ([pinout compatible to ODROID and Pine64](https://wiki.radxa.com/Rock5/hardware/emmc))
   * Three independent displays supported:
   * 2 x HDMI 2.1 out up to 8Kp60 (when 1 display is 8K the other will be 4K)
   * 1 x USB-C via DisplayPort alt. mode up to 8Kp30
@@ -85,7 +85,7 @@ RK3588's performance is amazing and so far the highest we've seen with any SBC. 
 
 
 | SBC | Clockspeed | 7-zip | aes-256-cbc | memcpy | memset | kH/s |
-| ----- | :--------: | ----: | ------: | ------: | -----: | -----: |
+| :-----: | :--------: | ----: | ------: | ------: | -----: | -----: |
 | [RPi 4B](http://ix.io/3OBF) | 1800 | 5790 | 36260 | 2330 | 3120 | 8.74 |
 | [VIM4](http://ix.io/3Wvv) | 2200/1970 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
 | [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
@@ -106,15 +106,15 @@ And with an Apple '96W USB-C Power Adapter' this will be reported:
     in0:           9.00 V  (min =  +9.00 V, max =  +9.00 V)
     curr1:         3.00 A  (max =  +3.00 A)
 
-According to Tom (Radxa's product manager) USB PD negotiation can be controlled via dts / kernel driver. Not sure yet what that means and whether reports about freezes/crashes are related to unfortunate USB PD negotiations.
+According to Tom (Radxa's product manager) USB PD negotiation can be controlled via dts / kernel driver. Not sure yet what that means and whether reports about freezes/crashes reported by other testers are related to unfortunate USB PD negotiations.
 
-Now to the consumption figures. I'm measuring with a NetIO PowerBox 4KF in a [rather time consuming process](https://github.com/ThomasKaiser/sbc-bench/blob/e6cfb870c7a297abf96f51b7305600c0e48d1951/sbc-bench.sh#L385-L408) that means 'at the wall' with charger included with averaged idle values over 4 minutes.
+Consumption figures... I'm measuring with a NetIO PowerBox 4KF in a [rather time consuming process](https://github.com/ThomasKaiser/sbc-bench/blob/e6cfb870c7a297abf96f51b7305600c0e48d1951/sbc-bench.sh#L385-L408) that means 'at the wall' with charger included with averaged idle values over 4 minutes.
 
 The small fan on my dev sample is responsible for ~700mW, switching network between Gigabit Ethernet and 2.5GbE makes up for another ~300mW. Adjusting PCI powermanagement (`/sys/module/pcie_aspm/parameters/policy` – see below why that's important) from `powersave` to `default` makes up for another ~100mW.
 
 So the board idles below 2W w/o any peripherals except Gigabit Ethernet. A fan adds extra juice, 2.5GbE instead of GbE as well, avoiding super powersavings settings also.
 
-The good news: RK3588 is made in such an advanced process that running the most demanding benchmark on this thing ([7-zip's internal benchmark](https://github.com/ThomasKaiser/sbc-bench#7-zip)) on all cores results in just 8W extra consumption compared to idle.
+The good news: RK3588 is made in such an advanced process that running the most demanding benchmark on this thing ([7-zip's internal benchmark](https://github.com/ThomasKaiser/sbc-bench#7-zip)) on all cores results in ~6W extra consumption compared to idle.
 
 Please be aware that measuring only CPU loads does not really represent the SoC's capabilities since it ignores everything else that makes up RK3588:
 
@@ -136,7 +136,7 @@ Other options: `none rfkill-any rfkill-none kbd-scrolllock kbd-numlock kbd-capsl
 
 There's also another sysfs entry called `/sys/class/leds/mmc1` but I had no luck finding the corresponding led on the board or such a node in the device-tree file.
 
-Please be aware that we're talking about a developer sample so final product might change.
+Please be aware that we're talking about a developer sample so final product might change. Same applies to the heatsink which was a temporary hack by Radxa to provide us early testers with something. Final heatsink implementation of course will *not* block the M.2 2280 slot on the other PCB side! But I'm still hoping for Radxa coming up with an [elegant metal enclosure dissipating the heat passively away](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/113?u=tkaiser) so those heatsink mounting holes are not needed anyway.
 
 ## USB
 
@@ -144,7 +144,9 @@ The board features 5 USB ports: 2 Hi-Speed USB-A receptacles (often called 'USB 
 
 While the USB2 ports share bandwidth since being behind an internal USB hub (`1a40:0101 Terminus Technology Inc. Hub`) the USB3 ports are on their own buses.
 
-I'm not able to test USB-C capabilities since used for powering and lacking an USB-C/Thunderbolt dock or an appropriate display so let's focus on the two USB3 Type-A sockets (maybe the most crappy connector ever invented due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect an UAS capable disk enclosure with an SSD inside to each USB3-A port, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection)
+I'm not able to test USB-C capabilities since port used for powering and me lacking an USB-C/Thunderbolt dock or an appropriate display. But schematics tell that USB-C supports USB3 OTG and DisplayPort with the following lane combinations: DP x4, USB3 x4 and DP x2 + USB3 x2.
+
+So let's focus on the two USB3 Type-A sockets (maybe the most crappy connector ever invented due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect an UAS capable disk enclosure with an SSD inside to each USB3-A port, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection)
 
     root@rock-5b:/home/rock# lsusb -t
     /:  Bus 08.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
@@ -213,7 +215,7 @@ Testing SATA also not possible since lacking the adapter (said to cost just a fe
 
 ![Rock 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
 
-This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from RK3568 that SATA performance is as expected for SATA 6 Gbps.
+This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
 
 [According to device-tree settings](https://github.com/radxa/kernel/blob/78d311de923fc0644e4700f30813120835fec9cf/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L426-L440) the SD card interface should be capable of SDR104 mode (switching from 3.3V to 1.8V with up to 104 MB/s sequential transfer speeds). Let's have a look with the usual `iozone` call and two cards:
 
@@ -315,4 +317,5 @@ BTW: in these repos you can spot other upcoming Radxa devices like both [RK3588S
 ## Open questions
 
   * possible to power the board asides USB-C / USB PD e.g. with 5V via GPIO header?
+  * RK3588 TRM states wrt SATA 'Port Multiplier with FIS-based switching' but someone should test with a JMicron JMB575
   
