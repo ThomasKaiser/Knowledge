@@ -21,7 +21,7 @@ The board fortunately leaves the RPi form factor behind and measures 100 x 72mm 
   * 1 x micro HDMI input up to 4Kp60
   * 2 x MIPI CSI connectors
   * 1 x 2.5GbE RJ45 port (RTL8125BG) with optional PoE HAT support
-  * M.2 2230 key E socket (PCIe Gen2 x1) for an optional WiFi 6E and Bluetooth 5.2 M.2 module
+  * M.2 2230 key E socket (PCIe Gen2 x1) for an optional WiFi 6E and Bluetooth 5.2 M.2 module or to be used with a cheap mechanical adapter as SATA port
   * USB: 2x USB 3.0 Type-A ports, 1x USB 3.0 Type-C port, 2x USB 2.0 ports. USB3 ports limited to SuperSpeed (5 Gbps)
   * Expansion – 40-pin GPIO header
   * Powering: USB PD compliant through USB-C which carries also display and data signals so 'display with integrated Dock' mode possible
@@ -142,6 +142,8 @@ Please be aware that we're talking about a developer sample so final product mig
 
 The board features 5 USB ports: 2 Hi-Speed USB-A receptacles (often called 'USB 2.0 ports), 2 x USB3-A receptacles and 1 x USB-C. The latter 3 are limited to USB SuperSpeed AKA 5 Gbps.
 
+While the USB2 ports share bandwidth while being behind an internal USB hub (`1a40:0101 Terminus Technology Inc. Hub`) the USB3 ports are on their own buses.
+
 I'm not able to test USB-C capabilities since used for powering so let's focus on the 2 USB3 Type-A sockets (maybe the most crappy connector ever due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect to each USB3-A port an UAS capable disk enclosure with an SSD inside, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection)
 
     root@rock-5b:/home/rock# lsusb -t
@@ -156,13 +158,13 @@ I'm not able to test USB-C capabilities since used for powering so let's focus o
 
 Creating the RAID0 failed due to the usual reasons (missing parameters like [coherent_pool=2M](https://forum.armbian.com/topic/4811-uas-mainline-kernel-coherent-pool-memory-size/)) and powering problems of one of the USB3 enclosures ([details](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/87?u=tkaiser)).
 
-In this stupid SBC world everyone would now yell 'disable UAS' but it was simply missing parameters and underpowering so once that was resolved testing with `iozone -e -I -a -s 1000M -r 1024k -r 16384k -i 0 -i 1` showed these numbers:
+In this stupid SBC world almost everyone would now yell 'Disable UAS!' but it was simply missing parameters and underpowering so once that was resolved testing with `iozone -e -I -a -s 1000M -r 1024k -r 16384k -i 0 -i 1` showed these numbers:
 
          kB  reclen    write  rewrite    read    reread
     1024000    1024   258830   270261   341979   344249
     1024000   16384   270022   271088   667757   679947
 
-270 MB/s write are crap so let's look at the storage tunables.
+270 MB/s write performance is crap so let's look at the (missing) tunables. After adding this to `/etc/rc.local` (to survive reboots)
 
     for cpufreqpolicy in 0 4 6 ; do
         echo 1 > /sys/devices/system/cpu/cpufreq/policy${cpufreqpolicy}/ondemand/io_is_busy
@@ -171,46 +173,67 @@ In this stupid SBC world everyone would now yell 'disable UAS' but it was simply
         echo 200000 > /sys/devices/system/cpu/cpufreq/policy${cpufreqpolicy}/ondemand/sampling_rate
     done
 
-Now even on the little A55 cores we're seeing this:
+...even on the little A55 cores we're seeing this since now cpufreq driver ramps up clockspeeds also with storage accesses:
 
          kB  reclen    write  rewrite    read    reread
     1024000    1024   524857   526483   458726   459194
     1024000   16384   780470   774856   733638   734297
 
-This is fine since close to 800 MB/s means there's no bottleneck and both USB3 type-A receptacles show full bandwidth.
+This is fine since close to 800 MB/s means there's no bottleneck and both USB3 type-A receptacles show full bandwidth even when accessed concurrently.
 
 ## Storage
 
-Radxa sent a 64GB FORESEE eMMC module with the board which shows the following performance:
+Radxa sent a 64GB FORESEE eMMC module with the board which shows high random IO performance and 145/270 MB/s sequential write/read speeds:
 
 `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2`
 
-                                                              random    random
-              kB  reclen    write  rewrite    read    reread    read     write
-          102400       4    34983    36713    48378    48481    34331    34148
-          102400      16    75397    80290    77794    79897    60296    76540
-          102400     512   142087   141793   244351   244725   239998   143555
-          102400    1024   143426   146085   256129   256513   253494   140067
-          102400   16384   142751   144883   270066   269172   273974   144779
+                                                        random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4    34983    36713    48378    48481    34331    34148
+    102400      16    75397    80290    77794    79897    60296    76540
+    102400     512   142087   141793   244351   244725   239998   143555
+    102400    1024   143426   146085   256129   256513   253494   140067
+    102400   16384   142751   144883   270066   269172   273974   144779
 
 Which is pretty fine if we compare to the much more expensive ['orange' eMMC modules Hardkernel showcased when sending out dev samples of their canceled ODROID-N1](https://forum.armbian.com/topic/6496-odroid-n1-not-a-review-yet/?do=findComment&comment=49404))
 
-                                                              random    random
-              kB  reclen    write  rewrite    read    reread    read     write
-          102400       1     2069     1966     8689     8623     7316     2489
-          102400       4    32464    36340    30699    30474    27776    31799
-          102400      16    94637   100995    89970    90294    83993    96937
-          102400     512   147091   151657   278646   278126   269186   146851
-          102400    1024   143085   148288   287749   291479   275359   143229
-          102400   16384   147880   149969   306523   306023   307040   147470
+                                                        random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4    32464    36340    30699    30474    27776    31799
+    102400      16    94637   100995    89970    90294    83993    96937
+    102400     512   147091   151657   278646   278126   269186   146851
+    102400    1024   143085   148288   287749   291479   275359   143229
+    102400   16384   147880   149969   306523   306023   307040   147470
 
-As for USB3 see above (everything fine with 5 Gbps ports)
+As for USB3 see above (everything fine with the 5Gbps Type-A ports)
 
 NVMe I can't test currently since having only crappy M.2 SSDs lying around that will be the bottleneck.
 
-For SATA ([maybe available on the M.2 key E slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/14?u=tkaiser)) I lack an adapter.
+Testing SATA also not possible since lacking the adapter (said to cost just a few bucks) that goes into the M.2 key E slot to turn PCIe into native SATA via a device-tree overlay:
 
-*TBD: Testing SD card interface*
+![Rock 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
+
+This works since RK3588 features 3 Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from RK3568 that SATA performance is as expected for SATA 6 Gbps.
+
+[According to device-tree settings](https://github.com/radxa/kernel/blob/78d311de923fc0644e4700f30813120835fec9cf/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L426-L440) the SD card interface should be capable of SDR104 mode (switching from 3.3V to 1.8V with up to 104 MB/s sequential transfer speeds). Let's have a look with the usual `iozone` call and two cards:
+
+    older SanDisk Extreme 32GB A1                       random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4     3393     3356    14523    14505    10301     4730
+    102400      16    11243    11290    32969    32989    29710     5938
+    102400     512    55755    56452    64188    64245    63718    46021
+    102400    1024    59655    60323    65364    65524    65416    53838
+    102400   16384    61178    61268    68165    68289    68287    61408
+
+    recent SanDisk Extreme 64GB A2                      random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4     2450     2547    11890    11952     9230     4127
+    102400      16     9485     9585    30536    30557    30332    13948
+    102400     512    51642    51438    64056    64056    64053    45227
+    102400    1024    57304    57351    65432    65439    65443    53929
+    102400   16384    54927    54567    68243    68243    68247    53363
+
+We're nowhere near 104 MB/s since the interface is lower clocked for some safety headroom and therefore limited to below 70 MB/s sequential transfers but random IO benefits from SDR104 mode and depends on the SD card you buy anyway. [Check more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md).
 
 ## Networking
 
@@ -265,16 +288,16 @@ The network interface of ROCK 5B is 2.5GbE capable due to an PCIe attached RTL81
     supports-register-dump: yes
     supports-priv-flags: no
 
-Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but in RX direction it sucked (~500 Mbit/sec max). After [adjusting PCIe powermanagement](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/86?u=tkaiser) also +2.32 GBit/sec but there's some room for improvements since Rockchip's BSP kernel doesn't care at all about network tunables.
+Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but in RX direction it sucked (~500 Mbit/sec max). After [adjusting PCIe powermanagement](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/86?u=tkaiser) also +2.32 GBit/sec but there's some room for improvements since Rockchip's BSP kernel doesn't care at all about network tunables. This is stuff for further investigation/tuning.
 
 ## Software
 
-No mainline Linux support so far (will take years) and as such every RK3588 device runs with Rockchip's BSP kernel which shows version 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
+No mainline Linux support so far (will take years) and as such every RK3588 device runs with Rockchip's BSP kernel which shows version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
 
-  * https://github.com/radxa/kernel/tree/stable-5.10-rock5
-  * https://github.com/radxa/u-boot/tree/stable-5.10-rock5
+  * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
+  * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
 
-BTW: here you can spot other upcoming Radxa products like both [RK3588S](https://www.cnx-software.com/2022/01/12/rockchip-rk3588s-cost-optimized-cortex-a76-a55-processor/) based ROCK 5A or the Radxa NX5 SoM that looks like this on its carrier board:
+BTW: in these repos you can spot other upcoming Radxa devices like both [RK3588S](https://www.cnx-software.com/2022/01/12/rockchip-rk3588s-cost-optimized-cortex-a76-a55-processor/) based ROCK 5A or the Radxa NX5 SoM that looks like this on its carrier board:
 
 ![Radxa NX5](../media/Radxa-nx5.png)
 
