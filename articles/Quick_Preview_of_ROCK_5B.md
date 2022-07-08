@@ -116,7 +116,7 @@ So the board idles below 2W w/o any peripherals except Gigabit Ethernet. A fan a
 
 The good news: RK3588 is made in such an advanced process that running the most demanding benchmark on this thing ([7-zip's internal benchmark](https://github.com/ThomasKaiser/sbc-bench#7-zip)) on all cores results in just 8W extra consumption compared to idle.
 
-Please be aware that measuring only CPU loads does not really represent the SoC's capabilities since it ignores everything else that makes up this SoC:
+Please be aware that measuring only CPU loads does not really represent the SoC's capabilities since it ignores everything else that makes up RK3588:
 
   * GPU (2D/3D acceleration)
   * VPU (accelerated video encoding/decoding)
@@ -140,11 +140,11 @@ Please be aware that we're talking about a developer sample so final product mig
 
 ## USB
 
-The board features 5 USB ports: 2 Hi-Speed USB-A receptacles (often called 'USB 2.0 ports), 2 x USB3-A receptacles and 1 x USB-C. The latter 3 are limited to USB SuperSpeed AKA 5 Gbps.
+The board features 5 USB ports: 2 Hi-Speed USB-A receptacles (often called 'USB 2.0 ports'), 2 x USB3-A receptacles and 1 x USB-C. The latter 3 are limited to USB SuperSpeed AKA 5 Gbps.
 
-While the USB2 ports share bandwidth while being behind an internal USB hub (`1a40:0101 Terminus Technology Inc. Hub`) the USB3 ports are on their own buses.
+While the USB2 ports share bandwidth since being behind an internal USB hub (`1a40:0101 Terminus Technology Inc. Hub`) the USB3 ports are on their own buses.
 
-I'm not able to test USB-C capabilities since used for powering so let's focus on the 2 USB3 Type-A sockets (maybe the most crappy connector ever due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect to each USB3-A port an UAS capable disk enclosure with an SSD inside, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection)
+I'm not able to test USB-C capabilities since used for powering and lacking an USB-C/Thunderbolt dock or an appropriate display so let's focus on the two USB3 Type-A sockets (maybe the most crappy connector ever invented due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect an UAS capable disk enclosure with an SSD inside to each USB3-A port, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection)
 
     root@rock-5b:/home/rock# lsusb -t
     /:  Bus 08.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
@@ -158,7 +158,7 @@ I'm not able to test USB-C capabilities since used for powering so let's focus o
 
 Creating the RAID0 failed due to the usual reasons (missing parameters like [coherent_pool=2M](https://forum.armbian.com/topic/4811-uas-mainline-kernel-coherent-pool-memory-size/)) and powering problems of one of the USB3 enclosures ([details](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/87?u=tkaiser)).
 
-In this stupid SBC world almost everyone would now yell 'Disable UAS!' but it was simply missing parameters and underpowering so once that was resolved testing with `iozone -e -I -a -s 1000M -r 1024k -r 16384k -i 0 -i 1` showed these numbers:
+In this stupid SBC world almost everyone will now yell 'Disable UAS!' but it was simply missing parameters and underpowering so once that was resolved testing with `iozone -e -I -a -s 1000M -r 1024k -r 16384k -i 0 -i 1` showed these numbers:
 
          kB  reclen    write  rewrite    read    reread
     1024000    1024   258830   270261   341979   344249
@@ -207,13 +207,13 @@ Which is pretty fine if we compare to the much more expensive ['orange' eMMC mod
 
 As for USB3 see above (everything fine with the 5Gbps Type-A ports)
 
-NVMe I can't test currently since having only crappy M.2 SSDs lying around that will be the bottleneck.
+NVMe I can't test currently since having only crappy M.2 SSDs lying around that will be the bottleneck. But since Radxa reports +2700 MB/s sequential read speeds and we know the little sibling RK3568 can saturate PCIe Gen3 x2 while lacking the four big A76 cores I'm pretty confident that we're seeing full Gen3 x4 NVMe performance with this device.
 
 Testing SATA also not possible since lacking the adapter (said to cost just a few bucks) that goes into the M.2 key E slot to turn PCIe into native SATA via a device-tree overlay:
 
 ![Rock 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
 
-This works since RK3588 features 3 Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from RK3568 that SATA performance is as expected for SATA 6 Gbps.
+This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from RK3568 that SATA performance is as expected for SATA 6 Gbps.
 
 [According to device-tree settings](https://github.com/radxa/kernel/blob/78d311de923fc0644e4700f30813120835fec9cf/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L426-L440) the SD card interface should be capable of SDR104 mode (switching from 3.3V to 1.8V with up to 104 MB/s sequential transfer speeds). Let's have a look with the usual `iozone` call and two cards:
 
@@ -292,7 +292,7 @@ Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but i
 
 ## Software
 
-No mainline Linux support so far (will take years) and as such every RK3588 device runs with Rockchip's BSP kernel which shows version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
+No mainline Linux support so far (upstreaming will take years but Radxa is collaborating with [Collabora](https://www.collabora.com) here) and as such every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
 
   * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
