@@ -4,7 +4,7 @@
 
 ![](../media/rock5b_front_back.jpg)
 
-On the beginning of July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long awaited ROCK 5B as part of a [Debug Party](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483) to spot HW and SW problems. In the following we have a quick look on it focusing on Linux, headless operation and bring-up challenges so if you're interested in Android, gaming or similar stuff this is not for you.
+Early July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long awaited ROCK 5B as part of a [Debug Party](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483) to spot HW and SW problems. In the following we have a quick look on it focusing on Linux, headless operation and bring-up challenges so if you're interested in Android, gaming or similar stuff this is not for you.
 
 ## Overview
 
@@ -26,7 +26,7 @@ The board fortunately leaves the RPi form factor behind and measures 100 x 72mm 
   * Expansion – 40-pin GPIO header
   * Powering: USB PD compliant through USB-C which carries also display and data signals so 'display with integrated Dock' mode possible
 
-Hardware details including schematics can be found in [Radxa's wiki](https://wiki.radxa.com/Rock5/hardware). The dev samples got some 5V powered heatsinks with integrated fan Radxa found somewhere in a drawer but the final product will feature a different and less noisy heatsink/fan combo supporting PWM.
+Hardware details including schematics can be found in [Radxa's wiki](https://wiki.radxa.com/Rock5/hardware). The dev samples got some 5V powered heatsinks with integrated fan Radxa found somewhere in a drawer but the final product will be accompanied by a different, regulated and less noisy heatsink/fan combo (small PWM header on the board side).
 
 ## RK3588
 
@@ -87,11 +87,11 @@ RK3588's performance is amazing and so far the highest we've seen with any SBC. 
 | SBC | Clockspeed | 7-zip | aes-256-cbc | memcpy | memset | kH/s |
 | :-----: | :--------: | ----: | ------: | ------: | -----: | -----: |
 | [RPi 4B](http://ix.io/3OBF) | 1800 | 5790 | 36260 | 2330 | 3120 | 8.74 |
-| [ODROID N2+](http://ix.io/3DtN) | 2400/2015  | 9790 | 1366930 | 4300 | 7480 | - |
+| [ODROID N2+](http://ix.io/3DtN) | 2400/2015  | 9790 | 1366930 | 4300 | 7480 | n/a |
 | [VIM4](http://ix.io/3Wvv) | 2200/1970 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
 | [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
 
-Memory performance is awesome: high bandwidth, low latency, 4 channels, very low inter-core latency since shared L3 cache for all cores. For more details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/44?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/61?u=tkaiser).
+Especially memory performance is awesome: high bandwidth, low latency, 4 channels, very low inter-core latency since shared L3 cache for all cores. For more details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/44?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/61?u=tkaiser).
 
 ## Powering / consumption
 
@@ -198,7 +198,7 @@ Radxa sent a 64GB FORESEE eMMC module with the board which shows high random IO 
     102400    1024   143426   146085   256129   256513   253494   140067
     102400   16384   142751   144883   270066   269172   273974   144779
 
-Which is pretty fine if we compare to the much more expensive ['orange' eMMC modules Hardkernel showcased when sending out dev samples of their canceled ODROID-N1](https://forum.armbian.com/topic/6496-odroid-n1-not-a-review-yet/?do=findComment&comment=49404))
+Which is pretty fine if we compare to the much more expensive ['orange' eMMC modules Hardkernel showcased when sending out dev samples of their canceled ODROID-N1](https://forum.armbian.com/topic/6496-odroid-n1-not-a-review-yet/?do=findComment&comment=49404):
 
                                                         random    random
         kB  reclen    write  rewrite    read    reread    read     write
