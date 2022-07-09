@@ -34,6 +34,8 @@ At the heart of the board is the long awaited [Rockchip RK3588](https://www.cnx-
 
 ![](../media/rk3588_variants.jpg)
 
+All RK3588 announcements talk about the SoC being made in an '8nm process' which of course is BS but what the '8nm' really tell us is Rockchip probably relying on Samsung and their 8LPP process since neither TSMC nor Globalfoundries have a process name with an '8' in its name. 8LPP as an *extension* of Samsung's 10LPP process [is said to have a fin pitch of 42nm and a gate pitch of 64nm](https://fuse.wikichip.org/news/1443/vlsi-2018-samsungs-8nm-8lpp-a-10nm-extension/).
+
 The CPU cores support the following extensions: fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp. The topology looks like this:
 
     CPU sysfs topology (clusters, cpufreq members, clockspeeds)
@@ -52,7 +54,7 @@ So we have three different CPU clusters since `cpu4/cpu5` and `cpu6/cpu7` can be
 
 On my dev sample the cpufreq driver enables the 2400 MHz cpufreq OPP on both A76 clusters but for example on [Willy Tarreau's board `cpu4/cpu5` get only 2304 MHz as highest OPP and `cpu6/cpu7` 2352 MHz](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/62).
 
-Real clockspeeds are a different thing since even if on my board the 2400 MHz OPP is enabled [the A76 cores in reality clock with just 2350 MHz](https://forum.radxa.com/t/introduce-rock-5-model-b-arm-desktop-level-sbc/8361/590?u=tkaiser). With Rockchip's BSP kernel `dmesg` output contains some insights about this mechanism, e.g.
+Real clockspeeds are a different thing since even if on my board the 2400 MHz OPP is enabled [the A76 cores in reality clock with just 2350 MHz](https://forum.radxa.com/t/introduce-rock-5-model-b-arm-desktop-level-sbc/8361/590?u=tkaiser). With Rockchip's BSP kernel `dmesg` output contains some PVTM info. My board:
 
     [    3.117399] cpu cpu0: pvtm=1528
     [    3.117491] cpu cpu0: pvtm-volt-sel=5
@@ -70,7 +72,7 @@ Real clockspeeds are a different thing since even if on my board the 2400 MHz OP
     [    2.626814] cpu cpu6: pvtm=1744
     [    2.630998] cpu cpu6: pvtm-volt-sel=6
 
-vs. [amazingfate's dev sample](https://gist.github.com/amazingfate/17af25d7d543d253c9d608d1d90ff2c0) which might be even more restricted wrt clockspeeds on the A76 cores:
+vs. [amazingfate's board](https://gist.github.com/amazingfate/17af25d7d543d253c9d608d1d90ff2c0) which results in even lower clockspeeds on the A76 cores: [highest cpufreq OPP are 2256 MHz on `cpu4/cpu5` and 2304 MHz on `cpu6/cpu7`](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/133?u=tkaiser):
 
     [    5.539740] cpu cpu0: pvtm=1486
     [    5.539830] cpu cpu0: pvtm-volt-sel=4
@@ -81,15 +83,18 @@ vs. [amazingfate's dev sample](https://gist.github.com/amazingfate/17af25d7d543d
 
 For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
 
-RK3588's performance is amazing and so far the highest we've seen with any SBC. Numbers are already in `sbc-bench`'s [results collection](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) but let's look directly at the 'most popular SBC in the world' (RPi 4B), ODROID N2+, another recent octa-core newcomer ([Khadas VIM4](https://www.cnx-software.com/2021/10/21/khadas-vim4-amlogic-a311d2-sbc/) based on Amlogic A311D2) and ROCK 5B:
+Next step: check whether those RK3588 where the kernel denies highest clockspeeds can be convinced by some [slight manual overvolting to allow for max performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/141?u=tkaiser) (resulting in higher temperatures at full load of course!).
 
+RK3588's CPU performance is amazing and so far the highest we've seen with any SBC. Numbers are already in `sbc-bench`'s [results collection](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) but let's look directly at the 'most popular SBC in the world' (RPi 4B), ODROID N2+, another recent octa-core newcomer ([Khadas VIM4](https://www.cnx-software.com/2021/10/21/khadas-vim4-amlogic-a311d2-sbc/) based on Amlogic A311D2) and ROCK 5B:
 
-| SBC | Clockspeed | 7-zip | aes-256-cbc | memcpy | memset | kH/s |
-| :-----: | :--------: | ----: | ------: | ------: | -----: | -----: |
-| [RPi 4B](http://ix.io/3OBF) | 1800 | 5790 | 36260 | 2330 | 3120 | 8.74 |
-| [ODROID N2+](http://ix.io/3DtN) | 2400/2015  | 9790 | 1366930 | 4300 | 7480 | n/a |
-| [VIM4](http://ix.io/3Wvv) | 2200/1970 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
-| [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
+| SBC | Clockspeed | 7-zip st* | 7-zip mt* | aes-256-cbc | memcpy | memset | kH/s |
+| :-----: | :--------: | ----: | ----: | ------: | ------: | -----: | -----: |
+| [RPi 4B](http://ix.io/3OBF) | 1800 | 1769 | 5790 | 36260 | 2330 | 3120 | 8.74 |
+| [ODROID N2+](http://ix.io/3DtN) | 2400/2015 | 2253 | 9790 | 1366930 | 4300 | 7480 | n/a |
+| [VIM4](http://ix.io/3Wvv) | 2200/1970 | 2081 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
+| [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 3146 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
+
+*\* st = single-threaded, mt = multi-threaded*
 
 Especially memory performance is awesome: high bandwidth, low latency, 4 channels, very low inter-core latency since shared L3 cache for all cores. For more details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/44?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/61?u=tkaiser).
 
@@ -141,7 +146,7 @@ Please be aware that we're talking about a developer sample so final product mig
 
 ## USB
 
-The board features 5 USB ports: 2 Hi-Speed USB-A receptacles (often called 'USB 2.0 ports'), 2 x USB3-A receptacles and 1 x USB-C. The latter 3 are limited to USB SuperSpeed AKA 5 Gbps.
+The board features five USB ports: 2 x Hi-Speed USB-A receptacles (often called 'USB 2.0 ports'), 1 x USB-C and 2 x USB3-A receptacles. The latter two are limited to *USB SuperSpeed* AKA 5 Gbps.
 
 While the USB2 ports share bandwidth since being behind an internal USB hub (`1a40:0101 Terminus Technology Inc. Hub`) the USB3 ports are on their own buses.
 
@@ -186,11 +191,17 @@ This is fine since close to 800 MB/s means there's no bottleneck and both USB3 t
 
 ## Storage
 
-Radxa sent a 64GB FORESEE eMMC module with the board which shows high random IO performance and 145/270 MB/s sequential write/read speeds:
+The board supports various types of storage: MMC storage (SD card and eMMC), native SATA via the M.2 key E slot with a cheap mechanical adapter and a DT overlay, USB storage, NVMe via the M.2 slot(s) and since both M.2 slots carry PCIe signals any other storage type for which a PCIe controller exists (yes, you could also connect for example Enterprise SAS drives via a M.2 to PCIe adapter and some SAS HBA if you don't mind using a storage controller wasting many times more energy than the 'host')
+
+### eMMC
+
+Radxa will provide eMMC modules 16GB, 32GB, 64GB and 128GB in size.
+
+They sent a 64GB FORESEE eMMC module with the board which shows high random IO performance and 145/270 MB/s sequential write/read speeds:
 
 `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2`
 
-                                                        random    random
+    FORESEE SLD64G from 05/2021                         random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       4    34983    36713    48378    48481    34331    34148
     102400      16    75397    80290    77794    79897    60296    76540
@@ -198,7 +209,7 @@ Radxa sent a 64GB FORESEE eMMC module with the board which shows high random IO 
     102400    1024   143426   146085   256129   256513   253494   140067
     102400   16384   142751   144883   270066   269172   273974   144779
 
-Which is pretty fine if we compare to the much more expensive ['orange' eMMC modules Hardkernel showcased when sending out dev samples of their canceled ODROID-N1](https://forum.armbian.com/topic/6496-odroid-n1-not-a-review-yet/?do=findComment&comment=49404):
+Numbers are pretty fine if we compare to the more expensive ['orange' Samsung eMMC modules Hardkernel showcased when sending out dev samples of their canceled ODROID-N1](https://forum.armbian.com/topic/6496-odroid-n1-not-a-review-yet/?do=findComment&comment=49404):
 
                                                         random    random
         kB  reclen    write  rewrite    read    reread    read     write
@@ -208,9 +219,35 @@ Which is pretty fine if we compare to the much more expensive ['orange' eMMC mod
     102400    1024   143085   148288   287749   291479   275359   143229
     102400   16384   147880   149969   306523   306023   307040   147470
 
+A 16GB eMMC module Radxa sent with a RockPi 4 dev sample years ago is still lying around and is obviously bottlenecking since maxing out at 82/255 MB/s write/read:
+
+    SanDisk DG4016 from 04/2017                         random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4    28845    31885    37476    39373    11052    30655
+    102400      16    57872    60157   110872   111162    37990    55721
+    102400     512    79894    81602   190406   212769   210491    81395
+    102400    1024    81665    81553   215394   218624   201612    81533
+    102400   16384    81451    81920   255458   257846   256144    82193
+
+And another 16GB FORESEE module Pine64 sent some time ago most probably with a RockPro64 dev sample just to illustrate mechanical compatibility with Pine64 and ODROID eMMC modules (since performance of this cheap eMMC module clearly sucks):
+
+    FORESEE 'NCard' 08/2016                             random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4     2966     2944    15152     9751     8851     2221
+    102400      16     9628    10602    40026    35844    31190     6656
+    102400     512     9591     9787    81585   114644   112770     9532
+    102400    1024    10474    10070    86087   125721   124086    10083
+    102400   16384    10616     9694   118549   132805   131482    10345
+
+BTW: Querying info (e.g. manufacturer ID or production date) from such MMC devices is possible by parsing sysfs (searching for `find /sys -name oemid`) or `udevadm info -a -n /dev/mmcblkN`.
+
+### SD card
+
+The SD card interface is SDXC compliant and as such supports capacities up to 2 TB (though such cards do not exist today or simply are fakes reporting wrong capacity)
+
 [According to device-tree settings](https://github.com/radxa/kernel/blob/78d311de923fc0644e4700f30813120835fec9cf/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L426-L440) the SD card interface should be capable of SDR104 mode (switching from 3.3V to 1.8V with up to 104 MB/s sequential transfer speeds). Let's have a look with the usual `iozone` call and two cards:
 
-    SanDisk Extreme 32GB A1 from 2018                   random    random
+    SanDisk Extreme 32GB A1 from 2017                   random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       4     3393     3356    14523    14505    10301     4730
     102400      16    11243    11290    32969    32989    29710     5938
@@ -226,11 +263,33 @@ Which is pretty fine if we compare to the much more expensive ['orange' eMMC mod
     102400    1024    57304    57351    65432    65439    65443    53929
     102400   16384    54927    54567    68243    68243    68247    53363
 
-We're nowhere near 104 MB/s since the interface is lower clocked for some safety headroom and therefore limited to below 70 MB/s sequential transfers but random IO benefits from SDR104 mode and mostly depends on the SD card you buy anyway. [Check more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md).
+We're nowhere near 104 MB/s since the interface is lower clocked for some safety headroom and therefore limited to below 70 MB/s sequential transfers which is [an established safety mechanism in the industry](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250).
 
-As for USB3 see above (everything fine with the 5Gbps Type-A ports)
+Though random IO benefits from SDR104 mode but mostly depends on the SD card you buy ([more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md)).
+
+### USB
+
+The two USB2 Hi-Speed receptacles share bandwidth since an internal hub is in between so the best you could expect is around 34/37MB/s write/read sequential transfer speeds with UAS (RK's BSP kernel supports UAS with USB2):
+
+    Samsung EVO750 in ASM1153 enclosure                 random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4    10523    10559    10565    10569     8007    10563
+    102400      16    21345    21443    25068    25079    21281    21427
+    102400     512    34127    34082    34798    34991    36101    34139
+    102400    1024    34418    34348    37550    37593    37266    34392
+    102400   16384    34569    34602    37812    37846    37844    34561
+
+As can be seen while sequential transfer speeds suck random IO is great (UAS rulez).
+
+The USB3 SuperSpeed Type-A receptacles are on their own buses and show their full potential even with concurrent accesses (see above).
+
+In a 4 lane configuration (no DisplayPort alt mode at the same time) the USB-C port should support *SuperSpeed 10Gps* but unfortunately not able to test since lacking an USB-C/Thunderbolt Dock.
+
+### NVMe
 
 NVMe I can't test currently since having only crappy M.2 SSDs lying around that will be the bottleneck. But since Radxa reports +2700 MB/s sequential read speeds and we know the little sibling RK3568 can saturate PCIe Gen3 x2 while lacking the four big A76 cores I'm pretty confident that we're seeing full Gen3 x4 NVMe performance with this device.
+
+### SATA
 
 Testing SATA also not possible since lacking the adapter (said to cost just a few bucks) that goes into the M.2 key E slot to turn PCIe into native SATA via a device-tree overlay:
 
@@ -240,7 +299,7 @@ This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and pr
 
 ## Networking
 
-The network interface of ROCK 5B is 2.5GbE capable due to an PCIe attached RTL8125BG NIC (using one of the PCIe Gen2 lanes: `Speed 5GT/s (ok), Width x1`). Asking `ethtool enP4p65s0`:
+ROCK 5B's network interface is 2.5GbE capable due to an PCIe attached RTL8125BG NIC (using one of the PCIe Gen2 lanes: `Speed 5GT/s (ok), Width x1`). Asking `ethtool enP4p65s0`:
 
     Settings for enP4p65s0:
     	Supported ports: [ TP ]
@@ -278,7 +337,7 @@ The network interface of ROCK 5B is 2.5GbE capable due to an PCIe attached RTL81
     			       drv probe ifdown ifup
     	Link detected: yes
 
-`ethtool -i enP4p65s0`:
+ethtool -i enP4p65s0:
 
     driver: r8125
     version: 9.009.00-NAPI-RSS
@@ -291,6 +350,8 @@ The network interface of ROCK 5B is 2.5GbE capable due to an PCIe attached RTL81
     supports-register-dump: yes
     supports-priv-flags: no
 
+The MAC address is '00:e1:4c:68:00:1c' which is an unknown [OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier) to me (the vendor part [you can look up online](https://macaddress.io/)).
+
 Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but in RX direction it sucked (~500 Mbit/sec max). After [adjusting PCIe powermanagement](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/86?u=tkaiser) also +2.32 GBit/sec but there's some room for improvements since Rockchip's BSP kernel doesn't care at all about network tunables. This is stuff for further investigation/tuning.
 
 ## Software
@@ -299,10 +360,6 @@ No mainline Linux support so far (upstreaming will take years but Radxa is colla
 
   * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
-
-BTW: in these repos you can spot other upcoming Radxa devices like both [RK3588S](https://www.cnx-software.com/2022/01/12/rockchip-rk3588s-cost-optimized-cortex-a76-a55-processor/) based ROCK 5A or the Radxa NX5 SoM that looks like this on its carrier board:
-
-![Radxa NX5](../media/Radxa-nx5.png)
 
 ## more to come
 
