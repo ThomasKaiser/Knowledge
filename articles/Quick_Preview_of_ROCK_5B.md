@@ -152,7 +152,7 @@ While the USB2 ports share bandwidth since being behind an internal USB hub (`1a
 
 I'm not able to test USB-C capabilities since port used for powering and me lacking an USB-C/Thunderbolt dock or an appropriate display. But schematics tell that USB-C supports USB3 OTG and DisplayPort with the following lane combinations: DP x4, USB3 x4 and DP x2 + USB3 x2.
 
-So let's focus on the two USB3 Type-A sockets (maybe the most crappy connector ever invented due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect an UAS capable disk enclosure with an SSD inside to each USB3-A port, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection)
+So let's focus on the two USB3 Type-A sockets (maybe the most crappy connector ever invented due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect an UAS capable disk enclosure with an SSD inside to each USB3-A port, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection, with RK3588's BSP kernel it's ~420 MB/s)
 
     root@rock-5b:/home/rock# lsusb -t
     /:  Bus 08.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
@@ -188,6 +188,12 @@ In this stupid SBC world almost everyone will now yell 'Disable UAS!' but it was
     1024000   16384   780470   774856   733638   734297
 
 This is fine since close to 800 MB/s means there's no bottleneck and both USB3 type-A receptacles show full bandwidth even when accessed concurrently.
+
+Test with a single EVO750 in an ASM1153 enclosure results in these numbers:
+
+         kB  reclen    write  rewrite    read    reread
+    1024000    1024   376952   377352   355393   355788
+    1024000   16384   425026   424372   415324   415795
 
 ## Storage
 
@@ -354,6 +360,14 @@ The MAC address is '00:e1:4c:68:00:1c' which is an unknown [OUI](https://en.wiki
 
 Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but in RX direction it sucked (~500 Mbit/sec max). After [adjusting PCIe powermanagement](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/86?u=tkaiser) also +2.32 GBit/sec but there's some room for improvements since Rockchip's BSP kernel doesn't care at all about network tunables. This is stuff for further investigation/tuning.
 
+## PCIe
+
+RK3588 [features 7 PCIe lanes](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/PCIe_and_ARMv8_SoCs.md). Four times Gen3 and three times Gen2, the latter all pinmuxed with either SATA or USB3.
+
+The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. Whether bifurcation really works with the Key M slot is [yet unknown](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/140?u=tkaiser).
+
+Wrt the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3.
+
 ## Software
 
 No mainline Linux support so far (upstreaming will take years but Radxa is collaborating with [Collabora](https://www.collabora.com) here) and as such every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
@@ -376,4 +390,5 @@ No mainline Linux support so far (upstreaming will take years but Radxa is colla
 
   * possible to power the board asides USB-C / USB PD e.g. with 5V via GPIO header?
   * RK3588 TRM states wrt SATA 'Port Multiplier with FIS-based switching' but someone should test with a JMicron JMB575
-  
+  * PCIe bifurcation really possible with 5B's M.2 implementation (clocks available)?
+  * check PCIe BAR and consequences for consumer's most wanted thingy: external GPU
