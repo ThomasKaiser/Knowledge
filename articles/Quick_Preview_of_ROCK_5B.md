@@ -50,7 +50,7 @@ The CPU cores support the following extensions: fp asimd evtstrm aes pmull sha1 
      6        2        6      408    2400   Cortex-A76 / r4p0
      7        2        6      408    2400   Cortex-A76 / r4p0
 
-So we have three different CPU clusters since `cpu4/cpu5` and `cpu6/cpu7` can be controlled independently. This is important since Rockchip uses PVTM (Process-Voltage-Temperature Monitor) which determines clockspeeds and [is somewhat part of Silicon Lifecycle Management (SLM)](https://www.synopsys.com/glossary/what-are-pvt-sensors.html). The PVT sensors are sensing process variability and operating environment of the SoC at least while booting and both cpufreq driver and an integrated MCU then decide about clockspeeds and most probably also supply voltages which could change over time since silicon is aging.
+So we have three different CPU clusters since `cpu4/cpu5` and `cpu6/cpu7` can be controlled independently. This is important since Rockchip uses PVTM (Process-Voltage-Temperature Monitor) on its new RK3588 and RK3568 SoCs which determines clockspeeds and [is somewhat part of Silicon Lifecycle Management (SLM)](https://www.synopsys.com/glossary/what-are-pvt-sensors.html). The PVT sensors are sensing process variability and operating environment of the SoC at least while booting and both cpufreq driver and an integrated MCU then decide about clockspeeds and most probably also supply voltages which could change over time since silicon is aging.
 
 On my dev sample the cpufreq driver enables the 2400 MHz cpufreq OPP on both A76 clusters but for example on [Willy Tarreau's board `cpu4/cpu5` get only 2304 MHz as highest OPP and `cpu6/cpu7` 2352 MHz](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/62).
 
@@ -215,7 +215,7 @@ They sent a 64GB FORESEE eMMC module with the board which shows high random IO p
     102400    1024   143426   146085   256129   256513   253494   140067
     102400   16384   142751   144883   270066   269172   273974   144779
 
-Numbers are pretty fine if we compare to the more expensive ['orange' Samsung eMMC modules Hardkernel showcased when sending out dev samples of their canceled ODROID-N1](https://forum.armbian.com/topic/6496-odroid-n1-not-a-review-yet/?do=findComment&comment=49404):
+Numbers are pretty fine if we compare with the more expensive ['orange' Samsung eMMC modules Hardkernel showcased when sending out dev samples of their canceled ODROID-N1](https://forum.armbian.com/topic/6496-odroid-n1-not-a-review-yet/?do=findComment&comment=49404):
 
                                                         random    random
         kB  reclen    write  rewrite    read    reread    read     write
@@ -225,7 +225,7 @@ Numbers are pretty fine if we compare to the more expensive ['orange' Samsung eM
     102400    1024   143085   148288   287749   291479   275359   143229
     102400   16384   147880   149969   306523   306023   307040   147470
 
-A 16GB eMMC module Radxa sent with a RockPi 4 dev sample years ago is still lying around and is obviously bottlenecking since maxing out at 82/255 MB/s write/read:
+A 16GB eMMC module Radxa sent with a RockPi 4 dev sample years ago is still lying around and is obviously bottlenecking since maxing out at 82/255 MB/s sequential write/read:
 
     SanDisk DG4016 from 04/2017                         random    random
         kB  reclen    write  rewrite    read    reread    read     write
@@ -237,7 +237,7 @@ A 16GB eMMC module Radxa sent with a RockPi 4 dev sample years ago is still lyin
 
 And another 16GB FORESEE module Pine64 sent some time ago most probably with a RockPro64 dev sample just to illustrate mechanical compatibility with Pine64 and ODROID eMMC modules (since performance of this cheap eMMC module clearly sucks):
 
-    FORESEE 'NCard' 08/2016                             random    random
+    FORESEE 'NCard' from 08/2016                        random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       4     2966     2944    15152     9751     8851     2221
     102400      16     9628    10602    40026    35844    31190     6656
@@ -245,7 +245,7 @@ And another 16GB FORESEE module Pine64 sent some time ago most probably with a R
     102400    1024    10474    10070    86087   125721   124086    10083
     102400   16384    10616     9694   118549   132805   131482    10345
 
-BTW: Querying info (e.g. manufacturer ID or production date) from such MMC devices is possible by parsing sysfs (searching for `find /sys -name oemid`) or `udevadm info -a -n /dev/mmcblkN`.
+BTW: Querying info (e.g. manufacturer ID or production date) from such MMC devices is done by parsing sysfs (searching for `find /sys -name oemid`) or `udevadm info -a -n /dev/mmcblkN`.
 
 ### SD card
 
@@ -275,7 +275,7 @@ Though random IO benefits from SDR104 mode but mostly depends on the SD card you
 
 ### USB
 
-The two USB2 Hi-Speed receptacles share bandwidth since an internal hub is in between so the best you could expect is around 34/37MB/s write/read sequential transfer speeds with UAS (RK's BSP kernel supports UAS with USB2):
+The two USB2 Hi-Speed receptacles share bandwidth since an internal hub is in between so the best you could expect is around 34/37 MB/s write/read sequential transfer speeds with UAS (RK's BSP kernel supports UAS with USB2):
 
     Samsung EVO750 in ASM1153 enclosure                 random    random
         kB  reclen    write  rewrite    read    reread    read     write
@@ -305,7 +305,7 @@ This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and pr
 
 ## Networking
 
-ROCK 5B's network interface is 2.5GbE capable due to an PCIe attached RTL8125BG NIC (using one of the PCIe Gen2 lanes: `Speed 5GT/s (ok), Width x1`). Asking `ethtool enP4p65s0`:
+ROCK 5B's network interface is 2.5GbE capable due to an PCIe attached RealTek RTL8125BG NIC (using one of the PCIe Gen2 lanes: `Speed 5GT/s (ok), Width x1`). Asking `ethtool enP4p65s0`:
 
     Settings for enP4p65s0:
     	Supported ports: [ TP ]
@@ -356,7 +356,7 @@ ethtool -i enP4p65s0:
     supports-register-dump: yes
     supports-priv-flags: no
 
-The MAC address is '00:e1:4c:68:00:1c' which is an unknown [OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier) to me (the vendor part [you can look up online](https://macaddress.io/)).
+The MAC address is `00:e1:4c:68:00:1c` which is an unknown [OUI](https://en.wikipedia.org/wiki/Organizationally_unique_identifier) according to all lookup services but since RealTek registered [`00:e0:4c`](https://macaddress.io/mac-address-lookup/3jRG91Vb56) most probably it's another RealTek range recently added.
 
 Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but in RX direction it sucked (~500 Mbit/sec max). After [adjusting PCIe powermanagement](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/86?u=tkaiser) also +2.32 GBit/sec but there's some room for improvements since Rockchip's BSP kernel doesn't care at all about network tunables. This is stuff for further investigation/tuning.
 
