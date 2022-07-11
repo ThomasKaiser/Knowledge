@@ -120,6 +120,8 @@ The small fan on my dev sample is responsible for ~700mW, switching network betw
 
 So the board idles below 2W w/o any peripherals except Gigabit Ethernet. A fan adds extra juice, 2.5GbE instead of GbE as well, avoiding super powersavings settings also.
 
+Connecting a HDMI display (`Update mode to 1920x1200p60, type: 11(if:800) for vp0 dclk: 154000000`) increases consumption by ~350mW (though screen blanked) as such 'display activity' of course also increases consumption when HDMI PHY and other SoC engines are active.
+
 The good news: RK3588 is made in such an advanced process that running the most demanding benchmark on this thing ([7-zip's internal benchmark](https://github.com/ThomasKaiser/sbc-bench#7-zip)) on all cores results in ~6W extra consumption compared to idle.
 
 Please be aware that measuring only CPU loads does not really represent the SoC's capabilities since it ignores everything else that makes up RK3588:
@@ -366,11 +368,11 @@ RK3588 [features 7 PCIe lanes](https://github.com/ThomasKaiser/Knowledge/blob/ma
 
 The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. Whether bifurcation really works with the Key M slot is [yet unknown](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/140?u=tkaiser).
 
-Wrt the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3.
+Wrt the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3 instead.
 
 ## RTC
 
-There's a small I2C accessible HYM8563 RTC chip labeled BM8563 on the board. Next to it is a small battery header. According to schematics its routed to both RK3588 and the Wi-Fi slot.
+There's a small I2C accessible HYM8563 RTC chip (though labeled BM8563) on the board. Next to it is a small battery header. According to schematics it's routed to both RK3588 and the Wi-Fi slot.
 
 Quick check for `/dev/rtc0` succeeded: `hwclock -r -f /dev/rtc0 -> 2022-07-10 17:58:05.660866+02:00`.
 
