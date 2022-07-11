@@ -72,7 +72,7 @@ Real clockspeeds are a different thing since even if on my board the 2400 MHz OP
     [    2.626814] cpu cpu6: pvtm=1744
     [    2.630998] cpu cpu6: pvtm-volt-sel=6
 
-vs. [amazingfate's board](https://gist.github.com/amazingfate/17af25d7d543d253c9d608d1d90ff2c0) which results in even lower clockspeeds on the A76 cores: [highest cpufreq OPP are 2256 MHz on `cpu4/cpu5` and 2304 MHz on `cpu6/cpu7`](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/133?u=tkaiser):
+vs. [amazingfate's board](https://gist.github.com/amazingfate/17af25d7d543d253c9d608d1d90ff2c0) which results in even lower clockspeeds on the A76 cores: [highest cpufreq OPP are 2256 MHz on `cpu4/cpu5` and 2304 MHz on `cpu6/cpu7` while both A76 clusters really clock at around 2.3GHz](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/153?u=tkaiser):
 
     [    5.539740] cpu cpu0: pvtm=1486
     [    5.539830] cpu cpu0: pvtm-volt-sel=4
@@ -96,7 +96,7 @@ RK3588's CPU performance is amazing and so far the highest we've seen with any S
 
 *\* st = single-threaded, mt = multi-threaded*
 
-Especially memory performance is awesome: high bandwidth, low latency, 4 channels, very low inter-core latency since shared L3 cache for all cores. For more details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/44?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/61?u=tkaiser).
+Even if currently the LPDDR4x is configured to run at only 2112MHz by [some boot BLOB](https://github.com/radxa/rkbin/blob/6d6571d21c1d9e4dda4c37fd54a6e2e847589e9a/bin/rk35/rk3588_ddr_lp4_2112MHz_lp5_2736MHz_v1.07.bin) memory performance is awesome: high bandwidth, low latency, 4 channels, very low inter-core latency since shared L3 cache for all cores. For more details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/44?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/61?u=tkaiser).
 
 ## Powering / consumption
 
@@ -370,15 +370,19 @@ The Gen3 implementation supports the following modes (often called 'bifurcation'
 
 Wrt the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3 instead.
 
-## RTC
-
-There's a small I2C accessible HYM8563 RTC chip (though labeled BM8563) on the board. Next to it is a small battery header. According to schematics it's routed to both RK3588 and the Wi-Fi slot.
-
-Quick check for `/dev/rtc0` succeeded: `hwclock -r -f /dev/rtc0 -> 2022-07-10 17:58:05.660866+02:00`.
-
 ## Audio codec
 
 On the PCB bottom almost below the TRRS jack for Mic/Headphone/Speaker there's a 32-pin [ES8316](http://everest-semi.com/pdf/ES8316%20PB.pdf) "high performance and low power multi-bit delta-sigma audio ADC and DAC" connected via I2S to the SoC (check page 21 of schematics for more info).
+
+## RTC
+
+There's a small I2C accessible HYM8563 RTC chip (though labeled BM8563) on the board. Close to it is a small battery header. According to schematics it's routed to both RK3588 and the Wi-Fi slot.
+
+Quick check for `/dev/rtc0` succeeded: `hwclock -r -f /dev/rtc0 -> 2022-07-10 17:58:05.660866+02:00`.
+
+All that's missing is the usual battery featuring the usual connector:
+
+![](../media/rock5b_rtc_with_battery.jpg)
 
 ## Software
 
