@@ -81,7 +81,7 @@ vs. [amazingfate's board](https://gist.github.com/amazingfate/17af25d7d543d253c9
     [    5.558544] cpu cpu6: pvtm=1717
     [    5.562484] cpu cpu6: pvtm-volt-sel=5
 
-For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
+Please note that PVTM also handles the GPU and NPU parts of the SoC. For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
 
 Next step: check whether those RK3588 where the kernel denies highest clockspeeds can be convinced by some [slight manual overvolting to allow for max performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/141?u=tkaiser) (resulting in higher temperatures at full load of course!).
 
@@ -102,17 +102,41 @@ Even if currently the LPDDR4x is configured to run at only 2112MHz by [some boot
 
 Powering the board can be done (only?) with an USB PD compatible charger through the USB-C port. QuickCharge isn't supported. The PMU is accessible through I2C so we can ask it what has been negotiated with `sensors tcpm_source_psy_4_0022-i2c-4-22`.
 
-With a 'dumb' 15W RPi USB-C power brick it looks like this:
+With a 'dumb' 15W RPi USB-C power brick (not [USB PD](https://en.wikipedia.org/wiki/USB_hardware#USB_Power_Delivery) compliant) obviously we're ending up with 15W:
 
     in0:           5.00 V  (min =  +5.00 V, max =  +5.00 V)
     curr1:         3.00 A  (max =  +3.00 A)
 
-And with an Apple '96W USB-C Power Adapter' this will be reported:
+With some 24W USB-C charger 18W get negotiated:
+
+    in0:          12.00 V  (min = +12.00 V, max = +12.00 V)
+    curr1:         1.50 A  (max =  +1.50 A)
+
+And with an Apple '96W USB-C Power Adapter' we're at 27W:
 
     in0:           9.00 V  (min =  +9.00 V, max =  +9.00 V)
     curr1:         3.00 A  (max =  +3.00 A)
 
-According to Tom (Radxa's product manager) USB PD negotiation can be controlled via dts / kernel driver. Not sure yet what that means and whether reports about freezes/crashes reported by other testers are related to unfortunate USB PD negotiations.
+Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above negotiations [are exactly what's defined via device-tree](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
+
+    <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+     PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
+     PDO_FIXED(12000, 1500, PDO_FIXED_USB_COMM)>;
+
+So only powering with max voltages of 5V, 9V and 12V are considered (the USB PD chip should always choose the hightest voltage the charger advertises). After adjusting the values in the following way (allowing 3A instead of 1.5A with 12V and adding 15V and 20V definitions)
+
+    <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+    PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
+    PDO_FIXED(12000, 3000, PDO_FIXED_USB_COMM)
+    PDO_FIXED(15000, 3000, PDO_FIXED_USB_COMM)
+    PDO_FIXED(20000, 2250, PDO_FIXED_USB_COMM)>;
+
+it looks like this with the aforementioned 24W charger now able to provide full 24W since also capable of 15V:
+
+    in0:          15.00 V  (min = +15.00 V, max = +15.00 V)
+    curr1:         1.60 A  (max =  +1.60 A)
+
+But when using the 96W Apple charger (or an Apple 140W) the board doesn't boot (no serial console attached -> no details) any more with adjusted values. Even removing the 15V and 20V definitions and just with 12V/3A setting no luck.
 
 Consumption figures... I'm measuring with a NetIO PowerBox 4KF in a [rather time consuming process](https://github.com/ThomasKaiser/sbc-bench/blob/e6cfb870c7a297abf96f51b7305600c0e48d1951/sbc-bench.sh#L385-L408) that means 'at the wall' with charger included with averaged idle values over 4 minutes.
 
@@ -128,9 +152,9 @@ Please be aware that measuring only CPU loads does not really represent the SoC'
 
   * GPU (2D/3D acceleration)
   * VPU (accelerated video encoding/decoding)
-  * NPU
-  * in general the media capabilities like display and camera support, ‘picture in picture’ and so on (maybe only ever working in Android and not Linux)
-  * IO: RK3588 has serious IO capabilities especially compared to toys like an RPi 4
+  * NPU (machine learning: artificial neural networks, random forests)
+  * in general the media capabilities like display and camera support, 'picture in picture' and so on (maybe only ever working in Android and not Linux)
+  * I/O: RK3588 has serious I/O capabilities especially compared to toys like an RPi 4
 
 But if we're only looking at CPU loads, throw away Radxa's fansink and let RK3588 run without any cooling at an ambient temp of 26°C it looks really great [since only slight throttling happens](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/97?u=tkaiser).
 
@@ -205,7 +229,7 @@ The board supports various types of storage: MMC storage (SD card and eMMC), nat
 
 Radxa will provide eMMC modules 16GB, 32GB, 64GB and 128GB in size.
 
-They sent a 64GB FORESEE eMMC module with the board which shows high random IO performance and 145/270 MB/s sequential write/read speeds:
+They sent a 64GB FORESEE eMMC module with the board which shows high random I/O performance and 145/270 MB/s sequential write/read speeds:
 
 `iozone -e -I -a -s 100M -r 4k -r 16k -r 512k -r 1024k -r 16384k -i 0 -i 1 -i 2`
 
@@ -273,7 +297,7 @@ The SD card interface is SDXC compliant and as such supports capacities up to 2 
 
 We're nowhere near 104 MB/s since the interface is lower clocked for some safety headroom and therefore limited to below 70 MB/s sequential transfers which is [an established safety mechanism in the industry](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250).
 
-Though random IO benefits from SDR104 mode but mostly depends on the SD card you buy ([more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md)).
+Though random I/O benefits from SDR104 mode but mostly depends on the SD card you buy ([more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md)).
 
 ### USB
 
@@ -287,7 +311,7 @@ The two USB2 Hi-Speed receptacles share bandwidth since an internal hub is in be
     102400    1024    34418    34348    37550    37593    37266    34392
     102400   16384    34569    34602    37812    37846    37844    34561
 
-As can be seen while sequential transfer speeds suck random IO is great (UAS rulez).
+As can be seen while sequential transfer speeds suck random I/O is great (UAS rulez).
 
 The USB3 SuperSpeed Type-A receptacles are on their own buses and show their full potential even with concurrent accesses (see above).
 
@@ -406,8 +430,8 @@ Wrt mainline Linux/u-boot and *BSD the good news is that a lot of the upstreamin
   
 ## Open questions
 
-  * possible to power the board asides USB-C / USB PD e.g. with 5V via GPIO header?
-  * RK3588 TRM states wrt SATA 'Port Multiplier with FIS-based switching' but someone should test with a JMicron JMB575
-  * PCIe bifurcation really possible with 5B's M.2 implementation (clocks available)?
+  * <del>possible to power the board asides USB-C / USB PD [e.g. with 5V via GPIO header](https://forum.radxa.com/t/powering-rock-5b/10759)?</del>
+  * RK3588 TRM states wrt SATA 'Port Multiplier with FIS-based switching' but [Radxa should better test with a JMicron JMB575](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/21?u=tkaiser)
+  * PCIe bifurcation really possible with 5B's M.2 implementation ([clocks available](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/140?u=tkaiser))?
   * check PCIe BAR and consequences for consumer's most wanted thingy: external GPU
   * check [NVMe power management](https://forum.odroid.com/viewtopic.php?f=215&t=44747)
