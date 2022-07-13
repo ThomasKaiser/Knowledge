@@ -98,11 +98,11 @@ RK3588's CPU performance is amazing and so far the highest we've seen with any S
 
 Even if currently the LPDDR4x is configured to run at only 2112MHz by [some boot BLOB](https://github.com/radxa/rkbin/blob/6d6571d21c1d9e4dda4c37fd54a6e2e847589e9a/bin/rk35/rk3588_ddr_lp4_2112MHz_lp5_2736MHz_v1.07.bin) memory performance is awesome: high bandwidth, low latency, 4 channels, very low inter-core latency since shared L3 cache for all cores. For more details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/44?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/61?u=tkaiser).
 
-## Powering / consumption
+## Powering
 
-Powering the board can be done (only?) with an USB PD compatible charger through the USB-C port. QuickCharge isn't supported. The PMU is accessible through I2C so we can ask it what has been negotiated with `sensors tcpm_source_psy_4_0022-i2c-4-22`.
+Powering the board can be done with an [USB PD](https://en.wikipedia.org/wiki/USB_hardware#USB_Power_Delivery) compliant charger through the USB-C port or with 5V via the GPIO header (expect here damage/undervoltage/underpowering if you don't know what you do). QuickCharge isn't supported. The PMU is accessible through I2C so we can ask it what has been negotiated with `sensors tcpm_source_psy_4_0022-i2c-4-22`.
 
-With a 'dumb' 15W RPi USB-C power brick (not [USB PD](https://en.wikipedia.org/wiki/USB_hardware#USB_Power_Delivery) compliant) obviously we're ending up with 15W:
+With a 'dumb' 15W RPi USB-C power brick (not USB PD compliant) obviously we're ending up with 15W:
 
     in0:           5.00 V  (min =  +5.00 V, max =  +5.00 V)
     curr1:         3.00 A  (max =  +3.00 A)
@@ -117,13 +117,13 @@ And with an Apple '96W USB-C Power Adapter' we're at 27W:
     in0:           9.00 V  (min =  +9.00 V, max =  +9.00 V)
     curr1:         3.00 A  (max =  +3.00 A)
 
-Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above negotiations [are exactly what's defined via device-tree](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
+Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above negotiations [are exactly what's defined in device-tree settings](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
 
     <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
      PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
      PDO_FIXED(12000, 1500, PDO_FIXED_USB_COMM)>;
 
-So only powering with max voltages of 5V, 9V and 12V are considered (the USB PD chip should always choose the hightest voltage the charger advertises). After adjusting the values in the following way (allowing 3A instead of 1.5A with 12V and adding 15V and 20V definitions)
+Only 5V, 9V and 12V are defined (the USB PD chip should always choose the hightest voltage the charger advertises). After adjusting the values in the following way (allowing 3A instead of 1.5A with 12V and adding 15V and 20V definitions)
 
     <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
     PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
@@ -138,7 +138,32 @@ it looks like this with the aforementioned 24W charger now able to provide full 
 
 But when using the 96W Apple charger (or an Apple 140W) the board doesn't boot (no serial console attached -> no details) any more with adjusted values. Even removing the 15V and 20V definitions and just with 12V/3A setting no luck.
 
-Consumption figures... I'm measuring with a NetIO PowerBox 4KF in a [rather time consuming process](https://github.com/ThomasKaiser/sbc-bench/blob/e6cfb870c7a297abf96f51b7305600c0e48d1951/sbc-bench.sh#L385-L408) that means 'at the wall' with charger included with averaged idle values over 4 minutes.
+ROCK 5B's USB-C details can be accessed via sysfs:
+
+    grep "" grep "" /sys/class/typec/port0/** 2>/dev/null
+    data_role:host [device]
+    orientation:normal
+    port_type:[dual] source sink
+    power_operation_mode:usb_power_delivery
+    power_role:source [sink]
+    preferred_role:sink
+    supported_accessory_modes:none
+    uevent:DEVTYPE=typec_port
+    uevent:TYPEC_PORT=port0
+    usb_power_delivery_revision:3.0
+    usb_typec_revision:1.2
+    vconn_source:no
+    waiting_for_supplier:0
+
+And if a standards compliant device is connected you find information about the other end of the cable below `/sys/class/typec/port0/port0-partner`, e.g. `supports_usb_power_delivery`:
+
+  * no (15 W RPi power brick)
+  * yes (24W charger)
+  * yes (96W charger)
+
+## Consumption
+
+I'm measuring with a NetIO PowerBox 4KF in a [rather time consuming process](https://github.com/ThomasKaiser/sbc-bench/blob/e6cfb870c7a297abf96f51b7305600c0e48d1951/sbc-bench.sh#L385-L408) that means 'at the wall' with charger included with averaged idle values over 4 minutes.
 
 The small fan on my dev sample is responsible for ~700mW, switching network between Gigabit Ethernet and 2.5GbE makes up for another ~300mW. Adjusting PCI powermanagement (`/sys/module/pcie_aspm/parameters/policy` – see below why that's important) from `powersave` to `default` makes up for another ~100mW.
 
