@@ -140,7 +140,7 @@ But when using the 96W Apple charger (or an Apple 140W) the board doesn't boot (
 
 ROCK 5B's USB-C details can be accessed via sysfs:
 
-    grep "" grep "" /sys/class/typec/port0/** 2>/dev/null
+    grep "" /sys/class/typec/port0/* 2>/dev/null
     data_role:host [device]
     orientation:normal
     port_type:[dual] source sink
@@ -300,7 +300,7 @@ BTW: Querying info (e.g. manufacturer ID or production date) from such MMC devic
 
 ### SD card
 
-The SD card interface is SDXC compliant and as such supports capacities up to 2 TB (though such cards do not exist today or simply are fakes reporting wrong capacity). SD card has lower boot priority than eMMC if both are present and both contain a working boot loader.
+The SD card interface is SDXC compliant and as such supports capacities up to 2 TB (though such cards do not exist today or simply are fakes reporting wrong capacity). SD card has lower boot priority than eMMC if both are present and both contain a working boot loader (at least as long as we're talking about u-boot TPL/SPL, once an OS image relies on Rockchip's miniloader [it gets complicated](http://opensource.rock-chips.com/wiki_Boot_option#Package_the_idbloader.img_from_U-Boot.C2.A0TPL.2FSPL.28which_is_fully_open_source.29:)).
 
 [According to device-tree settings](https://github.com/radxa/kernel/blob/78d311de923fc0644e4700f30813120835fec9cf/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L426-L440) the SD card interface should be capable of SDR104 mode (switching from 3.3V to 1.8V with up to 104 MB/s sequential transfer speeds). Let's have a look with the usual `iozone` call and two cards:
 
@@ -439,6 +439,8 @@ No mainline Linux support so far (upstreaming will take years but Radxa is colla
 
   * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
+
+Rockchip's official Rk3588 SDKs can be found here: [https://gitlab.com/rk3588_linux](https://gitlab.com/rk3588_linux)
 
 Wrt mainline Linux/u-boot and *BSD the good news is that a lot of the upstreaming work that went into RK356x can directly be used with RK3588 as well. For example the drivers for [Naneng Micro's USB3.0/PCIE2/SATA3 Combo PHY](http://www.nanengmicro.com/en/combo-phy/) that are submitted [upstream by Rockchip themselves and successfully tested on RK3566 and RK3568 boards](https://lore.kernel.org/all/20220208091326.12495-1-yifeng.zhao@rock-chips.com/T/#t) will work with RK3588 as well.
 
