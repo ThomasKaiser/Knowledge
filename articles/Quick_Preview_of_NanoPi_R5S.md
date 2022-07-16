@@ -29,13 +29,11 @@ But its main feature are of course the two 2.5GbE ports and FriendlyELEC charges
 
 More information can be found in [FriendlyELEC's wiki](https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R5S).
 
-As router/firewall R5S is positioned between the older R2S (RK3328 with 2 x GbE) and R4S (RK3399 with 2 x GbE) and upcoming R6S (RK3588S with 1 x GbE + 2 x 2.5GbE).
-
 ## RK3568
 
-At the heart of the device is Rockchip's RK3568 SoC in the more recent RK3568B2 variant which is a plastic package version of original RK3568 that came in a metal-can type packaging. Rockchip's BSP kernel allows to differentiate since all those boards using the plastic RK3568B2 variant (Banana Pi R2 Pro, [Mrkaio AIO-M68S](https://archive.ph/oibqp), NanoPi R5S, ODROID-M1, and Radxa ROCK 3A) show up with `rockchip-cpuinfo cpuinfo: SoC: 35682000` in `dmesg` output while older Firefly RK3568-ROC-PC with the metal variant reads `(35681000)`.
+At the heart of the device is Rockchip's RK3568 SoC in the more recent RK3568B2 variant which is a plastic package version of original RK3568 that came in a metal-can type packaging. Rockchip's BSP kernel seems to allow for differentiation since all those boards using the plastic RK3568B2 variant (Banana Pi R2 Pro, [Mrkaio AIO-M68S](https://archive.ph/oibqp), NanoPi R5S, ODROID-M1, and Radxa ROCK 3A) show up with `rockchip-cpuinfo cpuinfo: SoC: 35682000` in `dmesg` output while older Firefly RK3568-ROC-PC with the metal variant reads `35681000`.
 
-Asides packaging they are the same: RK3568(B2) is a quad-core Cortex-A55 SoC said to be made in a '22nm process' and clocking *up to* 2 GHz.
+Asides packaging they should be the same: RK3568(B2) is a quad-core Cortex-A55 SoC said to be made in a '22nm process' and clocking *up to* 2 GHz.
 
 The CPU cores support the following extensions: 'fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp'. The topology looks like this:
 
@@ -47,7 +45,7 @@ The CPU cores support the following extensions: 'fp asimd evtstrm aes pmull sha1
       2        0        0      408    1992   Cortex-A55 / r2p0
       3        0        0      408    1992   Cortex-A55 / r2p0
 
-So we have a single CPU cluster and the maximum cpufreq OPP reading 1992 MHz needs to be taken with a huge grain of salt since PVTM is at work here ([discussed more in detail with ROCK 5B recently](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#rk3588)). We've seen RK3568 being [clocked down to just 1840 MHz while cpufreq driver reports 1992 MHz](https://forum.odroid.com/viewtopic.php?p=350782#p350782). It has to be seen whether on those lower quality silicon SoCs we can manually 'overclock' the cores slightly to get advertised clockspeeds in exchange for some more generated heat.
+So we have a single CPU cluster and the maximum cpufreq OPP reading 1992 MHz needs to be taken with a huge grain of salt since PVTM is at work here ([discussed more in detail with ROCK 5B recently](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#rk3588)). We've seen RK3568 being [clocked down to just 1840 MHz while cpufreq driver still reports 1992 MHz](https://forum.odroid.com/viewtopic.php?p=350782#p350782). It has to be seen whether on those lower quality silicon we can manually 'overvolt' the cores slightly to get advertised clockspeeds in exchange for some more generated heat.
 
 Performance is a bit lower compared to similar quad-core A55 designs (like S905X3 on ODROID C4/HC4 that clocks with real 2100 MHz) but it's ok-ish and especially memory intensive tasks benefit from the much better memory performance compared to its predecessor Cortex-A53. 
 
@@ -79,7 +77,7 @@ Other possible `trigger` values as follows: `[none] rc-feedback rfkill-any rfkil
 
 RK3568 features two Gen3 lanes and a single Gen2 lane. To each of the Gen3 lanes is a RTL8125BG 2.5GbE NIC attached (making use of [bifurcation](https://github.com/friendlyarm/kernel-rockchip/blob/8625799dde7abbc85ebc4ea9b549a813facd5148/arch/arm64/boot/dts/rockchip/rk3568-nanopi5-rev01.dts#L193-L222)) and the Gen2 lane is routed to the M.2 key M slot. One could argue that the M.2 slot would've be better Gen3 (twice the bandwidth, lower latency) since the RTL8125BG while attached to the PCIe 3.0 controller are set to Gen2 link speed anyway: `Speed 5GT/s (ok), Width x1 (ok)`. But maybe the Gen3 lanes even only with Gen2 link speed show lower latency compared to the PCIe 2.1 controller?
 
-
+Further tests might show...
 
 ## USB
 
@@ -91,13 +89,13 @@ In R5S' case we're ending up with 1 x PCIe and 2 x USB3 and no SATA at all (or o
 
 1.4A overcurrent protection
 
-`/sys/class/typec/` empty
+`/sys/class/typec/` empty due to missing I2C4 device-tree node
 
 ## SD card and eMMC
 
 https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R5S#The_Boot_order_between_eMMC_and_SD_card
 
-The eMMC on both our R5S was prepopulated with FriendlyWRT based on Rockchip's 5.10.66 BSP kernel ([not to be confused with 5.10 LTS from kernel.org](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709)).
+The 8GB eMMC on both our R5S was prepopulated with FriendlyWRT based on Rockchip's 5.10.66 BSP kernel ([not to be confused with 5.10 LTS from kernel.org](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709)).
 
 ## Networking
 
@@ -147,11 +145,11 @@ The eMMC on both our R5S was prepopulated with FriendlyWRT based on Rockchip's 5
 
 
 
-4a:8d:7a:80:67:1f
+4a:8d:7a:80:67:1f with FriendlyWRT
 
-Wi-Fi 
+Wi-Fi `iwconfig wlan0 power on`
 
-iwconfig wlan0 power on
+LAA MAC addresses with Ubuntu
 
   * eth0: 5e:21:6a:4e:7c:1f
   * eth1: 62:21:6a:4e:7c:1f
@@ -179,7 +177,7 @@ Opening for a Wi-Fi antenna
 
 ## Software
 
-FriendlyElEC' OS images (both Ubuntu and FriendlyWRT) use Rockchip MiniLoader and an Android partition scheme with which I'm not familiar at all:
+FriendlyElEC's OS images (both Ubuntu and FriendlyWRT) use Rockchip MiniLoader and an Android partition scheme which I'm not familiar with at all:
 
     179        0    7634944 mmcblk0
     179        1       4096 mmcblk0p1
