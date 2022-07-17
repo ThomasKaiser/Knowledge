@@ -10,7 +10,7 @@ Early July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long await
 
 The board fortunately leaves the RPi form factor behind and measures 100 x 72mm (Pico-ITX)
 
-  * SoC – Rockchip RK3588 octa-core processor with 4 Cortex-A76 cores @ *up to* 2.4 GHz, 4 Cortex-A55 cores @ 1.8 GHz, ARM Mali G610MC4 GPU, a 6TOPS NPU, 8K 10-bit decoder, 8K encoder
+  * SoC: Rockchip RK3588 octa-core processor with 4 Cortex-A76 cores @ *up to* 2.4 GHz, 4 Cortex-A55 cores @ ~1.8 GHz, ARM Mali G610MC4 GPU, a 6TOPS NPU, 8K 10-bit decoder, 8K encoder
   * System Memory: 4GB, 8GB, or 16GB LPDDR4x (32GB possible but currently no 128Gb LPDDR4x modules available)
   * M.2 2280 key M socket for NVMe SSD (PCIe Gen3 x4)
   * MicroSD card socket
@@ -100,7 +100,7 @@ Even if currently the LPDDR4x is configured to run at only 2112MHz by [some boot
 
 ## Powering
 
-Powering the board can be done with an [USB PD](https://en.wikipedia.org/wiki/USB_hardware#USB_Power_Delivery) compliant charger through the USB-C port or with 5V via the GPIO header (expect here damage/undervoltage/underpowering if you don't know what you do). QuickCharge isn't supported. The PMU is accessible through I2C so we can ask it what has been negotiated with `sensors tcpm_source_psy_4_0022-i2c-4-22`.
+Powering the board can be done through the USB-C port with either an [USB PD](https://en.wikipedia.org/wiki/USB_hardware#USB_Power_Delivery) compliant charger or with a barrel-to-USB-C adapter with a fixed voltage or with 5V via the GPIO header (expect damage/undervoltage/underpowering with anything other than USB PD if you don't know what you do). QuickCharge isn't supported. The PMU is accessible through I2C so we can ask it what has been negotiated with `sensors tcpm_source_psy_4_0022-i2c-4-22`.
 
 With a 'dumb' 15W RPi USB-C power brick (not USB PD compliant) obviously we're ending up with 15W:
 
@@ -117,7 +117,12 @@ And with an Apple '96W USB-C Power Adapter' we're at 27W:
     in0:           9.00 V  (min =  +9.00 V, max =  +9.00 V)
     curr1:         3.00 A  (max =  +3.00 A)
 
-Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above negotiations [are exactly what's defined in device-tree settings](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
+When [providing static 12V via an adapter to the USB-C port](https://forum.radxa.com/t/fixed-voltage-power-supply-options/10803/9?u=tkaiser) the output *wrongly* reads 5V/1.5A which is the lowest power mode defined with USB-C and reflects the state of the adapter's configuration channel (CC) pins:
+
+    in0:           5.00 V  (min =  +5.00 V, max =  +5.00 V)
+    curr1:         1.50 A  (max =  +1.50 A)
+
+Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above USB PD negotiations [are exactly what's defined in device-tree settings](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
 
     <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
      PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
@@ -155,9 +160,12 @@ ROCK 5B's USB-C details can be accessed via sysfs:
     vconn_source:no
     waiting_for_supplier:0
 
-And if a standards compliant device is connected you find information about the other end of the cable below `/sys/class/typec/port0/port0-partner`, e.g. `supports_usb_power_delivery`:
+If `power_operation_mode` is not USB PD then it reflects the state of the CC pins: `3.0A` with the RPi power brick and `1.5A` with the aforementioned 'static' 12V fed by a barrel-to-USB-C adapter. Please note that these amperage numbers never represent any real consumption but are just the result of negotiated USB PD settings / CC pins.
 
-  * no (15 W RPi power brick)
+You find some limited information about the other end of the cable below `/sys/class/typec/port0/port0-partner`, e.g. `supports_usb_power_delivery`:
+
+  * no (barrel adapter)
+  * no (15W RPi power brick)
   * yes (24W charger)
   * yes (96W charger)
 
@@ -165,7 +173,7 @@ And if a standards compliant device is connected you find information about the 
 
 I'm measuring with a NetIO PowerBox 4KF in a [rather time consuming process](https://github.com/ThomasKaiser/sbc-bench/blob/e6cfb870c7a297abf96f51b7305600c0e48d1951/sbc-bench.sh#L385-L408) that means 'at the wall' with charger included with averaged idle values over 4 minutes.
 
-The small fan on my dev sample is responsible for ~700mW, switching network between Gigabit Ethernet and 2.5GbE makes up for another ~300mW. Adjusting PCI powermanagement (`/sys/module/pcie_aspm/parameters/policy` – see below why that's important) from `powersave` to `default` makes up for another ~100mW.
+The small fan on my dev sample is responsible for ~700mW, switching network between Gigabit Ethernet and 2.5GbE makes up for another ~300mW. Adjusting PCIe powermanagement (`/sys/module/pcie_aspm/parameters/policy` – see below why that's important) from `powersave` to `default` makes up for another ~100mW.
 
 So the board idles below 2W w/o any peripherals except Gigabit Ethernet. A fan adds extra juice, 2.5GbE instead of GbE as well, avoiding super powersavings settings also.
 
@@ -324,6 +332,33 @@ We're nowhere near 104 MB/s since the interface is lower clocked for some safety
 
 Though random I/O benefits from SDR104 mode but mostly depends on the SD card you buy ([more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md)).
 
+### SPI NOR flash
+
+SPI NOR flash is some little amount of rather slow but cheap flash storage meant to hold a bootloader and some config (you all know this from PCs with their UEFI and BIOS in the past).
+
+According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be next to the GPIO header but at least on the developer sample it's a Macronix chip. It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.
+
+Even in this state it is possible to flash a bootloader to the SPI flash via Maskrom mode to []'boot from NVMe'](https://wiki.radxa.com/Rock3/install) (and USB, maybe even network and SATA). It should eventually be possible with an appropriate u-boot version hopefully being flashed at the factory to later production revisions of this board.
+
+Quick check whether the SPI storage is accessible from a host computer (MacBook running macOS) using [Rockchip flashing tools](https://wiki.radxa.com/Rock3/install/rockchip-flash-tools) with ROCK 5B connected to the USB-C (OTG) port:
+
+    tk@mac-tk ~ % system_profiler SPUSBDataType
+    ...
+    Composite Device:
+    
+      Product ID: 0x350b
+      Vendor ID: 0x2207  (Fuzhou Rockchip Electronics Co., Ltd.)
+      Version: 1.00
+      Speed: Up to 480 Mb/s
+      Location ID: 0x14100000 / 1
+      Current Available (mA): 500
+      Current Required (mA): 400
+      Extra Operating Current (mA): 0
+    tk@mac-tk ~ % rkdeveloptool -v
+    rkdeveloptool ver 1.32
+    tk@mac-tk ~ % rkdeveloptool ld
+    DevNo=1	Vid=0x2207,Pid=0x350b,LocationID=1401	Maskrom
+
 ### USB
 
 The two USB2 Hi-Speed receptacles share bandwidth since an internal hub is in between so the best you could expect is around 34/37 MB/s write/read sequential transfer speeds with UAS (RK's BSP kernel supports UAS with USB2):
@@ -352,7 +387,7 @@ Testing SATA also not possible since lacking the adapter (said to cost just a fe
 
 ![Rock 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
 
-This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
+This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from the little sibling RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
 
 ## Networking
 
@@ -435,7 +470,7 @@ All that's missing is the usual battery featuring the usual connector:
 
 ## Software
 
-No mainline Linux support so far (upstreaming will take years but Radxa is collaborating with [Collabora](https://www.collabora.com) here) and as such every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
+Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Collabora](https://www.collabora.com) and Rockchip [started few months ago](https://lwn.net/ml/linux-kernel/20220422170920.401914-1-sebastian.reichel@collabora.com/) but will take years. As such now every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
 
   * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
@@ -450,7 +485,7 @@ Wrt mainline Linux/u-boot and *BSD the good news is that a lot of the upstreamin
 
 ## Suggestions to Radxa
 
-  * set `/sys/module/pcie_aspm/parameters/policy` to `default` instead of `powersave` (w/o network RX performance is ruined)
+  * <del>set `/sys/module/pcie_aspm/parameters/policy` to `default` instead of `powersave` (w/o network RX performance is ruined)</del> ([fixed](https://github.com/radxa/kernel/commit/60071e3a4dee8a6900418fc8ed8386adf08c1ec8))
   * append `coherent_pool=2M` to `extlinux.conf` (w/o most probably ‘UAS hassles’)
   * configure `ondemand` cpufreq governor with `io_is_busy` and friends (w/o storage performance sucks)
   * Write some service that checks at booting whether there's a `/dev/nvme` device and if so check via `lspci -vv` whether there's a mismatch between SSD's advertised capabilities and negotiated ones (except the SSD being capable of Gen4 speeds ofc). Notify user if that happened so user is aware of problems with failed PCIe link training probably caused by dirty contacts in the M.2 slot
