@@ -211,7 +211,7 @@ While the USB2 ports share bandwidth since being behind an internal USB hub (`1a
 
 I'm not able to test USB-C capabilities since port used for powering and me lacking an USB-C/Thunderbolt dock or an appropriate display. But schematics tell that USB-C supports USB3 OTG and DisplayPort with the following lane combinations: DP x4, USB3 x4 and DP x2 + USB3 x2.
 
-So let's focus on the two USB3 Type-A sockets (maybe the most crappy connector ever invented due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect an UAS capable disk enclosure with an SSD inside to each USB3-A port, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection, with RK3588's BSP kernel it's ~420 MB/s)
+So let's focus on the two USB3 Type-A sockets (maybe the most crappy connector ever invented due to the extra tiny contacts for the SuperSpeed data lines). To spot any internal bottlenecks my test is to connect an [UAS](https://en.wikipedia.org/wiki/USB_Attached_SCSI) capable disk enclosure with an SSD inside to each USB3-A port, setup a RAID0 and see whether we're exceeding 400 MB/s or not (~400 MB/s sequential disk transfers are the maximum you get over a single 5 Gbps USB3 connection, with RK3588's BSP kernel it's ~420 MB/s)
 
     root@rock-5b:/home/rock# lsusb -t
     /:  Bus 08.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
@@ -338,7 +338,7 @@ SPI NOR flash is some little amount of rather slow but cheap flash storage meant
 
 According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be next to the GPIO header but at least on the developer sample it's a Macronix chip. It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.
 
-Even in this state it is possible to flash a bootloader to the SPI flash via Maskrom mode to []'boot from NVMe'](https://wiki.radxa.com/Rock3/install) (and USB, maybe even network and SATA). It should eventually be possible with an appropriate u-boot version hopefully being flashed at the factory to later production revisions of this board.
+Even in this state it is possible to flash a bootloader to the SPI flash via Maskrom mode to [boot from NVMe](https://wiki.radxa.com/Rock3/install) (and USB, maybe even network and SATA). It should eventually be possible with an appropriate u-boot version hopefully being flashed at the factory to later production revisions of this board.
 
 Quick check whether the SPI storage is accessible from a host computer (MacBook running macOS) using [Rockchip flashing tools](https://wiki.radxa.com/Rock3/install/rockchip-flash-tools) with ROCK 5B connected to the USB-C (OTG) port:
 
@@ -354,8 +354,7 @@ Quick check whether the SPI storage is accessible from a host computer (MacBook 
       Current Available (mA): 500
       Current Required (mA): 400
       Extra Operating Current (mA): 0
-    tk@mac-tk ~ % rkdeveloptool -v
-    rkdeveloptool ver 1.32
+    
     tk@mac-tk ~ % rkdeveloptool ld
     DevNo=1	Vid=0x2207,Pid=0x350b,LocationID=1401	Maskrom
 
