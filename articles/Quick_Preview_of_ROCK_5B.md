@@ -8,7 +8,7 @@ Early July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long await
 
 ## Overview
 
-The board fortunately leaves the RPi form factor behind and measures 100 x 72mm (Pico-ITX)
+The board fortunately leaves the RPi form factor behind and measures 100 x 74mm (close to but definitely *not* Pico-ITX – mounting hole positions also differ from Pico-ITX)
 
   * SoC: Rockchip RK3588 octa-core processor with 4 Cortex-A76 cores @ *up to* 2.4 GHz, 4 Cortex-A55 cores @ ~1.8 GHz, ARM Mali G610MC4 GPU, a 6TOPS NPU, 8K 10-bit decoder, 8K encoder
   * System Memory: 4GB, 8GB, or 16GB LPDDR4x (32GB possible but currently no 128Gb LPDDR4x modules available)
@@ -336,7 +336,7 @@ Though random I/O benefits from SDR104 mode but mostly depends on the SD card yo
 
 SPI NOR flash is some little amount of rather slow but cheap flash storage meant to hold a bootloader and some config (you all know this from PCs with their UEFI and BIOS in the past).
 
-According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be next to the GPIO header but at least on the developer sample it's a Macronix chip. It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.
+According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be soldered next to the GPIO header but at least on the developer sample it's a Macronix chip. It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.
 
 Even in this state it is possible to flash a bootloader to the SPI flash via Maskrom mode to [boot from NVMe](https://wiki.radxa.com/Rock3/install) (and USB, maybe even network and SATA). It should eventually be possible with an appropriate u-boot version hopefully being flashed at the factory to later production revisions of this board.
 
@@ -478,9 +478,9 @@ Rockchip's official Rk3588 SDKs can be found here: [https://gitlab.com/rk3588_li
 
 Wrt mainline Linux/u-boot and *BSD the good news is that a lot of the upstreaming work that went into RK356x can directly be used with RK3588 as well. For example the drivers for [Naneng Micro's USB3.0/PCIE2/SATA3 Combo PHY](http://www.nanengmicro.com/en/combo-phy/) that are submitted [upstream by Rockchip themselves and successfully tested on RK3566 and RK3568 boards](https://lore.kernel.org/all/20220208091326.12495-1-yifeng.zhao@rock-chips.com/T/#t) will work with RK3588 as well.
 
-## more to come
+## Board bring-up
 
-...
+It seems some of the early adopters were told to send ROCK 5B feedback via some hidden [Discord crap](https://stallman.org/discord.html) lacking any log. That's almost too stupid to be true but let's give up on the whole process and the board.
 
 ## Suggestions to Radxa
 
