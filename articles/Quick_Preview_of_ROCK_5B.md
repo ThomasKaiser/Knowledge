@@ -1,6 +1,28 @@
 # Quick Preview of ROCK 5B
 
-**(Work in progress)**
+  * [Overview](#overview)
+  * [RK3588](#rk3588)
+    + [PVTM](#pvtm)
+    + [Performance](#performance)
+  * [Powering](#powering)
+  * [Consumption](#consumption)
+  * [LEDs](#leds)
+  * [USB](#usb)
+  * [Storage](#storage)
+    + [eMMC](#emmc)
+    + [SD card](#sd-card)
+    + [SPI NOR flash](#spi-nor-flash)
+    + [USB](#usb-1)
+    + [NVMe](#nvme)
+    + [SATA](#sata)
+  * [Networking](#networking)
+  * [PCIe](#pcie)
+  * [Audio codec](#audio-codec)
+  * [RTC](#rtc)
+  * [Software](#software)
+  * [Board bring-up](#board-bring-up)
+  * [Suggestions to Radxa](#suggestions-to-radxa)
+  * [Open questions](#open-questions)
 
 ![](../media/rock5b_front_back.jpg)
 
@@ -50,6 +72,8 @@ The CPU cores support the following extensions: fp asimd evtstrm aes pmull sha1 
      6        2        6      408    2400   Cortex-A76 / r4p0
      7        2        6      408    2400   Cortex-A76 / r4p0
 
+### PVTM
+
 So we have three different CPU clusters since `cpu4/cpu5` and `cpu6/cpu7` can be controlled independently. This is important since Rockchip uses PVTM (Process-Voltage-Temperature Monitor) on its new RK3566/RK3568/RK3588 SoCs which [is somewhat part of Silicon Lifecycle Management (SLM)](https://www.synopsys.com/glossary/what-are-pvt-sensors.html). The PVT sensors are sensing process variability and operating environment of the SoC at least while booting and both cpufreq driver and an integrated MCU then decide about clockspeeds and supply voltages which could change over time since silicon is aging.
 
 On my dev sample the cpufreq driver enables the 2400 MHz cpufreq OPP on both A76 clusters but for example on [Willy Tarreau's board `cpu4/cpu5` get only 2304 MHz as highest OPP and `cpu6/cpu7` 2352 MHz](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/62).
@@ -96,6 +120,8 @@ So while we know that 64% of devices got highest cpufreq OPP, 10% are limited to
 Please note that PVTM also handles the GPU and NPU parts of the SoC. For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
 
 Next step: check whether those RK3588 where the kernel denies highest clockspeeds can be convinced by some [slight manual overvolting to allow for max performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/141?u=tkaiser) (resulting in higher temperatures at full load of course!).
+
+### Performance
 
 RK3588's CPU performance is amazing and so far the highest we've seen with any SBC. Numbers are already in `sbc-bench`'s [results collection](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) but let's look directly at the 'most popular SBC in the world' (RPi 4B), ODROID N2+, another recent octa-core newcomer ([Khadas VIM4](https://www.cnx-software.com/2021/10/21/khadas-vim4-amlogic-a311d2-sbc/) based on Amlogic A311D2) and ROCK 5B:
 
@@ -384,7 +410,7 @@ The two USB2 Hi-Speed receptacles share bandwidth since an internal hub is in be
 
 As can be seen while sequential transfer speeds suck random I/O is great (UAS rulez).
 
-The USB3 SuperSpeed Type-A receptacles are on their own buses and show their full potential even with concurrent accesses (see above).
+The USB3 SuperSpeed Type-A receptacles are on their own buses and show their full potential even with concurrent accesses (see [above](#usb)).
 
 In a 4 lane configuration (no DisplayPort alt mode at the same time) the USB-C port should support *SuperSpeed 10Gps* but unfortunately not able to test since lacking an USB-C/Thunderbolt Dock.
 
@@ -499,7 +525,7 @@ It seems some of the early adopters were told to send ROCK 5B feedback via some 
   * <del>set `/sys/module/pcie_aspm/parameters/policy` to `default` instead of `powersave` (w/o network RX performance is ruined)</del> ([fixed](https://github.com/radxa/kernel/commit/60071e3a4dee8a6900418fc8ed8386adf08c1ec8))
   * append `coherent_pool=2M` to `extlinux.conf` (w/o most probably ‘UAS hassles’)
   * configure `ondemand` cpufreq governor with `io_is_busy` and friends (w/o storage performance sucks)
-  * Write some service that checks at booting whether there's a `/dev/nvme` device and if so check via `lspci -vv` whether there's a mismatch between SSD's advertised capabilities and negotiated ones (except the SSD being capable of Gen4 speeds ofc). Notify user if that happened so user is aware of problems with failed PCIe link training probably caused by dirty contacts in the M.2 slot
+  * Write some service that checks at booting whether there's a `/dev/nvme` device and if so check via `lspci -vv` whether there's a mismatch between SSD's advertised capabilities and negotiated ones (except the SSD being capable of Gen4 speeds ofc). Notify user if that happened so user is aware of problems with failed PCIe link training probably caused by dusty/dirty contacts in the M.2 slot
   
 ## Open questions
 
