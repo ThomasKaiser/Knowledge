@@ -81,6 +81,18 @@ vs. [amazingfate's board](https://gist.github.com/amazingfate/17af25d7d543d253c9
     [    5.558544] cpu cpu6: pvtm=1717
     [    5.562484] cpu cpu6: pvtm-volt-sel=5
 
+In order to estimate PVTM situation 'in the wild' I did [some quick Geekbench data mining](https://github.com/ThomasKaiser/sbc-bench/tree/master/results/geekbench-rk3588). While both cluster detection as well as reporting CPU clockspeeds is fundamentally flawed in Geekbench at least we can extract the cpufreq OPP that PVTM chose 
+on 81 RK3588(S) devices (ignoring those four results from 2021 maxing out at 2.0 GHz since most probably not PVTM results):
+
+    53  4 Cores @ 1.80 GHz / 4 Cores @ 2.40 GHz
+    14  4 Cores @ 1.80 GHz / 4 Cores @ 2.35 GHz
+     2  4 Cores @ 1.80 GHz / 2 Cores @ 2.26 GHz / 2 Cores @ 2.35 GHz
+     1  4 Cores @ 1.80 GHz / 4 Cores @ 2.30 GHz
+     3  4 Cores @ 1.80 GHz / 4 Cores @ 2.26 GHz
+     8  4 Cores @ 1.80 GHz / 4 Cores @ 2.21 GHz
+
+So while we know that 64% of devices got highest cpufreq OPP, 10% are limited to 2.2 GHz on the A76s and another 17% just lost the 2400 MHz OPP to max out at the 2352 MHz OPP we don't know which real clockspeeds the devices were clocked with. Geekbench doesn't measure this but simply relies on some sysfs values to do some (flawed) math and present then 'cluster details' and 'clockspeeds'.
+
 Please note that PVTM also handles the GPU and NPU parts of the SoC. For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
 
 Next step: check whether those RK3588 where the kernel denies highest clockspeeds can be convinced by some [slight manual overvolting to allow for max performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/141?u=tkaiser) (resulting in higher temperatures at full load of course!).
