@@ -105,18 +105,6 @@ vs. [amazingfate's board](https://gist.github.com/amazingfate/17af25d7d543d253c9
     [    5.558544] cpu cpu6: pvtm=1717
     [    5.562484] cpu cpu6: pvtm-volt-sel=5
 
-In order to estimate PVTM situation 'in the wild' I did [some quick Geekbench data mining](https://github.com/ThomasKaiser/sbc-bench/tree/master/results/geekbench-rk3588). While both cluster detection as well as reporting CPU clockspeeds is fundamentally flawed in Geekbench at least we can extract the cpufreq OPP that PVTM chose 
-on 81 RK3588(S) devices (ignoring those four results from 2021 maxing out at 2.0 GHz since most probably not PVTM results):
-
-    53  4 Cores @ 1.80 GHz / 4 Cores @ 2.40 GHz
-    14  4 Cores @ 1.80 GHz / 4 Cores @ 2.35 GHz
-     2  4 Cores @ 1.80 GHz / 2 Cores @ 2.26 GHz / 2 Cores @ 2.35 GHz
-     1  4 Cores @ 1.80 GHz / 4 Cores @ 2.30 GHz
-     3  4 Cores @ 1.80 GHz / 4 Cores @ 2.26 GHz
-     8  4 Cores @ 1.80 GHz / 4 Cores @ 2.21 GHz
-
-So while we know that 64% of devices got highest cpufreq OPP, 10% are limited to 2.2 GHz on the A76s and another 17% just lost the 2400 MHz OPP to max out at the 2352 MHz OPP we don't know which real clockspeeds the devices were clocked with. Geekbench doesn't measure this but simply relies on some sysfs values to do some (flawed) math and present then 'cluster details' and 'clockspeeds'.
-
 Please note that PVTM also handles the GPU and NPU parts of the SoC. For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
 
 Next step: check whether those RK3588 where the kernel denies highest clockspeeds can be convinced by some [slight manual overvolting to allow for max performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/141?u=tkaiser) (resulting in higher temperatures at full load of course!).
@@ -206,6 +194,20 @@ You find some limited information about the other end of the cable below `/sys/c
   * no (15W RPi power brick)
   * yes (24W charger)
   * yes (96W charger)
+
+Even more information about FUSB302 negotiations are available with Rockchip's BSP kernel via debugfs:
+
+    cat /sys/kernel/debug/usb/fusb302-4-0022 /sys/kernel/debug/usb/tcpm-4-0022 | sort
+
+That way one for example can look what the connected USB PD compliant charger provides and what the driver then chose:
+
+    [    3.272362]  PDO 0: type 0, 5000 mV, 3000 mA [DE]
+    [    3.272371]  PDO 1: type 0, 9000 mV, 2660 mA []
+    [    3.272379]  PDO 2: type 0, 12000 mV, 2000 mA []
+    [    3.272386]  PDO 3: type 0, 15000 mV, 1600 mA []
+    ...
+    [    3.272426] cc=2 cc1=0 cc2=5 vbus=0 vconn=sink polarity=1
+    [    3.272434] Requesting PDO 3: 15000 mV, 1600 mA
 
 ## Consumption
 
