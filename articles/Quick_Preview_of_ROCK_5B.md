@@ -372,6 +372,18 @@ We're nowhere near 104 MB/s since the interface is lower clocked for some safety
 
 Though random I/O benefits from SDR104 mode but mostly depends on the SD card you buy ([more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md)).
 
+Update due to Radxa having reacted to this review and [clock the SD card now higher](https://github.com/radxa/kernel/commit/dc46fcef4ac28b044f88320318c28b0a7132fa53):
+
+    SanDisk Extreme 32GB A1 from 2017                   random    random                                    
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4     3246     3325    13209    11674    10330     5223
+    102400      16     9225     9603    27152    30500    31052    15513
+    102400     512    59451    55584    80327    77797    78150    52117
+    102400    1024    62341    61484    83033    82631    81870    58023
+    102400   16384    62872    61581    89746    89104    89755    62862
+
+We're now at close to 90MB/s (most probably the card being the bottleneck here) but looking at maximum sequential transfer speeds with SD cards is stupid anyway since random I/O is what matters if an OS runs off of such card. And here **everything** improved significantly! Let's hope that users of crappy SD cards won't report data corruption now :)
+
 ### SPI NOR flash
 
 SPI NOR flash is some little amount of rather slow but cheap flash storage meant to hold a bootloader and some config (you all know this from PCs with their UEFI and BIOS in the past).
@@ -427,6 +439,8 @@ Testing SATA also not possible since lacking the adapter (said to cost just a fe
 ![Rock 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
 
 This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from the little sibling RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
+
+Since also with RK3568 it's confirmed [SATA port multipliers like JMB575 do work](https://forum.odroid.com/viewtopic.php?f=215&t=44977) we know this will work with RK3588 / ROCK 5B as well and the little M.2 adapter combined with a JMB575 allows for up to five SATA devices to be connected of course sharing the bandwidth of the single 6Gbps SATA lane.
 
 ## Networking
 
@@ -522,6 +536,8 @@ Wrt mainline Linux/u-boot and *BSD the good news is that a lot of the upstreamin
 
 It seems some of the early adopters were told to send ROCK 5B feedback via some hidden [Discord crap](https://stallman.org/discord.html) lacking any log. That's almost too stupid to be true but let's give up on the whole process and the board.
 
+As if the Snowden revelations never happened and we could trust US tech companies and as if community fragmentation would be a great thing. And if there's no public log available then everything that happens in such a Discord channel ist lost anyway...
+
 ## Suggestions to Radxa
 
   * <del>set `/sys/module/pcie_aspm/parameters/policy` to `default` instead of `powersave` (w/o network RX performance is ruined)</del> ([fixed](https://github.com/radxa/kernel/commit/60071e3a4dee8a6900418fc8ed8386adf08c1ec8))
@@ -532,7 +548,7 @@ It seems some of the early adopters were told to send ROCK 5B feedback via some 
 ## Open questions
 
   * <del>possible to power the board asides USB-C / USB PD [e.g. with 5V via GPIO header](https://forum.radxa.com/t/powering-rock-5b/10759)?</del>
-  * RK3588 TRM states wrt SATA 'Port Multiplier with FIS-based switching' but [Radxa should better test with a JMicron JMB575](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/21?u=tkaiser)
+  * <del>RK3588 TRM states wrt SATA 'Port Multiplier with FIS-based switching' but [Radxa should better test with a JMicron JMB575](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/21?u=tkaiser)</del>
   * PCIe bifurcation really possible with 5B's M.2 implementation ([clocks available](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/140?u=tkaiser))?
   * check PCIe BAR and consequences for consumer's most wanted thingy: external GPU
   * check [NVMe power management](https://forum.odroid.com/viewtopic.php?f=215&t=44747)
