@@ -352,6 +352,14 @@ The SD card interface is SDXC compliant and as such supports capacities up to 2 
 
 [According to device-tree settings](https://github.com/radxa/kernel/blob/78d311de923fc0644e4700f30813120835fec9cf/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L426-L440) the SD card interface should be capable of SDR104 mode (switching from 3.3V to 1.8V with up to 104 MB/s sequential transfer speeds). Let's have a look with the usual `iozone` call and two cards:
 
+    SanDisk Extreme 64GB A2 from 2022                   random    random
+        kB  reclen    write  rewrite    read    reread    read     write
+    102400       4     2450     2547    11890    11952     9230     4127
+    102400      16     9485     9585    30536    30557    30332    13948
+    102400     512    51642    51438    64056    64056    64053    45227
+    102400    1024    57304    57351    65432    65439    65443    53929
+    102400   16384    54927    54567    68243    68243    68247    53363
+    
     SanDisk Extreme 32GB A1 from 2017                   random    random
         kB  reclen    write  rewrite    read    reread    read     write
     102400       4     3393     3356    14523    14505    10301     4730
@@ -360,19 +368,11 @@ The SD card interface is SDXC compliant and as such supports capacities up to 2 
     102400    1024    59655    60323    65364    65524    65416    53838
     102400   16384    61178    61268    68165    68289    68287    61408
 
-    SanDisk Extreme 64GB A2 from 2022                   random    random
-        kB  reclen    write  rewrite    read    reread    read     write
-    102400       4     2450     2547    11890    11952     9230     4127
-    102400      16     9485     9585    30536    30557    30332    13948
-    102400     512    51642    51438    64056    64056    64053    45227
-    102400    1024    57304    57351    65432    65439    65443    53929
-    102400   16384    54927    54567    68243    68243    68247    53363
-
 We're nowhere near 104 MB/s since the interface is lower clocked for some safety headroom and therefore limited to below 70 MB/s sequential transfers which is [an established safety mechanism in the industry](https://forum.odroid.com/viewtopic.php?f=153&t=30247#p216250).
 
 Though random I/O benefits from SDR104 mode but mostly depends on the SD card you buy ([more insights on SD card performance and other numbers to compare](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/A1_and_A2_rated_SD_cards.md)).
 
-Update due to Radxa having reacted to this review and [clock the SD card now higher](https://github.com/radxa/kernel/commit/dc46fcef4ac28b044f88320318c28b0a7132fa53):
+Update due to Radxa having reacted to this review now [clocking the SD card higher](https://github.com/radxa/kernel/commit/dc46fcef4ac28b044f88320318c28b0a7132fa53):
 
     SanDisk Extreme 32GB A1 from 2017                   random    random                                    
         kB  reclen    write  rewrite    read    reread    read     write
@@ -382,7 +382,7 @@ Update due to Radxa having reacted to this review and [clock the SD card now hig
     102400    1024    62341    61484    83033    82631    81870    58023
     102400   16384    62872    61581    89746    89104    89755    62862
 
-We're now at close to 90MB/s (most probably the card being the bottleneck here) but looking at maximum sequential transfer speeds with SD cards is stupid anyway since random I/O is what matters if an OS runs off of such card. And here **everything** improved significantly! Let's hope that users of crappy SD cards won't report data corruption now :)
+We're now at close to 90MB/s (most probably my SD card being the bottleneck here) but looking at maximum sequential transfer speeds with SD cards is stupid anyway since random I/O is what matters if an OS runs off of such card. And here at least with larger block sizes we're seeing some improvements. Let's hope that users of crappy SD cards won't report data corruption now :)
 
 ### SPI NOR flash
 
