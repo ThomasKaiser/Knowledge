@@ -167,8 +167,6 @@ it looks like this with the aforementioned 24W charger now able to provide full 
     in0:          15.00 V  (min = +15.00 V, max = +15.00 V)
     curr1:         1.60 A  (max =  +1.60 A)
 
-But when using the 96W Apple charger (or an Apple 140W) the board doesn't boot (no serial console attached -> no details) any more with adjusted values. Even removing the 15V and 20V definitions and just with 12V/3A setting no luck.
-
 ROCK 5B's USB-C details can be accessed via sysfs:
 
     grep "" /sys/class/typec/port0/* 2>/dev/null
