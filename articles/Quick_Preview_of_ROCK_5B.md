@@ -28,6 +28,10 @@
 
 Early July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long awaited ROCK 5B as part of a [Debug Party](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483) to spot HW and SW problems. In the following we have a quick look on it focusing on Linux, headless operation and bring-up challenges so if you're interested in Android, gaming or similar stuff this is not for you.
 
+In the meantime PCB Rev. 1.4 [appeared](https://twitter.com/AllnetChina/status/1550141093567778820):
+
+![](../media/rock5b-rev-1.4.jpg)
+
 ## Overview
 
 The board fortunately leaves the RPi form factor behind and measures 100 x 74mm (close to but definitely *not* Pico-ITX – mounting hole positions also differ from Pico-ITX)
@@ -542,7 +546,7 @@ Wrt mainline Linux/u-boot and *BSD the good news is that a lot of the upstreamin
 
 It seems some of the early adopters were told to send ROCK 5B feedback via some hidden [Discord crap](https://stallman.org/discord.html) lacking any log. That's almost too stupid to be true but let's give up on the whole process and the board.
 
-As if the Snowden revelations never happened and we could trust US tech companies and as if community fragmentation would be a great thing. And if there's no public log available then everything that happens in such a Discord channel ist lost anyway...
+As if the Snowden revelations never happened and we could trust US tech companies and as if community fragmentation would be a great thing. And if there's no public log available then everything that happens in such a Discord channel is lost anyway...
 
 ## Suggestions to Radxa
 

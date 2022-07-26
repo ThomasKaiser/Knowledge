@@ -45,7 +45,7 @@ The CPU cores support the following extensions: 'fp asimd evtstrm aes pmull sha1
       2        0        0      408    1992   Cortex-A55 / r2p0
       3        0        0      408    1992   Cortex-A55 / r2p0
 
-So we have a single CPU cluster and the maximum cpufreq OPP reading 1992 MHz needs to be taken with a huge grain of salt since PVTM is at work here ([discussed more in detail with ROCK 5B recently](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#rk3588)). We've seen RK3568 being [clocked down to just 1840 MHz while cpufreq driver still reports 1992 MHz](https://forum.odroid.com/viewtopic.php?p=350782#p350782). It has to be seen whether on those lower quality silicon we can manually 'overvolt' the cores slightly to get advertised clockspeeds in exchange for some more generated heat.
+So we have a single CPU cluster and the maximum cpufreq OPP reading 1992 MHz needs to be taken with a huge grain of salt since PVTM is at work here ([discussed more in detail with ROCK 5B recently](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#pvtm)). We've seen RK3568 being [clocked down to just 1840 MHz while cpufreq driver still reports 1992 MHz](https://forum.odroid.com/viewtopic.php?p=350782#p350782). It has to be seen whether on those lower quality silicon we can manually 'overvolt' the cores slightly to get advertised clockspeeds in exchange for some more generated heat.
 
 Performance is a bit lower compared to similar quad-core A55 designs (like S905X3 on ODROID C4/HC4 that clocks with real 2100 MHz) but it's ok-ish and especially memory intensive tasks benefit from the much better memory performance compared to its predecessor Cortex-A53. 
 
