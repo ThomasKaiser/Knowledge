@@ -41,7 +41,7 @@ The board fortunately leaves the RPi form factor behind and measures 100 x 74mm 
   * 2 x HDMI 2.1 out up to 8Kp60 (when 1 display is 8K the other will be 4K)
   * 1 x USB-C via DisplayPort alt. mode up to 8Kp30
   * 1 x micro HDMI input up to 4Kp60
-  * 2 x MIPI CSI connectors
+  * 2 x MIPI CSI connectors (Radxa about to sell an 8MP camera able to stream 4K @ 90 frames/sec based on SONY's IMX415 sensor)
   * 1 x 2.5GbE RJ45 port (RTL8125BG) with optional PoE HAT support
   * M.2 2230 key E socket (PCIe Gen2 x1) for an optional WiFi 6E and Bluetooth 5.2 M.2 module or to be used with a cheap mechanical adapter as SATA port
   * USB: 2x USB 3.0 Type-A ports, 1x USB 3.0 Type-C port, 2x USB 2.0 ports. USB3 ports limited to SuperSpeed (5 Gbps)
@@ -208,6 +208,14 @@ That way one for example can look what the connected USB PD compliant charger pr
     ...
     [    3.272426] cc=2 cc1=0 cc2=5 vbus=0 vconn=sink polarity=1
     [    3.272434] Requesting PDO 3: 15000 mV, 1600 mA
+
+List of chargers successfully tested combined with debugfs info:
+
+  * [12W Apple USB charger with A-to-C cable showing 5V/0A](http://ix.io/45I4)
+  * [15W RPi USB-C power brick negotiating 5V/3A](http://ix.io/45HX)
+  * [24W charger negotiating 12V/1.5A with original settings](http://ix.io/45HU)
+  * [96W Apple USB-C charger negotiating 9V/3A](http://ix.io/45I1)
+  * [140W Apple USB-C charger also negotiating 9V/3A](http://ix.io/45I2)
 
 ## Consumption
 
@@ -440,7 +448,7 @@ Testing SATA also not possible since lacking the adapter (said to cost just a fe
 
 This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from the little sibling RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
 
-Since also with RK3568 it's confirmed [SATA port multipliers like JMB575 do work](https://forum.odroid.com/viewtopic.php?f=215&t=44977) we know this will work with RK3588 / ROCK 5B as well and the little M.2 adapter combined with a JMB575 allows for up to five SATA devices to be connected of course sharing the bandwidth of the single 6Gbps SATA lane.
+With RK3568 it's also confirmed [SATA port multipliers like JMB575 do work](https://forum.odroid.com/viewtopic.php?f=215&t=44977) (though not clear yet why FIS-based switching won't be enabled and we're stuck at CBS. I asked Rockchip and posted answer in Odroid forum). So we know this will work with RK3588 / ROCK 5B as well and the little M.2 adapter combined with a JMB575 allows for up to five SATA devices to be connected of course sharing bandwidth/latency of the single 6Gbps SATA lane (SATA port multipliers allow for up to 15 devices per port but those larger PMs usually can be found in the backplanes of 'cold storage' servers).
 
 ## Networking
 
@@ -541,7 +549,7 @@ As if the Snowden revelations never happened and we could trust US tech companie
 ## Suggestions to Radxa
 
   * <del>set `/sys/module/pcie_aspm/parameters/policy` to `default` instead of `powersave` (w/o network RX performance is ruined)</del> ([fixed](https://github.com/radxa/kernel/commit/60071e3a4dee8a6900418fc8ed8386adf08c1ec8))
-  * append `coherent_pool=2M` to `extlinux.conf` (w/o most probably ‘UAS hassles’)
+  * <del>append `coherent_pool=2M` to `extlinux.conf` (w/o most probably ‘UAS hassles’)</del> ([fixed](https://github.com/radxa/debos-radxa/commit/4ae45b073a4aa8314228fdb65d82a1b6458e9943))
   * configure `ondemand` cpufreq governor with `io_is_busy` and friends (w/o storage performance sucks)
   * Write some service that checks at booting whether there's a `/dev/nvme` device and if so check via `lspci -vv` whether there's a mismatch between SSD's advertised capabilities and negotiated ones (except the SSD being capable of Gen4 speeds ofc). Notify user if that happened so user is aware of problems with failed PCIe link training probably caused by dusty/dirty contacts in the M.2 slot
   
