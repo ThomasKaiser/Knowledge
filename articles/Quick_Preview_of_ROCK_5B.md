@@ -398,7 +398,7 @@ We're now at close to 90MB/s (most probably my SD card being the bottleneck here
 
 SPI NOR flash is some little amount of rather slow but cheap flash storage meant to hold a bootloader and some config (you all know this from PCs with their UEFI and BIOS in the past).
 
-According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be soldered next to the GPIO header but at least on the developer sample it's a Macronix chip. It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.
+According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be on the board but at least on PCB revisions 1.3 and 1.4 it's a Macronix chip. It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.
 
 Even in this state it is possible to flash a bootloader to the SPI flash via Maskrom mode to [boot from NVMe](https://wiki.radxa.com/Rock3/install) (and USB, maybe even network and SATA). It should eventually be possible with an appropriate u-boot version hopefully being flashed at the factory to later production revisions of this board.
 
@@ -450,7 +450,7 @@ Testing SATA also not possible since lacking the adapter (said to cost just a fe
 
 This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from the little sibling RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
 
-With RK3568 it's also confirmed [SATA port multipliers like JMB575 do work](https://forum.odroid.com/viewtopic.php?f=215&t=44977) (though not clear yet why FIS-based switching won't be enabled and we're stuck at CBS. I asked Rockchip and posted answer in Odroid forum). So we know this will work with RK3588 / ROCK 5B as well and the little M.2 adapter combined with a JMB575 allows for up to five SATA devices to be connected of course sharing bandwidth/latency of the single 6Gbps SATA lane (SATA port multipliers allow for up to 15 devices per port but those larger PMs usually can be found in the backplanes of 'cold storage' servers).
+With RK3568 it's also confirmed [SATA port multipliers like JMB575 do work](https://forum.odroid.com/viewtopic.php?f=215&t=44977) (though not clear yet why FIS-based switching won't be enabled by default and we're stuck at CBS. I asked Rockchip, posted answer in Odroid forum and user @zupet confirmed that FBS works). So we know this will work with RK3588 / ROCK 5B as well and the little M.2 adapter combined with a JMB575 allows for up to five SATA devices to be connected of course sharing bandwidth/latency of the single 6Gbps SATA lane (SATA port multipliers allow for up to 15 devices per port but those larger PMs usually can be found in the backplanes of 'cold storage' servers).
 
 ## Networking
 
@@ -492,7 +492,7 @@ ROCK 5B's network interface is 2.5GbE capable due to an PCIe attached RealTek RT
     			       drv probe ifdown ifup
     	Link detected: yes
 
-ethtool -i enP4p65s0:
+Driver and (missing) firmware info using `ethtool -i enP4p65s0`:
 
     driver: r8125
     version: 9.009.00-NAPI-RSS
@@ -515,11 +515,15 @@ RK3588 [features 7 PCIe lanes](https://github.com/ThomasKaiser/Knowledge/blob/ma
 
 The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. Whether bifurcation really works with the Key M slot is [yet unknown](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/140?u=tkaiser).
 
-Wrt the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3 instead.
+Of the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3 instead.
+
+In the meantime Willy Tarreau made some tests with a quad 10GbE NIC using an M.2 PCIe adapter [and the board performed excellent even with the BSP kernel](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/289?u=tkaiser).
+
+![](../media/rock5b-with-4x10gbe-nic.jpg)
 
 ## Audio codec
 
-On the PCB bottom almost below the TRRS jack for Mic/Headphone/Speaker there's a 32-pin [ES8316](http://everest-semi.com/pdf/ES8316%20PB.pdf) "high performance and low power multi-bit delta-sigma audio ADC and DAC" connected via I2S to the SoC (check page 21 of schematics for more info).
+A 32-pin [ES8316](http://everest-semi.com/pdf/ES8316%20PB.pdf) "high performance and low power multi-bit delta-sigma audio ADC and DAC" is connected via I2S to the SoC (check page 21 of schematics for more info).
 
 ## RTC
 
@@ -533,7 +537,7 @@ All that's missing is the usual battery featuring the usual connector:
 
 ## Software
 
-Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Collabora](https://www.collabora.com) and Rockchip [started few months ago](https://lwn.net/ml/linux-kernel/20220422170920.401914-1-sebastian.reichel@collabora.com/) but will take years. As such now every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
+Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Collabora](https://www.collabora.com) and Rockchip [started only few months ago](https://lwn.net/ml/linux-kernel/20220422170920.401914-1-sebastian.reichel@collabora.com/) but will take years. As such now every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
 
   * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
