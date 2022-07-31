@@ -111,11 +111,11 @@ vs. [amazingfate's board](https://gist.github.com/amazingfate/17af25d7d543d253c9
 
 Please note that PVTM also handles the GPU and NPU parts of the SoC. For more details about the basics behind these mechanisms see chapters 17 and 18 in [RK3588's Technical Reference Manual part 2](https://dl.radxa.com/rock5/hw/datasheet/Rockchip%20RK3588%20TRM%20V1.0-Part2%2020220309.pdf) (beware: that's a ~3700 pages PDF weighing 56 MB).
 
-Next step: check whether those RK3588 where the kernel denies highest clockspeeds can be convinced by some [slight manual overvolting to allow for max performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/141?u=tkaiser) (resulting in higher temperatures at full load of course!).
+Next step: check whether those RK3588 where the kernel denies highest clockspeeds can be convinced by some [slight manual overvolting to allow for max performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/141?u=tkaiser) (resulting in slightly higher consumption and temperatures at full load of course!).
 
 ### Performance
 
-RK3588's CPU performance is amazing and so far the highest we've seen with any SBC. Numbers are already in `sbc-bench`'s [results collection](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) but let's look directly at the 'most popular SBC in the world' (RPi 4B), ODROID N2+, another recent octa-core newcomer ([Khadas VIM4](https://www.cnx-software.com/2021/10/21/khadas-vim4-amlogic-a311d2-sbc/) based on Amlogic A311D2) and ROCK 5B:
+RK3588's CPU performance is amazing and so far the highest we've seen with any somewhat affordable SBC. Numbers are already in `sbc-bench`'s [results collection](https://github.com/ThomasKaiser/sbc-bench/blob/master/Results.md) but let's look directly at the 'most popular SBC in the world' (RPi 4B), ODROID N2+, another recent octa-core newcomer ([Khadas VIM4](https://www.cnx-software.com/2021/10/21/khadas-vim4-amlogic-a311d2-sbc/) based on Amlogic A311D2), Qualcomm QRB5165 (Snapdragon 865) and ROCK 5B:
 
 | SBC | Clockspeed | 7-zip st* | 7-zip mt* | aes-256-cbc | memcpy | memset | kH/s |
 | :-----: | :--------: | ----: | ----: | ------: | ------: | -----: | -----: |
@@ -123,8 +123,10 @@ RK3588's CPU performance is amazing and so far the highest we've seen with any S
 | [ODROID N2+](http://ix.io/3DtN) | 2400/2015 | 2253 | 9790 | 1366930 | 4300 | 7480 | n/a |
 | [VIM4](http://ix.io/3Wvv) | 2200/1970 | 2081 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
 | [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 3146 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
+| [Qualcomm QRB5165](http://ix.io/45TB) | 2830/2400/1750 MHz | 3759 | 17930  | 1589900 | 14610 | 25590 | 25.38** |
 
-*\* st = single-threaded, mt = multi-threaded*
+*\* st = single-threaded, mt = multi-threaded*<br>
+**\* cpuminer score would be higher if compiled with a more recent GCC version like the other boards (GCC 7.5 vs. 9/10)*
 
 Even if currently the LPDDR4x is configured to run at only 2112MHz by [some boot BLOB](https://github.com/radxa/rkbin/blob/6d6571d21c1d9e4dda4c37fd54a6e2e847589e9a/bin/rk35/rk3588_ddr_lp4_2112MHz_lp5_2736MHz_v1.07.bin) memory performance is awesome: high bandwidth, low latency, 4 channels, very low inter-core latency since shared L3 cache for all cores. For more details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/44?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/61?u=tkaiser).
 
@@ -440,7 +442,7 @@ In a 4 lane configuration (no DisplayPort alt mode at the same time) the USB-C p
 
 ### NVMe
 
-NVMe I can't test currently since having only crappy M.2 SSDs lying around that will be the bottleneck. But since Radxa reports +2700 MB/s sequential read speeds and we know the little sibling RK3568 can saturate PCIe Gen3 x2 while lacking the four big A76 cores I'm pretty confident that we're seeing full Gen3 x4 NVMe performance with this device.
+NVMe I can't test currently since having only crappy M.2 SSDs lying around that will be the bottleneck. But since Radxa reports +2700 MB/s sequential read speeds and we know the little sibling RK3568 can saturate PCIe Gen3 x2 while lacking the four big A76 cores I'm pretty confident that we're seeing full Gen3 x4 NVMe performance with this device. The (more demanding) tests with 10GbE network cards [already hint at this](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/289?u=tkaiser).
 
 ### SATA
 
@@ -552,11 +554,14 @@ It seems some of the early adopters were told to send ROCK 5B feedback via some 
 
 As if the Snowden revelations never happened and we could trust US tech companies and as if community fragmentation would be a great thing. And if there's no public log available then everything that happens in such a Discord channel is lost anyway...
 
+Also the lack of any timely/reasonable feedback from Radxa simply sucks.
+
 ## Suggestions to Radxa
 
   * <del>set `/sys/module/pcie_aspm/parameters/policy` to `default` instead of `powersave` (w/o network RX performance is ruined)</del> ([fixed](https://github.com/radxa/kernel/commit/60071e3a4dee8a6900418fc8ed8386adf08c1ec8))
   * <del>append `coherent_pool=2M` to `extlinux.conf` (w/o most probably ‘UAS hassles’)</del> ([fixed](https://github.com/radxa/debos-radxa/commit/4ae45b073a4aa8314228fdb65d82a1b6458e9943))
-  * configure `ondemand` cpufreq governor with `io_is_busy` and friends (w/o storage performance sucks)
+  * [configure `ondemand` cpufreq governor with `io_is_busy` and friends](https://github.com/radxa/kernel/commit/55f540ce97a3d19330abea8a0afc0052ab2644ef#commitcomment-79484235) (w/o storage performance sucks)
+  * Adjust DT for more USB PD negotiations (more amperage, also 15V and 20V) now that 'general problem' with USB-C PD chargers [is nailed down to a software problem](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/296?u=tkaiser).
   * Write some service that checks at booting whether there's a `/dev/nvme` device and if so check via `lspci -vv` whether there's a mismatch between SSD's advertised capabilities and negotiated ones (except the SSD being capable of Gen4 speeds ofc). Notify user if that happened so user is aware of problems with failed PCIe link training probably caused by dusty/dirty contacts in the M.2 slot
   
 ## Open questions
