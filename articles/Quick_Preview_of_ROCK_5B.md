@@ -452,7 +452,22 @@ Testing SATA also not possible since lacking the adapter (said to cost just a fe
 
 This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from the little sibling RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
 
-With RK3568 it's also confirmed [SATA port multipliers like JMB575 do work](https://forum.odroid.com/viewtopic.php?f=215&t=44977) (though not clear yet why FIS-based switching won't be enabled by default and we're stuck at CBS. I asked Rockchip, posted answer in Odroid forum and user @zupet confirmed that FBS works). So we know this will work with RK3588 / ROCK 5B as well and the little M.2 adapter combined with a JMB575 allows for up to five SATA devices to be connected of course sharing bandwidth/latency of the single 6Gbps SATA lane (SATA port multipliers allow for up to 15 devices per port but those larger PMs usually can be found in the backplanes of 'cold storage' servers).
+With RK3568 it's also confirmed SATA port multipliers like JMB575 do work (though not clear yet why FIS-based switching (FBS) won't be enabled by default and we're stuck at CBS (Command-based Switching). I asked Rockchip, posted [answer in Odroid forum](https://forum.odroid.com/viewtopic.php?p=352955#p352955) and user @zupet confirmed that FBS works.
+
+So we know this will work with RK3588 / ROCK 5B as well and the little M.2 adapter combined with a JMB575 allows for up to five SATA devices to be connected of course sharing bandwidth/latency of the single 6Gbps SATA lane (SATA port multipliers allow for up to 15 devices per port but those larger PMs usually can be found in the backplanes of 'cold storage' servers).
+
+![JMB575 SATA port multiplier](../media/rock5b-JMB575.png)
+
+As for performance with a SATA PM FIS-based switching is a game changer even with spinning rust. @zupet tested with RK3568 and five WD 12TB HDDs in a RAIDz configuration. Results in MB/s:
+
+|  | CBS| FBS |
+| -----: | -----: | ----: |
+| write | 76 | 201 |
+| read | 120 | 189 |
+| scrub | 163 | 264 |
+| resilver | 130 | 397 |
+
+Especially the last number (3 times faster at resilvering) is essential since once a RAIDz is degraded it's important to establish redundancy again as fast as possible!
 
 ## Networking
 

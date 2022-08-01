@@ -155,6 +155,8 @@ LAA MAC addresses with Ubuntu
   * eth1: 62:21:6a:4e:7c:1f
   * eth2: 66:bb:4e:d4:90:c1
 
+16K firmware BLOB for the PCIe 3 PHY: https://github.com/friendlyarm/kernel-rockchip/commit/c056c33a88c05d64bfac3687e6fbab978c7d1f57#diff-8c17abb46c49a69aaf02070eb70b2b5cc0f0e785376862da61ce948a21eb628e
+
 ## RTC
 
 A HYM8563TS low-power RTC is on the board, expecting a backup current of 0.25μA TYP (VDD=3.0V) from a user supplied backup battery connected to the 2 pin 1.27/1.25mm Molex 53398-0271 connector.
@@ -200,6 +202,8 @@ No `extlinux.conf`, no boot script, no way to simply exchange the kernel. `/proc
 https://github.com/friendlyarm/kernel-rockchip/commits/nanopi5-v5.10.y_opt
 
 https://pastebin.com/PPmBMNaM
+
+https://github.com/mj22226/openwrt/commit/ef237a318622d4b51536b3d2a456c33d03502319
 
 ## FriendlyWRT
 
