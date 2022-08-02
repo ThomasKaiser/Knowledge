@@ -154,13 +154,18 @@ When [providing static 12V via an adapter to the USB-C port](https://forum.radxa
     in0:           5.00 V  (min =  +5.00 V, max =  +5.00 V)
     curr1:         1.50 A  (max =  +1.50 A)
 
+Real input voltage is constantly measured and can be accessed via sysfs ([needs to be divided by ~172.5](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/317?u=tkaiser)):
+
+	awk '{printf ("%0.2f\n",$1/172.5); }' </sys/devices/iio_sysfs_trigger/subsystem/devices/iio\:device0/in_voltage6_raw
+	11.98
+
 Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above USB PD negotiations [are exactly what's defined in device-tree settings](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
 
     <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
      PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
      PDO_FIXED(12000, 1500, PDO_FIXED_USB_COMM)>;
 
-Only 5V, 9V and 12V are defined (the USB PD chip should always choose the hightest voltage the charger advertises). After adjusting the values in the following way (allowing 3A instead of 1.5A with 12V and adding 15V and 20V definitions)
+Only 5V, 9V and 12V are defined (the USB PD chip should always choose the hightest voltage the charger advertises). Let's adjust the values in the following way (allowing 3A instead of 1.5A with 12V and adding 15V and 20V definitions)
 
     <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
     PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
@@ -168,10 +173,15 @@ Only 5V, 9V and 12V are defined (the USB PD chip should always choose the highte
     PDO_FIXED(15000, 3000, PDO_FIXED_USB_COMM)
     PDO_FIXED(20000, 2250, PDO_FIXED_USB_COMM)>;
 
-it looks like this with the aforementioned 24W charger now able to provide full 24W since also capable of 15V:
+Now it looks like this with the aforementioned 24W charger able to provide full 24W since also capable of 15V:
 
     in0:          15.00 V  (min = +15.00 V, max = +15.00 V)
     curr1:         1.60 A  (max =  +1.60 A)
+
+And with the Apple charger 45W got negotiated as configured:
+
+    in0:          20.00 V  (min = +20.00 V, max = +20.00 V)
+    curr1:         2.25 A  (max =  +2.25 A)
 
 ROCK 5B's USB-C details can be accessed via sysfs:
 
