@@ -45,7 +45,7 @@ The board fortunately leaves the RPi form factor behind and measures 100 x 74mm 
   * 2 x HDMI 2.1 out up to 8Kp60 (when 1 display is 8K the other will be 4K)
   * 1 x USB-C via DisplayPort alt. mode up to 8Kp30
   * 1 x micro HDMI input up to 4Kp60
-  * 2 x MIPI CSI connectors (Radxa about to sell an 8MP camera able to stream 4K @ 90 frames/sec based on SONY's IMX415 sensor)
+  * 2 x MIPI CSI connectors (Radxa about to sell an 8MP camera able to stream 4K @ 90 frames/sec based on SONY's IMX415 sensor, current driver is limiting to 30 fps)
   * 1 x 2.5GbE RJ45 port (RTL8125BG) with optional PoE HAT support
   * M.2 2230 key E socket (PCIe Gen2 x1) for an optional WiFi 6E and Bluetooth 5.2 M.2 module or to be used with a cheap mechanical adapter as SATA port
   * USB: 2x USB 3.0 Type-A ports, 1x USB 3.0 Type-C port, 2x USB 2.0 ports. USB3 ports limited to SuperSpeed (5 Gbps)
@@ -257,7 +257,7 @@ What happens if we `shutdown -h now` the board: 0W or just a few mW since the po
 
 ## LEDs
 
-There's a green led working as power led (lights on when power is supplied and goes off with no power) and there's a blue led called `sta`, living at `/sys/class/leds/sta`, defaulting to `timer` which results in constant blinking.
+There's a green led working as power led (lights on when power is supplied and goes off with no power) and there's a blue led called <del>`sta`, living at `/sys/class/leds/sta`, defaulting to `timer` which results in constant blinking.</del>. [This led has been renamed to 'status' now and defaults to 'heartbeat' instead](https://github.com/radxa/kernel/commit/fd19d9f5c7de3c600551ed9b0b61f8da95988894). 
 
 Other options: `none rfkill-any rfkill-none kbd-scrolllock kbd-numlock kbd-capslock kbd-kanalock kbd-shiftlock kbd-altgrlock kbd-ctrllock kbd-altlock kbd-shiftllock kbd-shiftrlock kbd-ctrlllock kbd-ctrlrlock tcpm-source-psy-4-0022-online [timer] oneshot disk-activity disk-read disk-write ide-disk mtd nand-disk heartbeat backlight gpio cpu cpu0 cpu1 cpu2 cpu3 cpu4 cpu5 cpu6 cpu7 activity default-on transient flash torch panic netdev mmc0 mmc1`
 
