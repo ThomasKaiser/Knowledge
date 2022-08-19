@@ -248,7 +248,7 @@ Please be aware that measuring only CPU loads does not really represent the SoC'
   * GPU (2D/3D acceleration)
   * VPU (accelerated video encoding/decoding)
   * NPU (machine learning: artificial neural networks, random forests)
-  * in general the media capabilities like display and camera support, 'picture in picture' and so on (maybe only ever working in Android and not Linux)
+  * in general the media capabilities like display and camera support, 'picture in picture' and so on (maybe only ever working in Android, [BSP Linux](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/384?u=tkaiser) but not mainline Linux)
   * I/O: RK3588 has serious I/O capabilities especially compared to toys like an RPi 4
 
 But if we're only looking at CPU loads, throw away Radxa's fansink and let RK3588 run without any cooling at an ambient temp of 26°C it looks really great [since only slight throttling happens](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/97?u=tkaiser).
@@ -257,7 +257,7 @@ What happens if we `shutdown -h now` the board: 0W or just a few mW since the po
 
 ## LEDs
 
-There's a green led working as power led (lights on when power is supplied and goes off with no power) and there's a blue led called <del>`sta`, living at `/sys/class/leds/sta`, defaulting to `timer` which results in constant blinking.</del>. [This led has been renamed to 'status' now and defaults to 'heartbeat' instead](https://github.com/radxa/kernel/commit/fd19d9f5c7de3c600551ed9b0b61f8da95988894). 
+There's a green led working as power led (lights on when power is supplied and goes off with no power) and there's a blue led called <del>`sta`, living at `/sys/class/leds/sta`, defaulting to `timer` which results in constant blinking.</del>. [This led has been renamed to 'blue:status' now and defaults to 'heartbeat' instead](https://github.com/radxa/kernel/commit/fd19d9f5c7de3c600551ed9b0b61f8da95988894).
 
 Other options: `none rfkill-any rfkill-none kbd-scrolllock kbd-numlock kbd-capslock kbd-kanalock kbd-shiftlock kbd-altgrlock kbd-ctrllock kbd-altlock kbd-shiftllock kbd-shiftrlock kbd-ctrlllock kbd-ctrlrlock tcpm-source-psy-4-0022-online [timer] oneshot disk-activity disk-read disk-write ide-disk mtd nand-disk heartbeat backlight gpio cpu cpu0 cpu1 cpu2 cpu3 cpu4 cpu5 cpu6 cpu7 activity default-on transient flash torch panic netdev mmc0 mmc1`
 
