@@ -458,7 +458,7 @@ NVMe I can't test currently since having only crappy M.2 SSDs lying around that 
 
 Testing SATA also not possible since lacking the adapter (said to cost just a few bucks) that goes into the M.2 key E slot to turn PCIe into native SATA via a device-tree overlay:
 
-![Rock 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
+![ROCK 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
 
 This works since RK3588 features three Combo PIPE PHYs that are [pinmuxed and provide either SATA, PCIe Gen2 or USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/). While I can't provide performance numbers we know from the little sibling RK3568 that SATA performance is as expected for SATA 6 Gbps. And there are [further possibilities with this little M.2 slot](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/18?u=tkaiser).
 
@@ -540,7 +540,7 @@ Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but i
 
 RK3588 [features 7 PCIe lanes](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/PCIe_and_ARMv8_SoCs.md). Four times Gen3 and three times Gen2, the latter all pinmuxed with either SATA or USB3.
 
-The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. Whether bifurcation really works with the Key M slot is [yet unknown](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/140?u=tkaiser).
+The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. On ROCK 5B two clocks are routed to the M.2 key M slot as such with a device-tree overlay [x4 can be turned into 2 x x2 without an additional PCIe switch](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/410?u=tkaiser).
 
 Of the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3 instead.
 
@@ -588,11 +588,12 @@ Also the lack of any timely/reasonable feedback from Radxa simply sucks.
   * [configure `ondemand` cpufreq governor with `io_is_busy` and friends](https://github.com/radxa/kernel/commit/55f540ce97a3d19330abea8a0afc0052ab2644ef#commitcomment-79484235) (w/o storage performance sucks)
   * Adjust DT for more USB PD negotiations (more amperage, also 15V and 20V) now that 'general problem' with USB-C PD chargers [is nailed down to a software problem](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/296?u=tkaiser).
   * Write some service that checks at booting whether there's a `/dev/nvme` device and if so check via `lspci -vv` whether there's a mismatch between SSD's advertised capabilities and negotiated ones (except the SSD being capable of Gen4 speeds ofc). Notify user if that happened so user is aware of problems with failed PCIe link training probably caused by dusty/dirty contacts in the M.2 slot
+  * End of August 2022 I discovered that [memory latency with recent 5.10 BSP kernel is way worse than before](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/422?u=tkaiser) due to [this commit](https://github.com/radxa/kernel/commit/4ce9a743b253c0c344686085213de1c4059b9d59). It needs an `echo performance >/sys/class/devfreq/dmc/governor` to restore memory performance in a way similar how [I did it with RK3399 long time ago](https://github.com/armbian/build/blob/fdf73a025ba56124523baefaf705792b74170fb8/packages/bsp/common/usr/lib/armbian/armbian-hardware-optimization#L241-L244).
   
 ## Open questions
 
   * <del>possible to power the board asides USB-C / USB PD [e.g. with 5V via GPIO header](https://forum.radxa.com/t/powering-rock-5b/10759)?</del>
   * <del>RK3588 TRM states wrt SATA 'Port Multiplier with FIS-based switching' but [Radxa should better test with a JMicron JMB575](https://forum.radxa.com/t/radxa-rock5-rk3588-sbc-pcie-lanes-clarification/9580/21?u=tkaiser)</del>
-  * PCIe bifurcation really possible with 5B's M.2 implementation ([clocks available](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/140?u=tkaiser))?
+  * <del>PCIe bifurcation really possible with 5B's M.2 implementation ([clocks available](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/410?u=tkaiser))?</del>
   * check PCIe BAR and consequences for consumer's most wanted thingy: external GPU
   * check [NVMe power management](https://forum.odroid.com/viewtopic.php?f=215&t=44747)
