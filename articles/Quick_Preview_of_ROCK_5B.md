@@ -123,7 +123,7 @@ RK3588's CPU performance is amazing and so far the highest we've seen with any s
 | [ODROID N2+](http://ix.io/3DtN) | 2400/2015 | 2253 | 9790 | 1366930 | 4300 | 7480 | n/a |
 | [VIM4](http://ix.io/3Wvv) | 2200/1970 | 2081 | 12090 | 1253200 | 7810 | 11600 | 22.14 |
 | [ROCK 5B](http://ix.io/41BH) | 2350/1830 | 3146 | 16450 | 1337540 | 10830 | 29220 | 25.31 |
-| [Qualcomm QRB5165](http://ix.io/45TB) | 2830/2400/1750 MHz | 3759 | 17930  | 1589900 | 14610 | 25590 | 25.38** |
+| [Qualcomm QRB5165](http://ix.io/49kx) | 2840/2410/1790 | 3898 | 18860  | 1598490 | 14470 | 23910 | 25.56** |
 
 *\* st = single-threaded, mt = multi-threaded*<br>
 **\* cpuminer score would be higher if compiled with a more recent GCC version like the other boards (GCC 7.5 vs. 9/10)*
@@ -237,9 +237,11 @@ I'm measuring with a NetIO PowerBox 4KF in a [rather time consuming process](htt
 
 The small fan on my dev sample is responsible for ~700mW, switching network between Gigabit Ethernet and 2.5GbE makes up for another ~300mW. Adjusting PCIe powermanagement (`/sys/module/pcie_aspm/parameters/policy` – see below why that's important) from `powersave` to `default` makes up for another ~100mW.
 
-So the board idles below 2W w/o any peripherals except Gigabit Ethernet. A fan adds extra juice, 2.5GbE instead of GbE as well, avoiding super powersavings settings also.
+So the board idles below 1.4W w/o any peripherals except Gigabit Ethernet. A fan adds extra juice, 2.5GbE instead of GbE as well, avoiding super powersavings settings also.
 
 Connecting a HDMI display (`Update mode to 1920x1200p60, type: 11(if:800) for vp0 dclk: 154000000`) increases consumption by ~350mW (though screen blanked) as such 'display activity' of course also increases consumption when HDMI PHY and other SoC engines are active.
+
+Rockchip's Dynamic Memory Interface (DMC) is accompanied by a driver that allows to (dynamically) adjust RAM timings. With the BSP kernel once the `dmc` device-tree node is enabled the `dmc_ondemand` governor is active by default clocking the DRAM with 528 MHz in idle and up to 2112 MHz 'under load' though there are various situations when the [memory clock isn't ramping up fast enough](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/423?u=tkaiser). The difference in idle between `dmc_ondemand` and `performance` is a whopping ~600mW. For details see [here](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/441?u=tkaiser) and [there](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/458?u=tkaiser).
 
 The good news: RK3588 is made in such an advanced process that running the most demanding benchmark on this thing ([7-zip's internal benchmark](https://github.com/ThomasKaiser/sbc-bench#7-zip)) on all cores results in ~6W extra consumption compared to idle.
 
