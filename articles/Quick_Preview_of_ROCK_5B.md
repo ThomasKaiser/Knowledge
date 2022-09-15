@@ -28,7 +28,7 @@
 
 Early July 2022 Radxa sent out a couple Rev. 1.3 dev samples of their long awaited ROCK 5B as part of a [Debug Party](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483) to spot HW and SW problems. In the following we have a quick look on it focusing on Linux, headless operation and bring-up challenges so if you're interested in Android, gaming or similar stuff this is not for you.
 
-In the meantime PCB Rev. 1.4 [appeared](https://twitter.com/AllnetChina/status/1550141093567778820):
+In the meantime PCB Rev. 1.4 [appeared](https://nitter.net/AllnetChina/status/1550141093567778820):
 
 ![](../media/rock5b-rev-1.4.jpg)
 
@@ -542,7 +542,7 @@ Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but i
 
 RK3588 [features 7 PCIe lanes](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/PCIe_and_ARMv8_SoCs.md). Four times Gen3 and three times Gen2, the latter all pinmuxed with either SATA or USB3.
 
-The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. On ROCK 5B two clocks are routed to the M.2 key M slot as such with a device-tree overlay [x4 can be turned into 2 x x2 without an additional PCIe switch](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/410?u=tkaiser).
+The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. On ROCK 5B two clocks are routed to the M.2 key M slot as such with a device-tree overlay [x4 can be turned into 2 x x2 without an additional PCIe switch](https://forum.radxa.com/t/guide-use-intel-optane-memory-h10-with-rock5b-pcie-splitting/11598?u=tkaiser).
 
 Of the three Gen2 lanes Radxa used one to attach the RTL8125BG NIC, another is routed to the key E M.2 slot which can be turned into SATA via a DT overlay. The other possible lane is USB3 instead.
 
@@ -571,7 +571,7 @@ Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Coll
   * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
 
-Rockchip's official Rk3588 SDKs can be found here: [https://gitlab.com/rk3588_linux](https://gitlab.com/rk3588_linux)
+Rockchip's official RK3588 SDKs can be found here: [https://gitlab.com/rk3588_linux](https://gitlab.com/rk3588_linux)
 
 Wrt mainline Linux/u-boot and *BSD the good news is that a lot of the upstreaming work that went into RK356x can directly be used with RK3588 as well. For example the drivers for [Naneng Micro's USB3.0/PCIE2/SATA3 Combo PHY](http://www.nanengmicro.com/en/combo-phy/) that are submitted [upstream by Rockchip themselves and successfully tested on RK3566 and RK3568 boards](https://lore.kernel.org/all/20220208091326.12495-1-yifeng.zhao@rock-chips.com/T/#t) will work with RK3588 as well.
 
