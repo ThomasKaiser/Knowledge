@@ -591,7 +591,7 @@ Also the lack of any timely/reasonable feedback from Radxa simply sucks.
   * [configure `ondemand` cpufreq governor with `io_is_busy` and friends](https://github.com/radxa/kernel/commit/55f540ce97a3d19330abea8a0afc0052ab2644ef#commitcomment-79484235) (w/o storage performance sucks)
   * Adjust DT for more USB PD negotiations (more amperage, also 15V and 20V) now that 'general problem' with USB-C PD chargers [is nailed down to a software problem](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/296?u=tkaiser).
   * Write some service that checks at booting whether there's a `/dev/nvme` device and if so check via `lspci -vv` whether there's a mismatch between SSD's advertised capabilities and negotiated ones (except the SSD being capable of Gen4 speeds ofc). Notify user if that happened so user is aware of problems with failed PCIe link training probably caused by dusty/dirty contacts in the M.2 slot
-  * End of August 2022 I discovered that [memory latency with recent 5.10 BSP kernel is way worse than before](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/422?u=tkaiser) due to [this commit](https://github.com/radxa/kernel/commit/4ce9a743b253c0c344686085213de1c4059b9d59). It needs an `echo performance >/sys/class/devfreq/dmc/governor` to restore memory performance in a way similar how [I did it with RK3399 long time ago](https://github.com/armbian/build/blob/fdf73a025ba56124523baefaf705792b74170fb8/packages/bsp/common/usr/lib/armbian/armbian-hardware-optimization#L241-L244).
+  * End of August 2022 I discovered [memory latency with recent 5.10 BSP kernel being way worse than before](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/422?u=tkaiser) due to [this commit](https://github.com/radxa/kernel/commit/4ce9a743b253c0c344686085213de1c4059b9d59). Looks like it needs an `echo performance >/sys/class/devfreq/dmc/governor` to restore memory performance in a similar way how [I did it with RK3399 long time ago](https://github.com/armbian/build/blob/fdf73a025ba56124523baefaf705792b74170fb8/packages/bsp/common/usr/lib/armbian/armbian-hardware-optimization#L241-L244). Few weeks later I tested/discovered a better tweak: `upthreshold=20` [retains (almost) full performance while still allowing for nice low idle consumption](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/472?u=tkaiser).
   
 ## Open questions
 
@@ -613,11 +613,11 @@ The following applies to all RK3588/RK3588S devices and not just Rock 5B:
   * With RK's defaults USB PD negotiations on devices with FUSB302 controller are limited to 27W max (only 5V@3A, 9V@3A and 12V@1.5A defined). For this to change adjusting the `sink-pdos` device-tree node is necessary.
   * The reported cpufreq clockspeeds are chosen dynamically and do not represent real clockspeeds that vary for a number of reasons. For real clockspeeds use for example [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) and check the [PVTM explanation above](#pvtm) for what's going on.
   * The A55 cores are usually clocked with 1800 MHz or slightly above (again PVTM) which should provide enough juice for a lot of tasks. Though interrupts and services that all end up on `cpu0` (a little A55 core) caused by default scheduler behaviour might be bottlenecked by this single CPU core maxing out at 100%. If something like this is observed (`atop` is a great tool for this) it needs IRQ/SMP affinity settings pinning specific interrupts or tasks to specific CPU cores.
-  * Once Rockchip's Dynamic Memory Interface (DMC) is active (by enabling the `dmc`/`dfi` device-tree nodes) idle consumption drops by 500-600mW but performance is harmed as well with all tasks that depend on memory performance. RK's BSP kernel defaults to `dmc_ondemand` memory governor which fails to ramp up DRAM clock as fast as needed. The `upthreshold` dmc tunable can be adjusted and [lowering this value from `40` to `20` seems to keep idle consumption low while retaining overall performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/472?u=tkaiser).
+  * Once Rockchip's Dynamic Memory Interface (DMC) is active (by enabling the `dmc`/`dfi` device-tree nodes) idle consumption drops by 500-600mW but performance is harmed as well with all tasks that depend on memory performance. Rockchip's BSP kernel defaults (`dmc_ondemand` memory governor with `upthreshold=40`) fail to ramp up DRAM clock as fast as needed. But [decreasing from `40` to `20` seems already to be sufficient](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/472?u=tkaiser).
 
-All that's needed to benefit from 500-600mW lower idle consumption while maintaining almost full performance is relying on the `dmc_ondemand` memory governor plus a simple `echo 20 >/sys/devices/platform/dmc/devfreq/dmc/upthreshold` somewhere in a start script or service.
+So all that's needed to benefit from 500-600mW lower idle consumption while maintaining almost full performance is choosing `dmc_ondemand` memory governor plus either `echo "devices/platform/dmc/devfreq/dmc/upthreshold = 20" >/etc/sysfs.d/dmc_upthreshold.conf` or `echo 20 >/sys/devices/platform/dmc/devfreq/dmc/upthreshold` somewhere in a start script or service.
 
-When looking at 7-zip scores it's obvious that lowering the `upthreshold` value keeps idle consumption low while especially compression score is close to `performance` dmc governor.
+Looking at idle consumption and 7-zip scores the results are obvious:
 
 | dmc governor | total 7-ZIP MIPS | compression | decompression | idle consumption |
 | :----- | :-----: | :-----: | :-----: | :-----: |
@@ -625,12 +625,12 @@ When looking at 7-zip scores it's obvious that lowering the `upthreshold` value 
 | [upthreshold 20](http://ix.io/4bhf) | 16365 | 15126 | 17604 | 1280mW |
 | [performance](http://ix.io/41BH) | 16506 | 15369 | 17643 | 1920mW |
 
-Same picture with Geekbench micro benchmarks:
+Same with Geekbench:
 
-`performance` vs. `upthreshold 40` ([full comparison](https://browser.geekbench.com/v5/cpu/compare/17008686?baseline=17009078))
+`performance` vs. `dmc_ondemand` with `upthreshold 40` ([full comparison](https://browser.geekbench.com/v5/cpu/compare/17008686?baseline=17009078)):
 
 ![](../media/rock5b_gb_performance_40.png)
 
-`performance` vs. `upthreshold 20` ([full comparison](https://browser.geekbench.com/v5/cpu/compare/17538123?baseline=17009078))
+`performance` vs. `dmc_ondemand` with `upthreshold 20` ([full comparison](https://browser.geekbench.com/v5/cpu/compare/17538123?baseline=17009078)):
 
 ![](../media/rock5b_gb_performance_20.png)
