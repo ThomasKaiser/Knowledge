@@ -634,3 +634,22 @@ Same with Geekbench:
 `performance` vs. `dmc_ondemand` with `upthreshold 20` ([full comparison](https://browser.geekbench.com/v5/cpu/compare/17538123?baseline=17009078)):
 
 ![](../media/rock5b_gb_performance_20.png)
+
+Some of the above optimisations (except coherent pool, FBS, USB PD and IRQ/SMP affinity) could be addressed by a simple config file `/etc/sysfs.d/tk-optimize-rk3588.conf`:
+
+    devices/platform/dmc/devfreq/dmc/upthreshold = 20
+    module/pcie_aspm/parameters/policy = default
+    devices/system/cpu/cpufreq/policy0/ondemand/io_is_busy = 1
+    devices/system/cpu/cpufreq/policy4/ondemand/io_is_busy = 1
+    devices/system/cpu/cpufreq/policy6/ondemand/io_is_busy = 1
+    devices/system/cpu/cpufreq/policy0/ondemand/up_threshold = 25
+    devices/system/cpu/cpufreq/policy4/ondemand/up_threshold = 25
+    devices/system/cpu/cpufreq/policy6/ondemand/up_threshold = 25
+    devices/system/cpu/cpufreq/policy0/ondemand/sampling_down_factor = 10
+    devices/system/cpu/cpufreq/policy4/ondemand/sampling_down_factor = 10
+    devices/system/cpu/cpufreq/policy6/ondemand/sampling_down_factor = 10
+    devices/system/cpu/cpufreq/policy0/ondemand/sampling_rate = 200000
+    devices/system/cpu/cpufreq/policy4/ondemand/sampling_rate = 200000
+    devices/system/cpu/cpufreq/policy6/ondemand/sampling_rate = 200000
+
+This requires of course the kernel built with `CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y` and works only with those three cpufreq policies present on RK3588/RK3588S BSP kernel. A generic approach for the `ondemand` tweaks to work everywhere [has been given to Armbian folks](https://armbian.atlassian.net/browse/AR-1262) but they fail to understand and confuse temperatures with tweaks and monitoring with optimisation...
