@@ -23,6 +23,7 @@
   * [Board bring-up](#board-bring-up)
   * [Suggestions to Radxa](#suggestions-to-radxa)
   * [Open questions](#open-questions)
+  * [Important insights and suggested optimisations](#important-insights-and-suggested-optimisations)
 
 ![](../media/rock5b_front_back.jpg)
 
@@ -159,7 +160,7 @@ Real input voltage is constantly measured and can be accessed via sysfs ([needs 
 	awk '{printf ("%0.2f\n",$1/172.5); }' </sys/devices/iio_sysfs_trigger/subsystem/devices/iio\:device0/in_voltage6_raw
 	11.98
 
-Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above USB PD negotiations [are exactly what's defined in device-tree settings](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
+Radxa uses an I2C attached Fairchild FUSB302 USB PD controller on the board and the above USB PD negotiations [are exactly what's defined in the `sink-pdos` device-tree node](https://github.com/radxa/kernel/blob/5e6d32859dfb73c1cfeefcc8074282480219caab/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts#L676-L679):
 
     <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
      PDO_FIXED(9000, 3000, PDO_FIXED_USB_COMM)
@@ -410,13 +411,11 @@ We're now at close to 90MB/s (most probably my SD card being the bottleneck here
 
 ### SPI NOR flash
 
-SPI NOR flash is some little amount of rather slow but cheap flash storage meant to hold a bootloader and some config (you all know this from PCs with their UEFI and BIOS in the past).
+SPI NOR flash is some little amount of rather slow but cheap flash storage meant to hold a bootloader and some config (you all know this from PCs with their UEFI and BIOS in the past). In Oct 2022 with production boards the SPI flash should be prepopulated with a boot loader supporting [SD card, eMMC and NVMe](https://wiki.radxa.com/Rock5/install) (maybe USB, SATA and even network later).
 
-According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be on the board but at least on PCB revisions 1.3 and 1.4 it's a Macronix chip. It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.
+According to schematics a XT25F128B from XTX Technology (16MB SPI NOR flash) should be on the board but at least on PCB revisions 1.3 and 1.4 it's a Macronix chip. <del>It's not accessible from Linux right now since the respective device-tree node for the SFC (Rockchip Serial Flash Controller) hasn't been added yet.</del> [This commit](https://github.com/radxa/kernel/commit/cb09ad15af757db12fc64c2477a6572aaa4b8095) enabled it as `mtd` device in Linux/Android so the contents can be overwritten from the running OS.
 
-Even in this state it is possible to flash a bootloader to the SPI flash via Maskrom mode to [boot from NVMe](https://wiki.radxa.com/Rock3/install) (and USB, maybe even network and SATA). It should eventually be possible with an appropriate u-boot version hopefully being flashed at the factory to later production revisions of this board.
-
-Quick check whether the SPI storage is accessible from a host computer (MacBook running macOS) using [Rockchip flashing tools](https://wiki.radxa.com/Rock3/install/rockchip-flash-tools) with ROCK 5B connected to the USB-C (OTG) port:
+It is also possible to flash a bootloader externally via Maskrom mode. Quick check whether the SPI storage is accessible from a host computer (MacBook running macOS) using [Rockchip flashing tools](https://wiki.radxa.com/Rock5/install/rockchip-flash-tools) with ROCK 5B connected to the USB-C (OTG) port:
 
     tk@mac-tk ~ % system_profiler SPUSBDataType
     ...
@@ -458,7 +457,7 @@ NVMe I can't test currently since having only crappy M.2 SSDs lying around that 
 
 ### SATA
 
-Testing SATA also not possible since lacking the adapter (said to cost just a few bucks) that goes into the M.2 key E slot to turn PCIe into native SATA via a device-tree overlay:
+Testing SATA also not possible since lacking the inexpensive mechanical adapter that goes into the M.2 key E slot to [turn PCIe into native SATA via a device-tree overlay](https://wiki.radxa.com/Rock5/guide/sata):
 
 ![ROCK 5B SATA adapter](../media/rock_5b_m2_sata.jpeg)
 
@@ -566,7 +565,7 @@ All that's missing is the usual battery featuring the usual connector:
 
 ## Software
 
-Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Collabora](https://www.collabora.com) and Rockchip [started only few months ago](https://lwn.net/ml/linux-kernel/20220422170920.401914-1-sebastian.reichel@collabora.com/) but will take years. As such now every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66. But this is not 5.10 LTS from kernel.org but [forward ported from 2.6.32 on](https://www.cnx-software.com/2022/01/09/rock5-model-b-rk3588-single-board-computer/#comment-589709). ROCK 5B repos are:
+Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Collabora](https://www.collabora.com) and Rockchip [started only few months ago](https://lwn.net/ml/linux-kernel/20220422170920.401914-1-sebastian.reichel@collabora.com/) but will take years. As such now every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66 or higher with Armbian since they're doing version string cosmetics. This is not 5.10 LTS from kernel.org but [some forward ported mess from 2.6.32 on](https://forum.radxa.com/t/the-radxa-bsp-kernel-patches-from-5-10-67-to-5-10-123/11647/9?u=tkaiser). ROCK 5B repos are:
 
   * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
@@ -599,3 +598,36 @@ Also the lack of any timely/reasonable feedback from Radxa simply sucks.
   * <del>PCIe bifurcation really possible with 5B's M.2 implementation ([clocks available](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/410?u=tkaiser))?</del>
   * check PCIe BAR and consequences for consumer's most wanted thingy: external GPU
   * check [NVMe power management](https://forum.odroid.com/viewtopic.php?f=215&t=44747)
+
+## Important insights and suggested optimisations
+
+The following applies to all RK3588/RK3588S devices and not just Rock 5B:
+
+  * Rockchip's 5.10.66 BSP kernel is **not** 5.10 LTS from kernel.org but forward ported from some 2.6 kernel since ages. Unless somebody rebases the RK code base on top of an upstream 5.10.66 LTS nobody knows how far away this kernel is from LTS. Until today nobody did this and version string cosmetics like it's always done by Armbian doesn't bring this kernel closer to 5.10 LTS ([all details](https://forum.radxa.com/t/the-radxa-bsp-kernel-patches-from-5-10-67-to-5-10-123/11647/9?u=tkaiser)).
+  * RK35xx SoCs support SATA port multipliers but with kernel defaults this ends up with [significantly slower CBS (Command-based Switching) instead of FIS-based switching (FBS)](https://forum.odroid.com/viewtopic.php?p=352955#p352955).
+  * with RK's BSP kernel ASPM (PCIe's Active State Power Management) defaults to `powersave` which results in ruined performance with certain PCIe devices. Setting `/sys/module/pcie_aspm/parameters/policy` to `default` or deleting `CONFIG_PCIEASPM_POWERSAVE=y` from kernel config fixes this at the cost of ~100mW higher idle consumption.
+  * Without setting `coherent_pool=2M` in `extlinux.conf` (or any boot script that defines kernel cmdline) or patching coherent pool size in the kernel sources USB storage problems that always will be stupidly blamed as 'USB Attached SCSI (UAS) problems' will likely occur ([details](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/89?u=tkaiser)).
+  * When an OS image defaults to `ondemand` cpufreq governor to lower idle consumption I/O performance is severely harmed. With `schedutil` it's not significantly better. It needs [`ondemand` + `io_is_busy` and friends](https://github.com/radxa/kernel/commit/55f540ce97a3d19330abea8a0afc0052ab2644ef#commitcomment-79484235).
+  * With RK's defaults USB PD negotiations on devices with FUSB302 controller are limited to 27W max (only 5V@3A, 9V@3A and 12V@1.5A defined). For this to change adjusting the `sink-pdos` device-tree node is necessary.
+  * While the A55 cores are usually clocked with 1800 MHz or slightly above (see PVTM explanation above) and should provide enough juice for a lot of tasks interrupts or services that all end up on `cpu0` (a little A55 core) by default might be bottlenecked by this single CPU core maxing out at 100%. If something like this is observed (`atop` is a great tool for this) it needs IRQ/SMP affinity settings pinning specific interrupts or tasks to specific CPU cores.
+  * Once Rockchip's Dynamic Memory Interface (DMC) is active (by enabling the `dmc`/`dfi` device-tree nodes) idle consumption drops by 500-600mW but performance is harmed as well with all tasks that depend on memory performance. RK's BSP kernel defaults to `dmc_ondemand` memory governor which fails to ramp up DRAM clock as fast as needed. The `upthreshold` dmc tunable can be adjusted and [lowering this value from `40` to `20` seems to keep idle consumption low while retaining overall performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/472?u=tkaiser).
+
+All that's needed to benefit from 500-600mW lower idle consumption while maintaining almost full performance is relying on the `dmc_ondemand` memory governor plus a simple `echo 20 >/sys/devices/platform/dmc/devfreq/dmc/upthreshold` somewhere in a start script or service.
+
+When looking at 7-zip scores it's obvious that lowering the `upthreshold` value keeps idle consumption low while especially compression score is close to `performance` dmc governor.
+
+| dmc governor | total 7-ZIP MIPS | compression | decompression | idle consumption |
+| :----- | :-----: | :-----: | :-----: | :-----: |
+| [upthreshold 40](http://ix.io/494Y) | 14727 | 12758 | 16697 | 1280mW |
+| [upthreshold 20](http://ix.io/4bhf) | 16365 | 15126 | 17604 | 1280mW |
+| [performance](http://ix.io/41BH) | 16506 | 15369 | 17643 | 1920mW |
+
+Same picture with Geekbench micro benchmarks:
+
+`performance` vs. `upthreshold 40` ([full comparison](https://browser.geekbench.com/v5/cpu/compare/17008686?baseline=17009078))
+
+![](../media/rock5b_gb_performance_40.png)
+
+`performance` vs. `upthreshold 20` ([full comparison](https://browser.geekbench.com/v5/cpu/compare/17538123?baseline=17009078))
+
+![](../media/rock5b_gb_performance_20.png)
