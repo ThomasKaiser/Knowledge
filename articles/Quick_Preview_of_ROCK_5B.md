@@ -53,7 +53,7 @@ The board fortunately leaves the RPi form factor behind and measures 100 x 74mm 
   * Expansion – 40-pin GPIO header
   * Powering: USB PD compliant through USB-C which carries also display and data signals so 'display with integrated Dock' mode possible
 
-Hardware details including schematics can be found in [Radxa's wiki](https://wiki.radxa.com/Rock5/hardware). The dev samples got some 5V powered heatsinks with integrated fan Radxa found somewhere in a drawer but the final product will be accompanied by a different, regulated and less noisy heatsink/fan combo (small PWM header on the board side).
+Hardware details including schematics can be found in [Radxa's wiki](https://wiki.radxa.com/Rock5/hardware). The dev samples got some 5V powered heatsinks with integrated fan Radxa found somewhere in a drawer but the final product will be accompanied by a different, regulated and less noisy heatsink/fan combo (small PWM header on the board side). Fortunately Radxa could be convinced to also manufacture a fanless metal enclosure acting as large heatsink to [passively dissipate the SoC's and SSD's heat out of the enclosure](https://forum.radxa.com/t/rock-5b-accessory/11475/18?u=tkaiser).
 
 ## RK3588
 
@@ -539,7 +539,9 @@ Network performance in TX direction was fine since exceeding 2.32 Gbit/sec but i
 
 ## PCIe
 
-RK3588 [features 7 PCIe lanes](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/PCIe_and_ARMv8_SoCs.md). Four times Gen3 and three times Gen2, the latter all pinmuxed with either SATA or USB3.
+RK3588 [features five PCIe 3.0 controllers and exposes seven PCIe lanes max](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/PCIe_and_ARMv8_SoCs.md): four times Gen3 and three times Gen2, the latter all behind Combo PIPE PHYs and pinmuxed with either SATA or USB3.
+
+![](../media/rk3588-pci3-controllers.png)
 
 The Gen3 implementation supports the following modes (often called 'bifurcation'): 1 x x4 (default 'NVMe mode'), 4 x x1, 2 x x2 and 1 x x2 + 2 x x1. On ROCK 5B two clocks are routed to the M.2 key M slot as such with a device-tree overlay [x4 can be turned into 2 x x2 without an additional PCIe switch](https://forum.radxa.com/t/guide-use-intel-optane-memory-h10-with-rock5b-pcie-splitting/11598?u=tkaiser).
 
@@ -609,7 +611,8 @@ The following applies to all RK3588/RK3588S devices and not just Rock 5B:
   * Without setting `coherent_pool=2M` in `extlinux.conf` (or any boot script that defines kernel cmdline) or patching coherent pool size in the kernel sources USB storage problems that always will be stupidly blamed as 'USB Attached SCSI (UAS) problems' will likely occur ([details](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/89?u=tkaiser)).
   * When an OS image defaults to `ondemand` cpufreq governor to lower idle consumption I/O performance is severely harmed. With `schedutil` it's not significantly better. It needs [`ondemand` + `io_is_busy` and friends](https://github.com/radxa/kernel/commit/55f540ce97a3d19330abea8a0afc0052ab2644ef#commitcomment-79484235).
   * With RK's defaults USB PD negotiations on devices with FUSB302 controller are limited to 27W max (only 5V@3A, 9V@3A and 12V@1.5A defined). For this to change adjusting the `sink-pdos` device-tree node is necessary.
-  * While the A55 cores are usually clocked with 1800 MHz or slightly above (see PVTM explanation above) and should provide enough juice for a lot of tasks interrupts or services that all end up on `cpu0` (a little A55 core) by default might be bottlenecked by this single CPU core maxing out at 100%. If something like this is observed (`atop` is a great tool for this) it needs IRQ/SMP affinity settings pinning specific interrupts or tasks to specific CPU cores.
+  * The reported cpufreq clockspeeds are chosen dynamically and do not represent real clockspeeds that vary for a number of reasons. For real clockspeeds use for example [sbc-bench](https://github.com/ThomasKaiser/sbc-bench) and check the [PVTM explanation above](#pvtm) for what's going on.
+  * The A55 cores are usually clocked with 1800 MHz or slightly above (again PVTM) which should provide enough juice for a lot of tasks. Though interrupts and services that all end up on `cpu0` (a little A55 core) caused by default scheduler behaviour might be bottlenecked by this single CPU core maxing out at 100%. If something like this is observed (`atop` is a great tool for this) it needs IRQ/SMP affinity settings pinning specific interrupts or tasks to specific CPU cores.
   * Once Rockchip's Dynamic Memory Interface (DMC) is active (by enabling the `dmc`/`dfi` device-tree nodes) idle consumption drops by 500-600mW but performance is harmed as well with all tasks that depend on memory performance. RK's BSP kernel defaults to `dmc_ondemand` memory governor which fails to ramp up DRAM clock as fast as needed. The `upthreshold` dmc tunable can be adjusted and [lowering this value from `40` to `20` seems to keep idle consumption low while retaining overall performance](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/472?u=tkaiser).
 
 All that's needed to benefit from 500-600mW lower idle consumption while maintaining almost full performance is relying on the `dmc_ondemand` memory governor plus a simple `echo 20 >/sys/devices/platform/dmc/devfreq/dmc/upthreshold` somewhere in a start script or service.
