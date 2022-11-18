@@ -567,9 +567,13 @@ All that's missing is the usual battery featuring the usual connector:
 
 ## Software
 
-Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Collabora](https://www.collabora.com) and Rockchip [started only few months ago](https://lwn.net/ml/linux-kernel/20220422170920.401914-1-sebastian.reichel@collabora.com/) but will take years. As such now every RK3588 device runs with Rockchip's BSP kernel that shows currently version number 5.10.66 or higher with Armbian since they're doing version string cosmetics. This is not 5.10 LTS from kernel.org but [some forward ported mess from 2.6.32 on](https://forum.radxa.com/t/the-radxa-bsp-kernel-patches-from-5-10-67-to-5-10-123/11647/9?u=tkaiser). ROCK 5B repos are:
+Only rudimentary mainline Linux support so far since RK3588 upstreaming by [Collabora](https://www.collabora.com) and Rockchip [started over half a year ago](https://lwn.net/ml/linux-kernel/20220422170920.401914-1-sebastian.reichel@collabora.com/) but will take years. As such now every RK3588(s) device runs with Rockchip's BSP kernel that claims version number 5.10.66 or 5.10.110 which is just a fake since this is not 5.10 LTS from kernel.org but [some forward ported mess from 2.6.32 on](https://forum.radxa.com/t/the-radxa-bsp-kernel-patches-from-5-10-67-to-5-10-123/11647/9?u=tkaiser). 
 
-  * [https://github.com/radxa/kernel/tree/stable-5.10-rock5](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
+As such this kernel branch can't be trusted at all but some reckless entities like Armbian's owner still try to further increase the 5.10.x version number in an attempt to [fool his consumers they would deal with an official 5.10 LTS kernel](https://github.com/armbian/build/pull/4305#issuecomment-1294905490). And at the same time the Armbian clowns ignore the vulnerabilities being present in RK's BSP kernel for at least 6 consecutive years (`CONFIG_DRM_IGNORE_IOTCL_PERMIT`).
+
+Radxa's ROCK 5B repos are:
+
+  * [https://github.com/radxa/kernel/tree/linux-5.10-gen-rkr3.4](https://github.com/radxa/kernel/tree/stable-5.10-rock5)
   * [https://github.com/radxa/u-boot/tree/stable-5.10-rock5](https://github.com/radxa/u-boot/tree/stable-5.10-rock5)
 
 Rockchip's official RK3588 SDKs can be found here: [https://gitlab.com/rk3588_linux](https://gitlab.com/rk3588_linux)
@@ -615,7 +619,7 @@ The following applies to all RK3588/RK3588S devices and not just Rock 5B:
   * The A55 cores are usually clocked with 1800 MHz or slightly above (again PVTM) which should provide enough juice for a lot of tasks. Though interrupts and services that all end up on `cpu0` (a little A55 core) caused by default scheduler behaviour might be bottlenecked by this single CPU core maxing out at 100%. If something like this is observed (`atop` is a great tool for this) it needs IRQ/SMP affinity settings pinning specific interrupts or tasks to specific CPU cores.
   * Once Rockchip's Dynamic Memory Interface (DMC) is active (by enabling the `dmc`/`dfi` device-tree nodes) idle consumption drops by 500-600mW but performance is harmed as well with all tasks that depend on memory performance. Rockchip's BSP kernel defaults (`dmc_ondemand` memory governor with `upthreshold=40`) fail to ramp up DRAM clock as fast as needed. But [decreasing from `40` to `20` seems already to be sufficient](https://forum.radxa.com/t/rock-5b-debug-party-invitation/10483/472?u=tkaiser).
 
-So all that's needed to benefit from 500-600mW lower idle consumption while maintaining almost full performance is choosing `dmc_ondemand` memory governor plus either `echo "devices/platform/dmc/devfreq/dmc/upthreshold = 20" >/etc/sysfs.d/dmc_upthreshold.conf` or `echo 20 >/sys/devices/platform/dmc/devfreq/dmc/upthreshold` somewhere in a start script or service.
+So all that's needed to benefit from 500-600mW lower idle consumption while maintaining almost full performance is choosing `dmc_ondemand` memory governor plus either `echo "devices/platform/dmc/devfreq/dmc/upthreshold = 25" >/etc/sysfs.d/dmc_upthreshold.conf` or `echo 25 >/sys/devices/platform/dmc/devfreq/dmc/upthreshold` somewhere in a start script or service.
 
 Looking at idle consumption and 7-zip scores the results are obvious:
 
@@ -637,7 +641,7 @@ Same with Geekbench:
 
 Some of the above optimisations (except coherent pool, FBS, USB PD and IRQ/SMP affinity) could be addressed by a simple config file `/etc/sysfs.d/tk-optimize-rk3588.conf`:
 
-    devices/platform/dmc/devfreq/dmc/upthreshold = 20
+    devices/platform/dmc/devfreq/dmc/upthreshold = 25
     module/pcie_aspm/parameters/policy = default
     devices/system/cpu/cpufreq/policy0/ondemand/io_is_busy = 1
     devices/system/cpu/cpufreq/policy4/ondemand/io_is_busy = 1
@@ -652,4 +656,6 @@ Some of the above optimisations (except coherent pool, FBS, USB PD and IRQ/SMP a
     devices/system/cpu/cpufreq/policy4/ondemand/sampling_rate = 200000
     devices/system/cpu/cpufreq/policy6/ondemand/sampling_rate = 200000
 
-This requires of course the kernel built with `CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y` and works only with those three cpufreq policies present on RK3588/RK3588S BSP kernel. A generic approach for the `ondemand` tweaks to work everywhere [has been given to Armbian folks](https://armbian.atlassian.net/browse/AR-1262) but they fail to understand and confuse temperatures with tweaks and monitoring with optimisation...
+*(`upthreshold = 25` is a more sane value since `20` causes the DRAM to be clocked at higher clockspeeds almost all the time even with just slight background activity)*
+
+This requires of course the kernel built with `CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y` and works only with those three cpufreq policies present on RK3588/RK3588S BSP kernel. A generic approach for the `ondemand` tweaks to work everywhere [has been given to Armbian folks](https://armbian.atlassian.net/browse/AR-1262) but they fail to understand and confuse temperatures with tweaks, monitoring with optimisation and the sh*t show just continues at Armbian since now only a part of the tweaks will be applied to certain devices ([Rock 5B with Armbian -> crappy I/O performance, Firefly Station M3 with same RK3588 inside -> high I/O performance](https://github.com/armbian/build/pull/4430#event-7804491329)).
