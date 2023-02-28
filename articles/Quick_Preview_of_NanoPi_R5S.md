@@ -207,3 +207,20 @@ https://github.com/mj22226/openwrt/commit/ef237a318622d4b51536b3d2a456c33d035023
 
 ## FriendlyWRT
 
+https://github.com/friendlyarm/friendlywrt/blob/13c5704db185a1f2a8ae9e53921da8e93f2f2130/target/linux/rockchip/armv8/base-files/etc/hotplug.d/net/40-net-smp-affinity
+
+
+
+
+Overclocking: OPP table adjustment, from 1.9 to 2.39 GHz:
+
+http://ix.io/4hkG
+http://ix.io/4hkN
+http://ix.io/4hkW
+http://ix.io/4hl3
+http://ix.io/4hls 
+http://ix.io/4hqP
+http://ix.io/4hS3 
+
+
+

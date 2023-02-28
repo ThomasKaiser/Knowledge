@@ -5,6 +5,8 @@
 * Allwinner H6 (1 x Gen2 x1). Note: [quirky controller not able to work with -- non existing -- generic drivers](https://linux-sunxi.org/Mainlining_Effort#cite_note-h6-pcie-4). As of march 2020 thanks to @Icenowy a [possible workaround using virtualization](https://forum.armbian.com/topic/13529-a-try-on-utilizing-h6-pcie-with-virtualization/) exists.
 * Amlogic S922X/A311D (1 x Gen2 x1 muxed with USB3). Note: Gen2 x1 speed [seems reasonable](https://www.cnx-software.com/2019/05/14/khadas-vim3-amlogic-s922x-board-m-2-nvme-ssd-wifi-5-bluetooth-5/#comment-562858)
 * Amlogic S905X3/S905X4 (1 x Gen2 x1 muxed with USB3). Note: Gen2 x1 speed [seems reasonable](https://forum.odroid.com/viewtopic.php?f=29&t=40609)
+* Amlogic A311D2 (1 x Gen2 x1 muxed with USB3). Note: most probably *generic* [NVMe problems with Amlogic's BSP kernel](https://forum.khadas.com/t/khadas-wip-vim4-nvme-io-errors/16572/36?u=tkaiser)
+* Amlogic S928X (1 x Gen2 x1 muxed with USB3)
 * Broadcom BCM2711 (1 x Gen2 x1)
 * MediaTek MT7622 (2 x Gen2 x1)
 * Nvidia Jetson AGX (5 x Gen4 (16GT/s), 1x8, 1x4, 1x2, 2x1 Root port and endpoint)
@@ -22,6 +24,7 @@
 * Qualcomm Snapdragon 820 (3 x Gen2 x1)
 * Qualcomm Snapdragon 835 (1 x Gen2 x1)
 * Qualcomm Snapdragon 845 (1 x Gen2 x1, 1 x Gen3 x1)
+* Qualcomm Snapdragon 8 Gen 2 / SM8550 (1 x Gen3 x2, 1 x Gen4 x2)
 * RealTek RTD1294 (1 x Gen1 x1)
 * RealTek RTD1295/RTD1296 (1 x Gen1 x1, 1 x Gen2 x1)
 * RealTek RTD1395 (1 x Gen2 x1)
