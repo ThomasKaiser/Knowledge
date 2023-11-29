@@ -3,6 +3,7 @@
 ## Multi purpose SoCs
 
 * Allwinner H6 (1 x Gen2 x1). Note: [quirky controller not able to work with -- non existing -- generic drivers](https://linux-sunxi.org/Mainlining_Effort#cite_note-h6-pcie-4). As of march 2020 thanks to @Icenowy a [possible workaround using virtualization](https://forum.armbian.com/topic/13529-a-try-on-utilizing-h6-pcie-with-virtualization/) exists.
+* Allwinner A523 (1 x Gen2 x1 muxed with USB3). Hopefully PCIe problems on H6 [have been resolved](https://oftc.irclog.whitequark.org/linux-sunxi/2023-10-25#32597190;).
 * Amlogic S922X/A311D (1 x Gen2 x1 muxed with USB3). Note: Gen2 x1 speed [seems reasonable](https://www.cnx-software.com/2019/05/14/khadas-vim3-amlogic-s922x-board-m-2-nvme-ssd-wifi-5-bluetooth-5/#comment-562858)
 * Amlogic S905X3/S905X4 (1 x Gen2 x1 muxed with USB3). Note: Gen2 x1 speed [seems reasonable](https://forum.odroid.com/viewtopic.php?f=29&t=40609)
 * Amlogic A311D2 (1 x Gen2 x1 muxed with USB3). Note: most probably *generic* [NVMe problems with Amlogic's BSP kernel](https://forum.khadas.com/t/khadas-wip-vim4-nvme-io-errors/16572/36?u=tkaiser)
@@ -21,6 +22,9 @@
 * Phytium FT-2000A (1 x Gen3 x8 or 2 x Gen3 x4)
 * Phytium FT-2000/D2000 (2 x Gen3 x1 and 2 x Gen3 x16 or 4 x Gen3 x8, or 2 x Gen3 x8, 1 x Gen3 x16)
 * Phytium S2500 (1 x Gen3 x1, 1 x Gen3 x16 or 2 x Gen3 x8)
+* Phytium E2000Q (1 x Gen3 x4 + 2 x Gen3 x1 or 1 x Gen3 x2 + 4 x Gen3 x1 or 6 x Gen3 x1)
+* Phytium E2000D (4 x Gen3 x1)
+* Phytium E2000S (2 x Gen3 x1)
 * Qualcomm IPQ5332 ([3 Gen3 lanes multiplexed with USB3](https://www.cnx-software.com/2023/07/11/bitswrt-nhx53x2-wifi-7-system-on-module-features-qualcomm-ipq5332-soc/))
 * Qualcomm IPQ9574 (4 Gen3 lanes multiplexed with USB3)
 * Qualcomm Snapdragon 810 (2 x Gen2 x1)
@@ -36,6 +40,7 @@
 * Rockchip RK3528 (1 x Gen2 x1, multiplexed with USB3)
 * Rockchip RK3566 (1 x Gen2 x1, multiplexed with SATA)
 * Rockchip RK3568 (1 x Gen3 x2 or 2 x Gen3 x1, 1 x Gen2 x1, [multiplexed with SATA/QSGMII](https://www.cnx-software.com/2020/12/16/rockchip-rk3566-and-rk3568-datasheets-and-features-comparison/))
+* Rockchip RK3576 (1 x Gen2 x1 [multiplexed with SATA/USB3, 1 x Gen2 x1 [multiplexed with SATA](https://archive.ph/urqYD))
 * Rockchip RK3588 (4 Gen3 lanes: x4, x2+x2, x2+x1+x1, x1+x1+x1+x1, 3 x Gen2 x1, [multiplexed with SATA/USB3](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/))
 * Rockchip RK3588S (2 x Gen2 x1, [multiplexed with SATA/USB3](https://www.cnx-software.com/2022/01/12/rockchip-rk3588s-cost-optimized-cortex-a76-a55-processor/))
 * Samsung Exynos 9810 (1 x Gen3 x1, 1 x Gen2 x1)
