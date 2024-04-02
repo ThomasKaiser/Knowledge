@@ -24,6 +24,7 @@
   * [Suggestions to Radxa](#suggestions-to-radxa)
   * [Open questions](#open-questions)
   * [Important insights and suggested optimisations](#important-insights-and-suggested-optimisations)
+  * [Revisiting software support status 20 months later](#revisiting-software-support-status-20-months-later)
 
 ![](../media/rock5b_front_back.jpg)
 
@@ -659,3 +660,194 @@ Some of the above optimisations (except coherent pool, FBS, USB PD and IRQ/SMP a
 *(`upthreshold = 25` is a more sane value since `20` causes the DRAM to be clocked at higher clockspeeds almost all the time even with just slight background activity)*
 
 This requires of course the kernel built with `CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y` and works only with those three cpufreq policies present on RK3588/RK3588S BSP kernel. A generic approach for the `ondemand` tweaks to work everywhere [has been given to Armbian folks](https://armbian.atlassian.net/browse/AR-1262) but they fail to understand and confuse temperatures with tweaks, monitoring with optimisation and the sh*t show just continues at Armbian since now only a part of the tweaks will be applied to certain devices ([Rock 5B with Armbian -> crappy I/O performance, Firefly Station M3 with same RK3588 inside -> high I/O performance](https://github.com/armbian/build/pull/4430#event-7804491329)).
+
+## Revisiting software support status 20 months later
+
+It's April 2024 now, Rockchip released a BSP kernel rebased on 5.10.160 in the meantime and half a year ago another one forward ported or rebased on Android's GKI 6.1 kernel. Also situation with mainline kernel has improved a lot and most of peripherals are supported upstream and many SBC enthusiasts believe there's no need for RK's BSP kernel any more.
+
+Of course nobody cares about energy efficiency, performance or similar stuff so let's have a look using a 15W USB-C power brick from an RPi and a [Netio 4KF powermeter](https://www.netio-products.com/en/device/powerbox-4kx). I'll skip the 6.1 BSP kernel for now and check with 5.10.160 BSP vs. 6.8.1 mainline:
+
+<details>
+  <summary>Board idling with 5.10.160 BSP kernel at ~1500mW</summary>
+
+    root@rock-5b:/home/tk# uname -a
+    Linux rock-5b 5.10.160-legacy-rk35xx #1 SMP Sun Mar 3 14:53:17 UTC 2024 aarch64 GNU/Linux
+    
+    root@rock-5b:/home/tk# export Netio=powerbox-1/2 ; sbc-bench.sh -m
+    Power monitoring on socket 2 of powerbox-1 (Netio 4KF, FW v3.2.0, XML API v2.4, 231.85V @ 49.96Hz)
+    
+    Rockchip RK3588 / 35 88 91 fe 21 41  5a 43 34 31 00 00 00 00, Kernel: aarch64, Userland: arm64
+    
+    CPU sysfs topology (clusters, cpufreq members, clockspeeds)
+                     cpufreq   min    max
+     CPU    cluster  policy   speed  speed   core type
+      0        0        0      408    1800   Cortex-A55 / r2p0
+      1        0        0      408    1800   Cortex-A55 / r2p0
+      2        0        0      408    1800   Cortex-A55 / r2p0
+      3        0        0      408    1800   Cortex-A55 / r2p0
+      4        1        4      408    2400   Cortex-A76 / r4p0
+      5        1        4      408    2400   Cortex-A76 / r4p0
+      6        2        6      408    2400   Cortex-A76 / r4p0
+      7        2        6      408    2400   Cortex-A76 / r4p0
+    
+    Thermal source: /sys/class/hwmon/hwmon0/ (soc_thermal)
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)      mW
+    20:01:21: 1800/ 408/ 408MHz  0.06   1%   0%   0%   0%   0%   0%  29.6°C   5.29    1500
+    20:01:26:  600/ 408/ 408MHz  0.06   0%   0%   0%   0%   0%   0%  29.6°C   5.19    1510
+    20:01:31: 1800/ 408/ 408MHz  0.05   1%   1%   0%   0%   0%   0%  29.6°C   5.16    1540
+    20:01:36: 1800/ 408/ 408MHz  0.05   1%   0%   0%   0%   0%   0%  29.6°C   5.16    1520
+    20:01:41: 1800/ 408/ 408MHz  0.04   1%   0%   0%   0%   0%   0%  29.6°C   5.34    1520
+    20:01:47:  408/ 408/ 408MHz  0.04   0%   0%   0%   0%   0%   0%  29.6°C   5.36    1520
+    20:01:52:  600/ 408/ 408MHz  0.04   1%   1%   0%   0%   0%   0%  29.6°C   5.34    1510
+    20:01:57: 1800/ 408/ 408MHz  0.03   1%   0%   0%   0%   0%   0%  29.6°C   5.15    1510
+    20:02:02: 1800/ 408/ 408MHz  0.03   0%   0%   0%   0%   0%   0%  29.6°C   5.17    1520
+    20:02:07:  600/ 408/ 408MHz  0.03   0%   0%   0%   0%   0%   0%  29.6°C   5.18    1500
+    20:02:12: 1800/ 408/ 408MHz  0.03   1%   0%   0%   0%   0%   0%  29.6°C   5.35    1500
+    20:02:18:  600/ 408/ 408MHz  0.02   1%   1%   0%   0%   0%   0%  29.6°C   5.37    1490
+    20:02:23:  600/ 408/ 408MHz  0.02   0%   0%   0%   0%   0%   0%  29.6°C   5.21    1500
+    ^C
+
+</details>
+
+The board is only passively cooled and running `sbc-bench -s` the stockfish scores with the `nn-6877cd24400e.nnue` NN are 4853261, 4377759, 4637629 (4622883 averaged) with some minor throttling occuring ([full sbc-bench output](https://sprunge.us/ksBX44))
+
+<details>
+  <summary>Throttling statistics (downclocking evenly just one cpufreq OPP)</summary>
+
+    Throttling statistics (time spent on each cpufreq OPP) for CPUs 0-3 (Cortex-A55):
+    
+    1800 MHz: 1172.02 sec
+    1608 MHz:  546.08 sec
+    1416 MHz:       0 sec
+    1200 MHz:       0 sec
+    1008 MHz:       0 sec
+     816 MHz:       0 sec
+     600 MHz:       0 sec
+     408 MHz:       0 sec
+    
+    Throttling statistics (time spent on each cpufreq OPP) for CPUs 4-5 (Cortex-A76):
+    
+    2400 MHz: 1171.97 sec
+    2208 MHz:  546.13 sec
+    2016 MHz:       0 sec
+    1800 MHz:       0 sec
+    1608 MHz:       0 sec
+    1416 MHz:       0 sec
+    1200 MHz:       0 sec
+    1008 MHz:       0 sec
+     816 MHz:       0 sec
+     600 MHz:       0 sec
+     408 MHz:       0 sec
+    
+    Throttling statistics (time spent on each cpufreq OPP) for CPUs 6-7 (Cortex-A76):
+    
+    2400 MHz: 1171.90 sec
+    2208 MHz:  546.19 sec
+    2016 MHz:       0 sec
+    1800 MHz:       0 sec
+    1608 MHz:       0 sec
+    1416 MHz:       0 sec
+    1200 MHz:       0 sec
+    1008 MHz:       0 sec
+     816 MHz:       0 sec
+     600 MHz:       0 sec
+     408 MHz:       0 sec
+
+</details>
+
+Running mainline kernel with exactly same setup (same powerbrick on same Netio outlet) idle consumption is already insanely high – **a whopping 2W more compared to BSP!**:
+
+<details>
+  <summary>Board idling with 6.8.1 mainline kernel at ~3500mW</summary>
+
+    root@rock-5b:/home/tk# uname -a
+    Linux rock-5b 6.8.1-edge-rockchip-rk3588 #5 SMP PREEMPT Fri Mar 15 18:19:29 UTC 2024 aarch64 aarch64 aarch64 GNU/Linux
+    
+    root@rock-5b:/home/tk# export Netio=powerbox-1/2 ; sbc-bench.sh -m
+    Power monitoring on socket 2 of powerbox-1 (Netio 4KF, FW v3.2.0, XML API v2.4, 234.21V @ 50.02Hz)
+    
+    Rockchip RK3588 / 35 88 91 fe 21 41  5a 43 34 31 00 00 00 00, Kernel: aarch64, Userland: arm64
+    
+    CPU sysfs topology (clusters, cpufreq members, clockspeeds)
+                     cpufreq   min    max
+     CPU    cluster  policy   speed  speed   core type
+      0        0        0      408    1800   Cortex-A55 / r2p0
+      1        0        0      408    1800   Cortex-A55 / r2p0
+      2        0        0      408    1800   Cortex-A55 / r2p0
+      3        0        0      408    1800   Cortex-A55 / r2p0
+      4        0        4      408    2208   Cortex-A76 / r4p0
+      5        0        4      408    2208   Cortex-A76 / r4p0
+      6        0        6      408    2208   Cortex-A76 / r4p0
+      7        0        6      408    2208   Cortex-A76 / r4p0
+    
+    Thermal source: /sys/class/hwmon/hwmon0/ (soc_thermal)
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp      mW
+    20:55:48: 1008/ 816/ 816MHz  0.02   0%   0%   0%   0%   0%   0%  32.4°C     3520
+    20:55:54: 1008/ 816/ 816MHz  0.02   0%   0%   0%   0%   0%   0%  32.4°C     3540
+    20:55:59: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  32.4°C     3530
+    20:56:04: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  33.3°C     3520
+    20:56:09: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  33.3°C     3530
+    20:56:14: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  33.3°C     3530
+    20:56:19: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  33.3°C     3530
+    20:56:24: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  33.3°C     3560
+    20:56:29: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  33.3°C     3540
+    20:56:34: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  33.3°C     3520
+    20:56:39: 1008/ 816/ 816MHz  0.01   0%   0%   0%   0%   0%   0%  34.2°C     3520
+    20:56:44: 1008/ 816/ 816MHz  0.00   0%   0%   0%   0%   0%   0%  34.2°C     3530
+    20:56:50: 1008/ 816/ 816MHz  0.00   0%   0%   0%   0%   0%   0%  34.2°C     3540
+    20:56:55: 1008/ 816/ 816MHz  0.00   0%   0%   0%   0%   0%   0%  34.2°C     3550
+    ^C
+
+</details>
+
+And while mainline DVFS settings are already more conservative compared to BSP (upper limit only 2.2 GHz instead of 2.4 GHz with capable SoCs) the board heats way more up while benchmarking and performance sucks unless one wants to waste even more energy to add an annoying fan to the setup since with mainline kernel you get full performance only with active cooling and this does not only apply to benchmarking but to real-world workloads where sustained performance is needed.
+
+Stockfish scores with same `nn-6877cd24400e.nnue` NN are now just 4162253, 3959980, 3374287 (3832173 averaged) with both massive and absurd throttling occuring ([full sbc-bench output](https://sprunge.us/GvvKVn))
+
+<details>
+  <summary>Throttling statistics (the 2nd A76 cluster even being forced down to 408 MHz, **LMAO**!)</summary>
+
+    Throttling statistics (time spent on each cpufreq OPP) for CPUs 0-3 (Cortex-A55):
+    
+    1800 MHz: 1423.81 sec
+    1608 MHz:  419.75 sec
+    1416 MHz:   30.44 sec
+    1200 MHz:    0.02 sec
+    1008 MHz:       0 sec
+     816 MHz:       0 sec
+     600 MHz:       0 sec
+     408 MHz:       0 sec
+    
+    Throttling statistics (time spent on each cpufreq OPP) for CPUs 4-5 (Cortex-A76):
+    
+    2208 MHz: 1170.35 sec
+    2016 MHz:  177.39 sec
+    1800 MHz:  257.14 sec
+    1608 MHz:  179.50 sec
+    1416 MHz:   65.81 sec
+    1200 MHz:   20.58 sec
+    1008 MHz:    2.32 sec
+     816 MHz:    0.89 sec
+     600 MHz:    0.02 sec
+     408 MHz:       0 sec
+    
+    Throttling statistics (time spent on each cpufreq OPP) for CPUs 6-7 (Cortex-A76):
+    
+    2208 MHz: 1048.09 sec
+    2016 MHz:  119.07 sec
+    1800 MHz:  163.67 sec
+    1608 MHz:  195.09 sec
+    1416 MHz:  120.90 sec
+    1200 MHz:   52.32 sec
+    1008 MHz:   37.49 sec
+     816 MHz:   71.72 sec
+     600 MHz:   43.47 sec
+     408 MHz:   22.18 sec
+
+</details>
+
+Conclusion: with mainline kernel some SoC parts are constantly fried or at least wasting energy all the time (a general **2W consumption increase** for a device that is capable of idling at or even below 1.5W with sane defaults is... **insane**!). Also passively cooled performance under full load conditions is ruined so you need to waste even more energy for an additional fan.
+
+And of course nobody is caring or even noticing since once the 'correct' kernel version can be enjoyed the average 'SBC enthusiast' is already happy :)
