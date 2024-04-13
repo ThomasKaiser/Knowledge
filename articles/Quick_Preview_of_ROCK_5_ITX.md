@@ -6,15 +6,25 @@
 
 <details>
   <summary>More pictures</summary>
+
   ![Top view](../media/rock5-itx-2.jpg)
+  
   ![Connector side view](../media/rock5-itx-3.jpg)
+
   ![SATA side view](../media/rock5-itx-4.jpg)
+
   ![PoE module](../media/rock5-itx-5.jpg)
+
   ![Board components](../media/rock5-itx-6.jpg)
+
   ![SD card, MIPI, Maskrom button, touchpad, eDP](../media/rock5-itx-7.jpg)
+
   ![M.2 key E, front panel header, audio jacks, RA620-1, ES8316](../media/rock5-itx-8.jpg)  
+
   ![Board with I/O Shield](../media/rock5-itx-9.jpg)
+
   ![Cardboard package](../media/rock5-itx-10.jpg)
+
 </details>
 
 ## Overview
