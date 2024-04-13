@@ -29,12 +29,12 @@
 
 ## Overview
 
-April 2024 Radxa started to send out developer samples of their RK3588 based MiniITX v1.11 board (for RK3588 basics and some notes about software support status see [Rock 5B](Quick_Preview_of_ROCK_5B.md)). Official documentation will once appear [here](https://docs.radxa.com/en/rock5/rock5itx) and for now you can see a block diagram [there](https://docs.radxa.com/en/assets/images/rock5itx-interface-overview-1266d3c0b4e745372a48a473d78c3cdc.webp)
+April 2024 Radxa started to send out developer samples of their RK3588 based [Mini-ITX](https://en.wikipedia.org/wiki/Mini-ITX) v1.11 board (for RK3588 basics and some notes about software support status see [Rock 5B](Quick_Preview_of_ROCK_5B.md)). Official documentation will once appear [here](https://docs.radxa.com/en/rock5/rock5itx) and for now you can see a block diagram [there](https://docs.radxa.com/en/assets/images/rock5itx-interface-overview-1266d3c0b4e745372a48a473d78c3cdc.webp)
 
-The board measures 170x170mm in size as it follows the [Mini-ITX](https://en.wikipedia.org/wiki/Mini-ITX) form factor with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
+The board measures 170x170mm in size as it follows the Mini-ITX standard with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
 
   * 5.5/2.1 mm centre positive DC/IN: not wide input range but 12V only (directly connected to SATA power ports? TBC)
-  * USB-C with OTG (USB 2.0/HiSpeed) and DisplayPort, no power through this port
+  * USB-C with OTG (USB 3.0/FullSpeed) and DisplayPort, no powering through this port
   * HDMI IN
   * RJ45 / 2.5GbE provided by RTL8125BG + USB 2.0 behind 4-port Terminus Inc. USB2 hub
   * another RJ45 / 2.5GbE provided by RTL8125BG + USB 2.0 behind same USB2 hub
@@ -65,7 +65,7 @@ On the remaining two board sides we find other internal connectors:
   * header for an optional PoE module (already populated on my board)
   * 12V PWN enabled fan header
 
-Other onboard components on my board include:
+Other notable onboard components on *my* board include:
 
   * soldered 32GB "Samsung BJTD4R" HS400 eMMC module
   * 2 x 32Gb SK Hynix H58G56AK6B LPDDR5 modules for a total of 8GB DRAM
@@ -75,16 +75,42 @@ Other onboard components on my board include:
   * RTC battery holder
   * Maskrom key
 
+## I/O capabilities
+
+Some protocols on RK3588 are pinmuxed so the board designer has to decide between PCIe, USB3 and SATA in some cases. For a pinmuxing overview [see here](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/) and for a general RK3588 PCIe overview [see there](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#pcie). On this board the seven available PCIe lanes are used as follows:
+
+  * two of the Gen3 lanes are routed to the M.2 key M slot to be used with a SSD or M.2 storage/network adapters
+  * the other two Gen3 lanes connect to the [ASM1164 SATA host controller](https://www.asmedia.com.tw/product/17fYQ85SPeqG8MT8/58dYQ8bxZ4UR9wG5) that provides the 4 SATA 6Gbps ports on the board. Talking about bandwidth PCIe Gen3 x2 and 4 x SATA at 6.0 Gbit/s with 8b/10b coding are a pretty close match as such not only four pieces of spinning rust but also fast SATA SSDs should be able to be accessed at full speed in parallel
+  * two Gen2 lanes are used to attach the RTL8125BG Ethernet controllers
+  * the last Gen2 lane is routed to the M.2 key E slot to be used with PCIe peripherals like a Wi-Fi card or when switched to SATA mode as another (and this time SoC native) SATA port. Making use of SATA requires a passive adapter like Radxa's 'M.2 E Key to SATA Adapter' that unfortunately seems to be sold out everywhere
+  * all four USB3 receptacles are behind a GL3523 USB3 hub and as such have to share bandwidth
+  * the same goes for the four USB2 ports (two receptables and two on headers) that are behind an USB2 hub
+  * The USB3 OTG port available at the USB-C receptacle can be used for ADB by default but it should also be possible to use it as USB3 host port via a device-tree overlay
+  * the TF card slot is UHS-I/SDR104 capable
+  * the eMMC interface utilizes HS400 mode
+
+## Display capabilities
+
+Disclaimer: not my area since I usually operate SBC headless as such just a quick list copy&pasted from Radxa:
+
+  * DisplayPort Alt mode available at the USB-C port (4Kp60)
+  * HDMI 8Kp60 available native by the SoC
+  * HDMI 4K available via Radxa RA620-1 DisplayPort-to-HDMI converter 
+  * eDP FPC connector for 4Kp60 LCD panel
+  * up to 2 x four-lane MIPI DSI connectors
+
+That makes for six displays in total but according to Radxa only four can be used concurrently.
+
+## Video input capabilities
+
+  * HDMI up to 4Kp60
+  * up to 2 x four-lane MIPI CSI connectors (switching between CSI and DSI can be done by a device-tree overlay)
+
+
+
 
 (stub from here on)
 
-  * 
-  * 
-  * 
-  * 
-  * 
-  * 
-  * 
 
 
 
