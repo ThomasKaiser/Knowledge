@@ -33,7 +33,7 @@ April 2024 Radxa started to send out developer samples of their RK3588 based [Mi
 
 The board measures 170x170mm in size as it follows the Mini-ITX standard with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
 
-  * 5.5/2.1 mm centre positive DC/IN: not wide input range but 12V only (directly connected to SATA power ports? TBC)
+  * 5.5/2.1 mm centre positive DC/IN: maybe wide input range but 12V recommended (directly connected to SATA power ports? TBC)
   * USB-C with OTG (USB 3.0/FullSpeed) and DisplayPort, no powering through this port
   * HDMI IN
   * RJ45 / 2.5GbE provided by RTL8125BG + USB 2.0 behind 4-port Terminus Inc. USB2 hub
@@ -90,7 +90,7 @@ Some protocols on RK3588 are pinmuxed so the board designer has to decide betwee
   * the eMMC interface utilizes HS400 mode
 
 <details>
-  <summary>`lspci -vv`</summary>
+  <summary>lspci -vv</summary>
 
     root@rock-5-itx:~# lspci -vv
     0001:10:00.0 PCI bridge: Fuzhou Rockchip Electronics Co., Ltd RK3588 (rev 01) (prog-if 00 [Normal decode])
@@ -543,7 +543,7 @@ Some protocols on RK3588 are pinmuxed so the board designer has to decide betwee
 </details>
 
 <details>
-  <summary>`lsusb` with all six USB receptacles occupied by storage devices</summary>
+  <summary>lsusb with all six USB receptacles occupied by storage devices</summary>
 
     root@rock-5-itx:~# lsusb
     Bus 006 Device 003: ID 174c:55aa ASMedia Technology Inc. ASM1051E SATA 6Gb/s bridge, ASM1053E SATA 6Gb/s bridge, ASM1153 SATA 3Gb/s bridge, ASM1153E SATA 6Gb/s bridge
@@ -599,7 +599,7 @@ Disclaimer: not my area since I usually operate SBC headless as such just a quic
   * eDP FPC connector for 4Kp60 LCD panel
   * up to 2 x four-lane MIPI DSI connectors
 
-That makes for six displays in total but according to Radxa only four can be used concurrently.
+Six displays in total but according to Radxa only four can be used concurrently.
 
 ## Video input capabilities
 
@@ -612,4 +612,18 @@ input voltage can be read via SARADC: `awk '{printf ("%0.2f",$1/173.5); }' </sys
 
 Board powers on w/o 'power button' pressed
 
+0.3W after `shutdown -h now`. TODO: power button test
+
 LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse.
+
+## TODO TK
+
+  * investigate LPDDR5 initialization
+  * PoE test wrt DC-IN
+  * Measure voltage on SATA power ports
+  * USB-C port capabilities
+  * consumption figures (disabling ASM1164, checking through governors/policies and Gen2 vs. Gen3)
+  * educational measurement how wasteful ATX PSUs are
+  * storage testing (only crappy NVMe SSD lying around, not enough SATA SSDs here)
+  * network testing: SMB Multichannel, iperf3, investigating macOS Finder crappyness
+  * to be continued
