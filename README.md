@@ -1,5 +1,9 @@
 # Random stuff about 'small and energy efficient' computing.
 
+#### 2024/04/15
+
+* [Quick Preview of ROCK 5 ITX](articles/Quick_Preview_of_ROCK_5_ITX.md)
+
 #### 2022/07/06
 
 * [Quick Preview of ROCK 5B](articles/Quick_Preview_of_ROCK_5B.md)

@@ -1,8 +1,6 @@
-# Quick Preview of ROCK 5 ITX
+# Quick Preview of ROCK 5 ITX **(Work in progress)**
 
 ![I/O ports view](../media/rock5-itx-1.jpg)
-
-**(Work in progress)**
 
 <details>
   <summary>More pictures</summary>
@@ -25,6 +23,20 @@
 
 </details>
 
+   * [Overview](#overview)
+   * [I/O capabilities](#io-capabilities)
+   * [Display capabilities](#display-capabilities)
+   * [Video input capabilities](#video-input-capabilities)
+   * [TF card slot and eMMC](#tf-card-slot-and-emmc)
+   * [USB-C port](#usb-c-port)
+   * [PoE via optional PoE module](#poe-via-optional-poe-module)
+   * [SATA power ports](#sata-power-ports)
+   * [SATA performance](#sata-performance)
+   * [Power button](#power-button)
+   * [Open questions](#open-questions)
+   * [TODO TK](#todo-tk)
+
+<!-- TOC --><a name="overview"></a>
 ## Overview
 
 April 2024 Radxa started to send out developer samples of their RK3588 based [Mini-ITX](https://en.wikipedia.org/wiki/Mini-ITX) v1.11 board (for RK3588 basics and some notes about software support status see [Rock 5B](Quick_Preview_of_ROCK_5B.md)). Official documentation will once appear [here](https://docs.radxa.com/en/rock5/rock5itx) and for now you can see a block diagram [there](https://docs.radxa.com/en/assets/images/rock5itx-interface-overview-1266d3c0b4e745372a48a473d78c3cdc.webp)
@@ -73,6 +85,7 @@ Other notable onboard components on *my* board include:
   * RTC battery holder
   * Maskrom button
 
+<!-- TOC --><a name="io-capabilities"></a>
 ## I/O capabilities
 
 Some protocols on RK3588 are pinmuxed so the board designer has to decide between PCIe, USB3 and SATA in some cases. For a pinmuxing overview [see here](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/) and for a general RK3588 PCIe overview [see there](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#pcie). On this board the seven available PCIe lanes are used as follows:
@@ -592,6 +605,7 @@ Some protocols on RK3588 are pinmuxed so the board designer has to decide betwee
 
 </details>
 
+<!-- TOC --><a name="display-capabilities"></a>
 ## Display capabilities
 
 Disclaimer: not my area since I usually operate SBC headless as such just a quick list copy&pasted from Radxa:
@@ -604,11 +618,13 @@ Disclaimer: not my area since I usually operate SBC headless as such just a quic
 
 Six displays in total but according to Radxa only four can be used concurrently.
 
+<!-- TOC --><a name="video-input-capabilities"></a>
 ## Video input capabilities
 
   * HDMI up to 4Kp60
   * up to 2 x four-lane MIPI CSI connectors (switching between CSI and DSI can be done by a device-tree overlay)
 
+<!-- TOC --><a name="tf-card-slot-and-emmc"></a>
 ## TF card slot and eMMC
 
 `sbc-bench -S` reports the two SDIO attached MMC storage types as follows:
@@ -636,6 +652,7 @@ For now let's check the perforance of the eMMC module again with `iozone -e -I -
 
 Great random IOPS at 4K and 100/300 MB/s at sequential transfer speeds. Both nice.
 
+<!-- TOC --><a name="usb-c-port"></a>
 ## USB-C port
 
 This connector is not meant for powering but provides only DisplayPort and USB3 OTG or host. The latter is the default with Radxa's OS images as such I connected a Samsung EVO 840 in an USB3 disk enclosure and measured via `iozone -e -I -a -s 500M -r 4k -r 16384k -i 0 -i 1 -i 2`:
@@ -767,7 +784,7 @@ And since we're at it by moving the EVO840 from the USB-C port to one of the oth
     
 </details>
 
-Now trying to use the USB-C port as an el cheapo network device just as [I managed it with RPi 5B recently](https://github.com/raspberrypi/linux/issues/5737#issuecomment-1943440662). First step is executing `rsetup` and choosing the right device-tree overlay 'Set OTG port 0 to Peripheral mode' and then enabling the Ethernet USB gadget:
+Now trying to use the USB-C port as an el cheapo network device just as [I managed with RPi 5B recently](https://github.com/raspberrypi/linux/issues/5737#issuecomment-1943440662). First step is executing `rsetup` and choosing the right device-tree overlay 'Set OTG port 0 to Peripheral mode' and then enabling the Ethernet USB gadget:
 
 ![Choosing device-tree overlays with rsetup](../media/rock5-itx-rsetup-dtbos.png)
 
@@ -780,6 +797,7 @@ After installing `avahi-autoipd` and creating `/etc/network/interfaces.d/usb0` w
 
 But nothing on the other end of the USB-C cable to be seen so am going to revisit this soon with a more mature OS image from Radxa.
 
+<!-- TOC --><a name="poe-via-optional-poe-module"></a>
 ## PoE via optional PoE module
 
 Both RJ45 jacks are PoE enabled but for 'Power over Ethernet' to be really working Radxa's PoE module must be seated between ATX power connector and RJ45 jacks . When connected to a PoE switch a short press on the power button is needed for the board to boot.
@@ -790,6 +808,7 @@ Measuring the 12V rail on the SATA power ports gives 11.64V and when checking th
 
 ![PoE module](../media/rock5-itx-5.jpg)
 
+<!-- TOC --><a name="sata-power-ports"></a>
 ## SATA power ports
 
 For each of the 4 SATA connectors there's also a power connector carrying 12V, GND, GND and 5V ([Floppy connector](https://en.wikipedia.org/wiki/Berg_connector)). Powering the board via DC-IN from my ODROID SmartPower 3 I chose 12.4V and 11.6V to compare with SARADC values and Multimeter readings.
@@ -804,6 +823,7 @@ So in case you want to power 5.25" HDDs (or those old 3.5" WD Velociraptor 10.00
 
 ![12V rail testing](../media/rock5-itx-12v-rail-testing.jpg)
 
+<!-- TOC --><a name="sata-performance"></a>
 ## SATA performance
 
 Spoiler alert: Not able to test for maximum performance since one of my old/crappy SATA SSDs just died and from the three remaining two are not able to saturate SATA 6Gpbs anyway. As such this is just preparation for an upcoming SMB multichannel test with 2 x 2.5GbE.
@@ -892,6 +912,7 @@ Well, regardless of SSD crappiness this sucks since sequential write performance
 
 We're facing a serious problem here for people wanting to combine several SATA SSDs with Rock 5 ITX.
 
+<!-- TOC --><a name="power-button"></a>
 ## Power button
 
 When the board is powered via PoE it does not automatically boot when power is present on one of the RK45 ports but it needs a short press of the power button (to be wired from the front-panel header). In contrast to that when powering through the DC-IN jack the board immediately boots when power is available.
@@ -900,11 +921,13 @@ A different situation is the board being shut down before. In this mode (powered
 
 When the power button is pressed for a longer amount of time (~4 seconds?) the board immediately powers off.
 
+<!-- TOC --><a name="open-questions"></a>
 ## Open questions
 
   * DC-IN voltage range? As far as I understood so far the 12V requirement is solely related to SATA power (12V rail only needed with 5.25" and some exotic 3.5" HDDs)
   * LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse. Why?
 
+<!-- TOC --><a name="todo-tk"></a>
 ## TODO TK
 
   * investigate LPDDR5 initialization
