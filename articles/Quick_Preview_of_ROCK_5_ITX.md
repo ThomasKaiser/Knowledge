@@ -31,7 +31,7 @@ April 2024 Radxa started to send out developer samples of their RK3588 based [Mi
 
 The board measures 170x170mm in size as it follows the Mini-ITX standard with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
 
-  * 5.5/2.1 mm centre positive DC/IN: wide input range (voltage range not tested/confirmed yet) but [**important** to use 12V when powering 5.25" HDDs by the board](#sata-power-ports)
+  * 5.5/2.1 mm centre positive DC-IN: wide input range (voltage range not tested/confirmed yet) but [**important** to use 12V when powering 5.25" HDDs by the board](#sata-power-ports)
   * USB-C with OTG (USB 3.0 / FullSpeed / 5Gbps) and DisplayPort, no powering through this port
   * HDMI IN
   * RJ45 / 2.5GbE provided by RTL8125BG + USB 2.0 behind 4-port Terminus Inc. USB2 hub
@@ -645,7 +645,129 @@ This connector is not meant for powering but provides only DisplayPort and USB3 
           512000       4    21340    28102    22988    22459    13014    22292
           512000   16384   385996   365681   386597   386635   386580   385638
 
-385 MB/s at 16M blocksize are OK since this benchmark was on a btrfs filesystem (with a bit more overhead due to copy-on-write). Now trying to use the USB-C port as an el cheapo network device just as [I managed it with RPi 5B recently](https://github.com/raspberrypi/linux/issues/5737#issuecomment-1943440662). First step is executing `rsetup` and choosing the right device-tree overlay 'Set OTG port 0 to Peripheral mode' and then enabling the Ethernet USB gadget:
+385 MB/s at 16M blocksize are OK since this benchmark was on a btrfs filesystem (with a bit more overhead due to copy-on-write).
+
+To confirm the USB-C port *not* having to share bandwidth with the four USB3-A receptacles I set up an `/dev/md0` as raid0 with another EVO750, formatted it with ext4 and let again an `iozone -e -I -a -s 500M -r 4k -r 16384k -i 0 -i 1 -i 2` run:
+
+                                                              random    random
+              kB  reclen    write  rewrite    read    reread    read     write
+          512000       4    23749    31631    32728    32618    16693    31494
+          512000   16384   747561   747706   735573   739497   728055   745962
+
+Results as expected (sequential bandwidth almost doubled, 4K random IOPS also improved)
+
+<details>
+  <summary>lsusb / sbc-bench -S / mdadm --detail</summary>
+
+    root@rock-5-itx:/home/radxa# lsusb
+    Bus 006 Device 003: ID 174c:55aa ASMedia Technology Inc. ASM1051E SATA 6Gb/s bridge, ASM1053E SATA 6Gb/s bridge, ASM1153 SATA 3Gb/s bridge, ASM1153E SATA 6Gb/s bridge
+    Bus 006 Device 002: ID 05e3:0620 Genesys Logic, Inc. USB3.2 Hub
+    Bus 006 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+    Bus 005 Device 002: ID 05e3:0610 Genesys Logic, Inc. Hub
+    Bus 005 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    Bus 008 Device 002: ID 2109:0715 VIA Labs, Inc. VL817 SATA Adaptor
+    Bus 008 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+    Bus 007 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    Bus 004 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    Bus 002 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    Bus 003 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    Bus 001 Device 002: ID 1a40:0101 Terminus Technology Inc. Hub
+    Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    
+    root@rock-5-itx:/home/radxa# lsusb -t
+    /:  Bus 08.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
+        |__ Port 1: Dev 2, If 0, Class=Mass Storage, Driver=uas, 5000M
+    /:  Bus 07.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 480M
+    /:  Bus 06.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
+        |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 5000M
+            |__ Port 3: Dev 3, If 0, Class=Mass Storage, Driver=uas, 5000M
+    /:  Bus 05.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 480M
+        |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 480M
+    /:  Bus 04.Port 1: Dev 1, Class=root_hub, Driver=ohci-platform/1p, 12M
+    /:  Bus 03.Port 1: Dev 1, Class=root_hub, Driver=ohci-platform/1p, 12M
+    /:  Bus 02.Port 1: Dev 1, Class=root_hub, Driver=ehci-platform/1p, 480M
+    /:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=ehci-platform/1p, 480M
+        |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 480M
+    
+    root@rock-5-itx:/home/radxa# sbc-bench.sh -S
+      * 111.8GB "Samsung SSD 750 EVO 120GB" SSD as /dev/sda [SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)]: behind ASMedia SATA 6Gb/s bridge (174c:55aa), 3% worn out, Driver=uas, 5Gbps (capable of 12Mbps, 480Mbps, 5Gbps), drive temp: 32°C
+      * 111.8GB "Samsung SSD 840 EVO 120GB" SSD as /dev/sdb [SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)]: behind VIA Labs VL715/VL716 SATA 6Gb/s bridge (2109:0715), 3% worn out, Driver=uas, 5Gbps (capable of 12Mbps, 480Mbps, 5Gbps, 10Gb/s Symmetric RX SuperSpeedPlus, 10Gb/s Symmetric TX SuperSpeedPlus), drive temp: 31°C
+    
+    root@rock-5-itx:/home/radxa# mdadm --detail /dev/md0
+    /dev/md0:
+               Version : 1.2
+         Creation Time : Mon Apr 15 18:20:48 2024
+            Raid Level : raid0
+            Array Size : 234305536 (223.45 GiB 239.93 GB)
+          Raid Devices : 2
+         Total Devices : 2
+           Persistence : Superblock is persistent
+    
+           Update Time : Mon Apr 15 18:20:48 2024
+                 State : clean 
+        Active Devices : 2
+       Working Devices : 2
+        Failed Devices : 0
+         Spare Devices : 0
+    
+                Layout : -unknown-
+            Chunk Size : 512K
+    
+    Consistency Policy : none
+    
+                  Name : rock-5-itx:0  (local to host rock-5-itx)
+                  UUID : 8b6e75db:054fa470:02437d6c:3a269f87
+                Events : 0
+    
+        Number   Major   Minor   RaidDevice State
+           0       8       17        0      active sync   /dev/sdb1
+           1       8        1        1      active sync   /dev/sda1
+
+</details>
+
+And since we're at it by moving the EVO840 from the USB-C port to one of the other USB3-A receptacles we can quickly confirm with very same `/dev/md0` that all the USB3-A ports behind the onboard USB3 hub have to share bandwidth:
+
+                                                              random    random
+              kB  reclen    write  rewrite    read    reread    read     write
+          512000       4    19329    26530    27105    27171    16212    23857
+          512000   16384   405432   400813   374786   375842   374552   402061
+
+<details>
+  <summary>lsusb / sbc-bench -S</summary>
+
+    root@rock-5-itx:/home/radxa# lsusb
+    Bus 006 Device 004: ID 174c:55aa ASMedia Technology Inc. ASM1051E SATA 6Gb/s bridge, ASM1053E SATA 6Gb/s bridge, ASM1153 SATA 3Gb/s bridge, ASM1153E SATA 6Gb/s bridge
+    Bus 006 Device 003: ID 152d:3562 JMicron Technology Corp. / JMicron USA Technology Corp. JMS567 SATA 6Gb/s bridge
+    Bus 006 Device 002: ID 05e3:0620 Genesys Logic, Inc. USB3.2 Hub
+    Bus 006 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+    Bus 005 Device 002: ID 05e3:0610 Genesys Logic, Inc. Hub
+    Bus 005 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    Bus 004 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    Bus 002 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    Bus 003 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    Bus 001 Device 002: ID 1a40:0101 Terminus Technology Inc. Hub
+    Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    
+    root@rock-5-itx:/home/radxa# lsusb -t
+    /:  Bus 06.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
+        |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 5000M
+            |__ Port 2: Dev 3, If 0, Class=Mass Storage, Driver=uas, 5000M
+            |__ Port 3: Dev 4, If 0, Class=Mass Storage, Driver=uas, 5000M
+    /:  Bus 05.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 480M
+        |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 480M
+    /:  Bus 04.Port 1: Dev 1, Class=root_hub, Driver=ohci-platform/1p, 12M
+    /:  Bus 03.Port 1: Dev 1, Class=root_hub, Driver=ohci-platform/1p, 12M
+    /:  Bus 02.Port 1: Dev 1, Class=root_hub, Driver=ehci-platform/1p, 480M
+    /:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=ehci-platform/1p, 480M
+        |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 480M
+        
+    root@rock-5-itx:/home/radxa# sbc-bench.sh -S
+      * 111.8GB "Samsung SSD 840 EVO 120GB" SSD as /dev/sda [SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)]: behind JMicron JMS567 SATA 6Gb/s bridge (152d:3562), 5% worn out, Driver=uas, 5Gbps (capable of 12Mbps, 480Mbps, 5Gbps), drive temp: 32°C
+      * 111.8GB "Samsung SSD 750 EVO 120GB" SSD as /dev/sdb [SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)]: behind ASMedia SATA 6Gb/s bridge (174c:55aa), 5% worn out, Driver=uas, 5Gbps (capable of 12Mbps, 480Mbps, 5Gbps), drive temp: 33°C
+    
+</details>
+
+Now trying to use the USB-C port as an el cheapo network device just as [I managed it with RPi 5B recently](https://github.com/raspberrypi/linux/issues/5737#issuecomment-1943440662). First step is executing `rsetup` and choosing the right device-tree overlay 'Set OTG port 0 to Peripheral mode' and then enabling the Ethernet USB gadget:
 
 ![Choosing device-tree overlays with rsetup](../media/rock5-itx-rsetup-dtbos.png)
 
@@ -662,7 +784,7 @@ But nothing on the other end of the USB-C cable to be seen so am going to revisi
 
 Both RJ45 jacks are PoE enabled but for 'Power over Ethernet' to be really working Radxa's PoE module must be seated between ATX power connector and RJ45 jacks . When connected to a PoE switch a short press on the power button is needed for the board to boot.
 
-Measuring the 12V rail on the SATA power ports gives 11.64V and when checking the DC voltage generated by the PoE module via SARADC a 11.7V value confirms the voltage being a bit on the low side for HDDs. Radxa chose to [keep Rock 5 ITX compatible to 5B wrt input voltage measurement](https://forum.radxa.com/t/realtime-power-usage/15027/11?u=tkaiser):
+Measuring the 12V rail on the SATA power ports gives 11.64V and when checking the DC voltage generated by the PoE module via SARADC a 11.7V value confirms the voltage being a bit on the low side for HDDs. Radxa chose to [keep Rock 5 ITX compatible to 5B wrt DC-IN voltage measurement](https://forum.radxa.com/t/realtime-power-usage/15027/11?u=tkaiser):
 
 `awk '{printf ("%0.2f",$1/173.5); }' </sys/devices/iio_sysfs_trigger/subsystem/devices/iio\:device0/in_voltage6_raw`.
 
@@ -682,13 +804,106 @@ So in case you want to power 5.25" HDDs (or those old 3.5" WD Velociraptor 10.00
 
 ![12V rail testing](../media/rock5-itx-12v-rail-testing.jpg)
 
-## (stub from here on)
+## SATA performance
 
-Board powers on w/o 'power button' pressed
+Spoiler alert: Not able to test for maximum performance since one of my old/crappy SATA SSDs just died and from the three remaining two are not able to saturate SATA 6Gpbs anyway. As such this is just preparation for an upcoming SMB multichannel test with 2 x 2.5GbE.
 
-0.3W after `shutdown -h now`. TODO: power button test
+Three 120/128 GB Samsung SSDs are connected to the SATA ports all externally powered:
 
-LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse.
+    root@rock-5-itx:/home/radxa# sbc-bench.sh -S
+      * 111.8GB "Samsung SSD 750 EVO 120GB" SSD as /dev/sda: SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s), 3% worn out, drive temp: 26°C
+      * 111.8GB "Samsung SSD 840 EVO 120GB" SSD as /dev/sdb: SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s), 3% worn out, drive temp: 26°C
+      * 119.2GB "SAMSUNG MZ7TE128HMGR-00004" SSD as /dev/sdc: SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s), 3% worn out, drive temp: 27°C
+
+<details>
+  <summary>Creating an mdadm raid0 out of them and formatting the array with ext4</summary>
+
+    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sda?; sudo wipefs --all --force /dev/sda
+    /dev/sda1: 4 bytes were erased at offset 0x00001000 (linux_raid_member): fc 4e 2b a9
+    /dev/sda: 8 bytes were erased at offset 0x00010040 (btrfs): 5f 42 48 52 66 53 5f 4d
+    /dev/sda: 8 bytes were erased at offset 0x00000200 (gpt): 45 46 49 20 50 41 52 54
+    /dev/sda: 8 bytes were erased at offset 0x1bf2975e00 (gpt): 45 46 49 20 50 41 52 54
+    /dev/sda: 2 bytes were erased at offset 0x000001fe (PMBR): 55 aa
+    
+    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sdb?; sudo wipefs --all --force /dev/sdb
+    /dev/sdb1: 4 bytes were erased at offset 0x00001000 (linux_raid_member): fc 4e 2b a9
+    /dev/sdb: 8 bytes were erased at offset 0x00010040 (btrfs): 5f 42 48 52 66 53 5f 4d
+    /dev/sdb: 8 bytes were erased at offset 0x00000200 (gpt): 45 46 49 20 50 41 52 54
+    /dev/sdb: 8 bytes were erased at offset 0x1bf2975e00 (gpt): 45 46 49 20 50 41 52 54
+    /dev/sdb: 2 bytes were erased at offset 0x000001fe (PMBR): 55 aa
+    
+    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sdc?; sudo wipefs --all --force /dev/sdc
+    /dev/sdc1: 2 bytes were erased at offset 0x00000438 (ext4): 53 ef
+    /dev/sdc: 8 bytes were erased at offset 0x00010040 (btrfs): 5f 42 48 52 66 53 5f 4d
+    /dev/sdc: 8 bytes were erased at offset 0x00000200 (gpt): 45 46 49 20 50 41 52 54
+    /dev/sdc: 8 bytes were erased at offset 0x1dcf855e00 (gpt): 45 46 49 20 50 41 52 54
+    /dev/sdc: 2 bytes were erased at offset 0x000001fe (PMBR): 55 aa
+    
+    root@rock-5-itx:/home/radxa# for i in a b c ; do sgdisk -n 1:0:0 /dev/sd${i} ; done
+    Creating new GPT entries in memory.
+    Warning: The kernel is still using the old partition table.
+    The new table will be used at the next reboot or after you
+    run partprobe(8) or kpartx(8)
+    The operation has completed successfully.
+    Creating new GPT entries in memory.
+    Warning: The kernel is still using the old partition table.
+    The new table will be used at the next reboot or after you
+    run partprobe(8) or kpartx(8)
+    The operation has completed successfully.
+    Creating new GPT entries in memory.
+    The operation has completed successfully.
+    
+    root@rock-5-itx:/home/radxa# mdadm --create --verbose /dev/md0 --level=0 --raid-devices=3 /dev/sd[a-c]1
+    mdadm: chunk size defaults to 512K
+    mdadm: Defaulting to version 1.2 metadata
+    mdadm: array /dev/md0 started.
+    
+    root@rock-5-itx:/home/radxa# mkfs.ext4 /dev/md0
+    mke2fs 1.46.2 (28-Feb-2021)
+    /dev/md0 contains a ext4 file system
+    	last mounted on /mnt on Mon Apr 15 18:35:12 2024
+    Proceed anyway? (y,N) Y
+    Discarding device blocks: done                            
+    Creating filesystem with 89818112 4k blocks and 22462464 inodes
+    Filesystem UUID: 93368439-82ee-4f72-823f-2150ff555756
+    Superblock backups stored on blocks: 
+    	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+    	4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968
+    
+    Allocating group tables: done                            
+    Writing inode tables: done                            
+    Creating journal (262144 blocks): done
+    Writing superblocks and filesystem accounting information: done     
+
+</details>
+
+This results in these performance numbers again measured with `iozone -e -I -a -s 500M -r 4k -r 16384k -i 0 -i 1 -i 2` (BS scores of course since ext4 works in the background due to delayed allocation and my SSDs partially being crap anyway):
+
+                                                              random    random
+              kB  reclen    write  rewrite    read    reread    read     write
+          512000       4    29635    58841    60085    60425    18696    55617
+          512000   16384   393731   395017  1041987  1055413  1037428   394694
+
+Well, regardless of SSD crappiness this sucks since sequential write performance is far away from what it should be. Testing again only 16M blocksize after setting every governor and ASPM to `performance` and adjusting IRQ affinity of `ITS-MSI 143130624 Edge ahci[0001:11:00.0]` to an A76 core write 'performance' still sucks:
+
+                                                              random    random
+              kB  reclen    write  rewrite    read    reread    read     write
+          512000   16384   403808   404209  1104210  1107276  1102140   403876
+
+We're facing a serious problem here for people wanting to combine several SATA SSDs with Rock 5 ITX.
+
+## Power button
+
+When the board is powered via PoE it does not automatically boot when power is present on one of the RK45 ports but it needs a short press of the power button (to be wired from the front-panel header). In contrast to that when powering through the DC-IN jack the board immediately boots when power is available.
+
+A different situation is the board being shut down before. In this mode (powered off but still connected to power source) it consumes below 0.25W - 0.3W and awaits a press on the power button to boot again.
+
+When the power button is pressed for a longer amount of time (~4 seconds?) the board immediately powers off.
+
+## Open questions
+
+  * DC-IN voltage range? As far as I understood so far the 12V requirement is solely related to SATA power (12V rail only needed with 5.25" and some exotic 3.5" HDDs)
+  * LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse. Why?
 
 ## TODO TK
 
@@ -696,5 +911,5 @@ LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s)
   * consumption figures (disabling ASM1164, checking through governors/policies and Gen2 vs. Gen3)
   * educational measurement how wasteful ATX PSUs are
   * storage testing (only crappy NVMe SSD lying around, not enough SATA SSDs here)
-  * network testing: SMB Multichannel, iperf3, investigating macOS Finder crappyness
+  * network testing: SMB Multichannel, iperf3, investigating macOS Finder crappiness
   * to be continued
