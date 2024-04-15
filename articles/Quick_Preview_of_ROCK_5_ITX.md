@@ -13,8 +13,6 @@
 
   ![SATA side view](../media/rock5-itx-4.jpg)
 
-  ![PoE module](../media/rock5-itx-5.jpg)
-
   ![Board components](../media/rock5-itx-6.jpg)
 
   ![SD card, MIPI, Maskrom button, touchpad, eDP](../media/rock5-itx-7.jpg)
@@ -33,13 +31,13 @@ April 2024 Radxa started to send out developer samples of their RK3588 based [Mi
 
 The board measures 170x170mm in size as it follows the Mini-ITX standard with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
 
-  * 5.5/2.1 mm centre positive DC/IN: maybe wide input range but 12V recommended (directly connected to SATA power ports? TBC)
-  * USB-C with OTG (USB 3.0/FullSpeed) and DisplayPort, no powering through this port
+  * 5.5/2.1 mm centre positive DC/IN: wide input range (voltage range not tested/confirmed yet) but [**important** to use 12V when powering 5.25" HDDs by the board](#sata-power-ports)
+  * USB-C with OTG (USB 3.0 / FullSpeed / 5Gbps) and DisplayPort, no powering through this port
   * HDMI IN
   * RJ45 / 2.5GbE provided by RTL8125BG + USB 2.0 behind 4-port Terminus Inc. USB2 hub
   * another RJ45 / 2.5GbE provided by RTL8125BG + USB 2.0 behind same USB2 hub
-  * 2 x USB3 behind [Genesys Logic GL3523 USB3 hub](https://linux-hardware.org/?id=usb:05e3-0620) and HDMI out (8K capable)
-  * 2 x USB3 also behind the same GL3523 hub and HDMI out (4K capable, behind a Rockchip RK620-1 / Radxa RA620-1 DisplayPort-to-HDMI converter chip)
+  * 2 x USB3 5Gbps behind [Genesys Logic GL3523 USB3 hub](https://linux-hardware.org/?id=usb:05e3-0620) and HDMI out (8K capable)
+  * 2 x USB3 5Gbps also behind the same GL3523 hub and HDMI out (4K capable, behind a Rockchip RK620-1 / Radxa RA620-1 DisplayPort-to-HDMI converter chip)
   * headphone/mic (via I2S attached [ES8316](http://everest-semi.com/pdf/ES8316%20PB.pdf))
   * [S/PDIF](https://en.wikipedia.org/wiki/S/PDIF)
 
@@ -73,7 +71,7 @@ Other notable onboard components on *my* board include:
   * 128 Mb Winbond W25X20CL SPI NOR flash
   * a small I2C accessible HYM RTC chip
   * RTC battery holder
-  * Maskrom key
+  * Maskrom button
 
 ## I/O capabilities
 
@@ -85,7 +83,7 @@ Some protocols on RK3588 are pinmuxed so the board designer has to decide betwee
   * the last Gen2 lane is routed to the M.2 key E slot to be used with PCIe peripherals like a Wi-Fi card or when switched to SATA mode as another (and this time SoC native) SATA port. Making use of SATA requires a passive adapter like Radxa's 'M.2 E Key to SATA Adapter' that unfortunately seems to be sold out everywhere
   * all four USB3 receptacles are behind a GL3523 USB3 hub and as such have to share bandwidth
   * the same goes for the four USB2 ports (two receptables and two on headers) that are behind an USB2 hub
-  * The USB3 OTG port available at the USB-C receptacle can be used for ADB by default but it should also be possible to use it as USB3 host port via a device-tree overlay
+  * The USB-C receptacle defaults to USB3 host mode (bandwidth *not* shared with the other USB3 ports) but can also be switched into OTG mode via a device-tree overlay to access the device via ADB or as an USB gadget.
   * the TF card slot is UHS-I/SDR104 capable
   * the eMMC interface utilizes HS400 mode
 
@@ -543,9 +541,11 @@ Some protocols on RK3588 are pinmuxed so the board designer has to decide betwee
 </details>
 
 <details>
-  <summary>lsusb with all six USB receptacles occupied by storage devices</summary>
+  <summary>lsusb with all seven USB receptacles occupied by storage devices</summary>
 
     root@rock-5-itx:~# lsusb
+    Bus 008 Device 002: ID 2109:0715 VIA Labs, Inc. VL817 SATA Adaptor
+    Bus 008 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
     Bus 006 Device 003: ID 174c:55aa ASMedia Technology Inc. ASM1051E SATA 6Gb/s bridge, ASM1053E SATA 6Gb/s bridge, ASM1153 SATA 3Gb/s bridge, ASM1153E SATA 6Gb/s bridge
     Bus 006 Device 007: ID 174c:55aa ASMedia Technology Inc. ASM1051E SATA 6Gb/s bridge, ASM1053E SATA 6Gb/s bridge, ASM1153 SATA 3Gb/s bridge, ASM1153E SATA 6Gb/s bridge
     Bus 006 Device 006: ID 152d:3562 JMicron Technology Corp. / JMicron USA Technology Corp. JMS567 SATA 6Gb/s bridge
@@ -563,6 +563,8 @@ Some protocols on RK3588 are pinmuxed so the board designer has to decide betwee
     Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
     
     root@rock-5-itx:~# lsusb -t
+    /:  Bus 08.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
+    |__ Port 1: Dev 2, If 0, Class=Mass Storage, Driver=uas, 5000M
     /:  Bus 06.Port 1: Dev 1, Class=root_hub, Driver=xhci-hcd/1p, 5000M
         |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 5000M
             |__ Port 1: Dev 5, If 0, Class=Mass Storage, Driver=usb-storage, 5000M
@@ -586,6 +588,7 @@ Some protocols on RK3588 are pinmuxed so the board designer has to decide betwee
       * 7.3TB "TOSHIBA HDWF180" HDD as /dev/sdd [SATA 3.3, 6.0 Gb/s (current: 6.0 Gb/s)]: behind ASMedia SATA 6Gb/s bridge (174c:55aa), Driver=usb-storage, 5Gbps (capable of 12Mbps, 480Mbps, 5Gbps), drive temp: 21°C
       * 115.7GB "SanDisk Corp. Ultra Dual" as /dev/sde: USB, Driver=usb-storage, 480Mbps (capable of 12Mbps, 480Mbps, 5Gbps)
       * 7.5GB "SanDisk Corp. Cruzer Slice" as /dev/sdf: USB, Driver=usb-storage, 480Mbps
+      * 111.8GB "Samsung SSD 840 EVO 120GB" SSD as /dev/sdg [SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)]: behind VIA Labs VL715/VL716 SATA 6Gb/s bridge (2109:0715), 5% worn out, Driver=uas, 5Gbps (capable of 12Mbps, 480Mbps, 5Gbps, 10Gb/s Symmetric RX SuperSpeedPlus, 10Gb/s Symmetric TX SuperSpeedPlus), drive temp: 23°C
 
 </details>
 
@@ -606,9 +609,80 @@ Six displays in total but according to Radxa only four can be used concurrently.
   * HDMI up to 4Kp60
   * up to 2 x four-lane MIPI CSI connectors (switching between CSI and DSI can be done by a device-tree overlay)
 
-## (stub from here on)
+## TF card slot and eMMC
 
-input voltage can be read via SARADC: `awk '{printf ("%0.2f",$1/173.5); }' </sys/devices/iio_sysfs_trigger/subsystem/devices/iio\:device0/in_voltage6_raw`
+`sbc-bench -S` reports the two SDIO attached MMC storage types as follows:
+
+  * 238.8GB "Samsung EE4S5" UHS SDR104 SDXC card as /dev/mmcblk1: date 05/2023, manfid/oemid: 0x00001b/0x534d, hw/fw rev: 0x3/0x0
+  * 29.1GB "Samsung BJTD4R" HS400 Enhanced strobe eMMC card as /dev/mmcblk0: date 09/2023, manfid/oemid: 0x000015/0x0100, hw/fw rev: 0x0/0x0300000000000000
+
+The TF card implementation is SDR104 / UHS-I capable so let's benchmark my 256GB Samsung EVO card in the slot using `iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2`:
+
+                                                              random    random
+              kB  reclen    write  rewrite    read    reread    read     write
+          102400       4     2738     2762    12852    12789    10197     2776
+          102400   16384    65483    65060    88313    88555    88551    64214
+
+Results confirm SDR104 / UHS-I with 65/88 MB/s write/read since most probably the TF card is the bottleneck here so the theoretical 104 MB/s can't be reached but the 50MB/s SDR50 mode would provide are clearly exceeded.
+
+The 32GB eMMC on the dev sample is empty but according to Radxa's cardboard box that may change when Rock 5 ITX can be bought since 'On board 32G eMMC for ROOBI OS' is printed on the retail package. As such the board might boot up from the prepopulated eMMC and provide a way for an OS to be installed from the Internet?
+
+For now let's check the perforance of the eMMC module again with `iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2` on an ext4 partition:
+
+                                                              random    random
+              kB  reclen    write  rewrite    read    reread    read     write
+          102400       4    26175    35219    25977    25981    25705    34631
+          102400   16384   108049   108512   294709   295442   295918   108310
+
+Great random IOPS at 4K and 100/300 MB/s at sequential transfer speeds. Both nice.
+
+## USB-C port
+
+This connector is not meant for powering but provides only DisplayPort and USB3 OTG or host. The latter is the default with Radxa's OS images as such I connected a Samsung EVO 840 in an USB3 disk enclosure and measured via `iozone -e -I -a -s 500M -r 4k -r 16384k -i 0 -i 1 -i 2`:
+
+                                                              random    random
+              kB  reclen    write  rewrite    read    reread    read     write
+          512000       4    21340    28102    22988    22459    13014    22292
+          512000   16384   385996   365681   386597   386635   386580   385638
+
+385 MB/s at 16M blocksize are OK since this benchmark was on a btrfs filesystem (with a bit more overhead due to copy-on-write). Now trying to use the USB-C port as an el cheapo network device just as [I managed it with RPi 5B recently](https://github.com/raspberrypi/linux/issues/5737#issuecomment-1943440662). First step is executing `rsetup` and choosing the right device-tree overlay 'Set OTG port 0 to Peripheral mode' and then enabling the Ethernet USB gadget:
+
+![Choosing device-tree overlays with rsetup](../media/rock5-itx-rsetup-dtbos.png)
+
+After installing `avahi-autoipd` and creating `/etc/network/interfaces.d/usb0` with appropriate contents an `usb0` device with link local addresses appeared and `ip a` shows:
+
+    4: usb0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc pfifo_fast state DOWN group default qlen 1000
+        link/ether de:3c:fc:30:d3:0c brd ff:ff:ff:ff:ff:ff
+        inet 169.254.10.114/16 brd 169.254.255.255 scope link usb0:avahi
+           valid_lft forever preferred_lft forever
+
+But nothing on the other end of the USB-C cable to be seen so am going to revisit this soon with a more mature OS image from Radxa.
+
+## PoE via optional PoE module
+
+Both RJ45 jacks are PoE enabled but for 'Power over Ethernet' to be really working Radxa's PoE module must be seated between ATX power connector and RJ45 jacks . When connected to a PoE switch a short press on the power button is needed for the board to boot.
+
+Measuring the 12V rail on the SATA power ports gives 11.64V and when checking the DC voltage generated by the PoE module via SARADC a 11.7V value confirms the voltage being a bit on the low side for HDDs. Radxa chose to [keep Rock 5 ITX compatible to 5B wrt input voltage measurement](https://forum.radxa.com/t/realtime-power-usage/15027/11?u=tkaiser):
+
+`awk '{printf ("%0.2f",$1/173.5); }' </sys/devices/iio_sysfs_trigger/subsystem/devices/iio\:device0/in_voltage6_raw`.
+
+![PoE module](../media/rock5-itx-5.jpg)
+
+## SATA power ports
+
+For each of the 4 SATA connectors there's also a power connector carrying 12V, GND, GND and 5V ([Floppy connector](https://en.wikipedia.org/wiki/Berg_connector)). Powering the board via DC-IN from my ODROID SmartPower 3 I chose 12.4V and 11.6V to compare with SARADC values and Multimeter readings.
+
+At the 12.4V setting both SmartPower and SARADC report 12.37V and the Multimeter measures 12.29V at the 12V rail of all four power ports.
+
+At the 11.6V setting SmartPower/SARADC report 11.57V while the Multimeter reads 11.56V on all four power ports. That means the 12V power rail is directly connected to DC-IN be it the PoE mpdule, ATX or the DC-IN jack.
+
+The 5V rail in both settings shows 5.16V - 5.17V since behind DC-DC circuitry.
+
+So in case you want to power 5.25" HDDs (or those old 3.5" WD Velociraptor 10.000rpm HDDs that also need juice on both 5V and 12V rail) you need to be careful about your 12V power source and may run into problems with 5.25" HDDs with PoE. But I guess most people combining the board with spinning rust will use an ATX PSU anyway and the PSU's SATA power connectors.
+
+![12V rail testing](../media/rock5-itx-12v-rail-testing.jpg)
+
+## (stub from here on)
 
 Board powers on w/o 'power button' pressed
 
@@ -619,9 +693,6 @@ LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s)
 ## TODO TK
 
   * investigate LPDDR5 initialization
-  * PoE test wrt DC-IN
-  * Measure voltage on SATA power ports
-  * USB-C port capabilities
   * consumption figures (disabling ASM1164, checking through governors/policies and Gen2 vs. Gen3)
   * educational measurement how wasteful ATX PSUs are
   * storage testing (only crappy NVMe SSD lying around, not enough SATA SSDs here)
