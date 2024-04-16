@@ -24,6 +24,7 @@
 </details>
 
    * [Overview](#overview)
+   * [Quick performance assessment](#quick-performance-assessment)
    * [I/O capabilities](#io-capabilities)
    * [Display capabilities](#display-capabilities)
    * [Video input capabilities](#video-input-capabilities)
@@ -39,7 +40,7 @@
 <!-- TOC --><a name="overview"></a>
 ## Overview
 
-April 2024 Radxa started to send out developer samples of their RK3588 based [Mini-ITX](https://en.wikipedia.org/wiki/Mini-ITX) v1.11 board (for RK3588 basics and some notes about software support status see [Rock 5B](Quick_Preview_of_ROCK_5B.md)). Official documentation will once appear [here](https://docs.radxa.com/en/rock5/rock5itx) and for now you can see a block diagram [there](https://docs.radxa.com/en/assets/images/rock5itx-interface-overview-1266d3c0b4e745372a48a473d78c3cdc.webp)
+April 2024 Radxa started to send out developer samples of their RK3588 based [Mini-ITX](https://en.wikipedia.org/wiki/Mini-ITX) v1.11 board (for RK3588 basics and some notes about software support status see [Rock 5B](Quick_Preview_of_ROCK_5B.md)). Official documentation will once appear [here](https://docs.radxa.com/en/rock5/rock5itx) and for now you can see a block diagram [there](https://docs.radxa.com/en/assets/images/rock5itx-interface-overview-1266d3c0b4e745372a48a473d78c3cdc.webp).
 
 The board measures 170x170mm in size as it follows the Mini-ITX standard with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
 
@@ -85,10 +86,19 @@ Other notable onboard components on *my* board include:
   * RTC battery holder
   * Maskrom button
 
+<!-- TOC --><a name="quick-performance-assessment"></a>
+## Quick performance assessment
+
+Rock 5 ITX is one of the first RK3588 devices to be equipped with LPDDR5 modules and since Rockchip's DRAM initialization BLOB clocks LPDDR5 higher than LPDDR4X (5472 MT/s vs. 4224 MT/s) we should see workloads/benchmarks that depend on memory access becoming faster.
+
+Though at this point in time that's not true. Since `sbc-bench` benchmarks DRAM bandwith and latency individually we see that bandwidth has not improved and latency got worse: just compare [Radxa-Rock-5B.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5B.md) with [Radxa-Rock-5-ITX.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5-ITX.md)
+
+As such any benchmark numbers reviewers put online *now* are BS until this problem is resolved.
+
 <!-- TOC --><a name="io-capabilities"></a>
 ## I/O capabilities
 
-Some protocols on RK3588 are pinmuxed so the board designer has to decide between PCIe, USB3 and SATA in some cases. For a pinmuxing overview [see here](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/) and for a general RK3588 PCIe overview [see there](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#pcie). On this board the seven available PCIe lanes are used as follows:
+Many RK3588 I/O options are pinmuxed so the board designer has to decide between PCIe, USB3 and SATA in some cases. For a pinmuxing overview [see here](https://www.cnx-software.com/2021/12/16/rockchip-rk3588-datasheet-sbc-coming-soon/) and for a general RK3588 PCIe overview [see there](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#pcie). On this board the seven available PCIe lanes are used as follows:
 
   * two of the Gen3 lanes are routed to the M.2 key M slot to be used with a SSD or M.2 storage/network adapters
   * the other two Gen3 lanes connect to the [ASM1164 SATA host controller](https://www.asmedia.com.tw/product/17fYQ85SPeqG8MT8/58dYQ8bxZ4UR9wG5) that provides the 4 SATA 6Gbps ports on the board. Talking about bandwidth PCIe Gen3 x2 and 4 x SATA at 6.0 Gbit/s with 8b/10b coding are a pretty close match as such not only four pieces of spinning rust but also fast SATA SSDs should be able to be accessed at full speed in parallel
@@ -664,7 +674,7 @@ This connector is not meant for powering but provides only DisplayPort and USB3 
 
 385 MB/s at 16M blocksize are OK since this benchmark was on a btrfs filesystem (with a bit more overhead due to copy-on-write).
 
-To confirm the USB-C port *not* having to share bandwidth with the four USB3-A receptacles I set up an `/dev/md0` as raid0 with another EVO750, formatted it with ext4 and let again an `iozone -e -I -a -s 500M -r 4k -r 16384k -i 0 -i 1 -i 2` run:
+To confirm the USB-C port *not* having to share bandwidth with the four USB3-A receptacles I set up an `/dev/md0` as raid0 with another EVO 750, formatted it with ext4 and let again an `iozone -e -I -a -s 500M -r 4k -r 16384k -i 0 -i 1 -i 2` run:
 
                                                               random    random
               kB  reclen    write  rewrite    read    reread    read     write
@@ -800,7 +810,7 @@ But nothing on the other end of the USB-C cable to be seen so am going to revisi
 <!-- TOC --><a name="poe-via-optional-poe-module"></a>
 ## PoE via optional PoE module
 
-Both RJ45 jacks are PoE enabled but for 'Power over Ethernet' to be really working Radxa's PoE module must be seated between ATX power connector and RJ45 jacks . When connected to a PoE switch a short press on the power button is needed for the board to boot.
+Both RJ45 jacks are PoE enabled but for 'Power over Ethernet' to be really working Radxa's PoE module must be seated between ATX power connector and RJ45 jacks. When connected to a PoE switch a short press on the power button is needed for the board to boot.
 
 Measuring the 12V rail on the SATA power ports gives 11.64V and when checking the DC voltage generated by the PoE module via SARADC a 11.7V value confirms the voltage being a bit on the low side for HDDs. Radxa chose to [keep Rock 5 ITX compatible to 5B wrt DC-IN voltage measurement](https://forum.radxa.com/t/realtime-power-usage/15027/11?u=tkaiser):
 
@@ -811,11 +821,11 @@ Measuring the 12V rail on the SATA power ports gives 11.64V and when checking th
 <!-- TOC --><a name="sata-power-ports"></a>
 ## SATA power ports
 
-For each of the 4 SATA connectors there's also a power connector carrying 12V, GND, GND and 5V ([Floppy connector](https://en.wikipedia.org/wiki/Berg_connector)). Powering the board via DC-IN from my ODROID SmartPower 3 I chose 12.4V and 11.6V to compare with SARADC values and Multimeter readings.
+For each of the four SATA connectors there's also a power connector carrying 12V, GND, GND and 5V ([Floppy connector](https://en.wikipedia.org/wiki/Berg_connector)). Powering the board via DC-IN from my ODROID SmartPower 3 I chose 12.4V and 11.6V to compare with SARADC values and Multimeter readings.
 
 At the 12.4V setting both SmartPower and SARADC report 12.37V and the Multimeter measures 12.29V at the 12V rail of all four power ports.
 
-At the 11.6V setting SmartPower/SARADC report 11.57V while the Multimeter reads 11.56V on all four power ports. That means the 12V power rail is directly connected to DC-IN be it the PoE mpdule, ATX or the DC-IN jack.
+At the 11.6V setting SmartPower/SARADC report 11.57V while the Multimeter reads 11.56V on all four power ports. That means the 12V power rail is directly connected to DC-IN be it the PoE module, ATX or the DC-IN jack.
 
 The 5V rail in both settings shows 5.16V - 5.17V since behind DC-DC circuitry.
 
@@ -912,20 +922,24 @@ Well, regardless of SSD crappiness this sucks since sequential write performance
 
 We're facing a serious problem here for people wanting to combine several SATA SSDs with Rock 5 ITX.
 
+![SATA test setup](../media/rock5-itx-sata-testing.jpg)
+
 <!-- TOC --><a name="power-button"></a>
 ## Power button
 
-When the board is powered via PoE it does not automatically boot when power is present on one of the RK45 ports but it needs a short press of the power button (to be wired from the front-panel header). In contrast to that when powering through the DC-IN jack the board immediately boots when power is available.
+When the board is powered via PoE it does not automatically boot when power is present on one of the RJ45 ports but it needs a short press of the power button (to be wired from the front-panel header). In contrast to that when powering through the DC-IN jack the board immediately boots when power is available.
 
-A different situation is the board being shut down before. In this mode (powered off but still connected to power source) it consumes below 0.25W - 0.3W and awaits a press on the power button to boot again.
+A different situation is the board being shut down before. In this mode (powered off but still connected to power source) it consumes around 0.25W - 0.3W and awaits a press on the power button to boot again.
 
 When the power button is pressed for a longer amount of time (~4 seconds?) the board immediately powers off.
 
 <!-- TOC --><a name="open-questions"></a>
 ## Open questions
 
-  * DC-IN voltage range? As far as I understood so far the 12V requirement is solely related to SATA power (12V rail only needed with 5.25" and some exotic 3.5" HDDs)
+  * DC-IN voltage range? As far as I understood the 12V requirement is solely related to SATA power (12V rail only needed with 5.25" and some exotic 3.5" HDDs)
   * LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse. Why?
+  * 'ROOBI OS' by default flashed to eMMC?
+  * What is the purpose of the 16M SPI NOR flash?
 
 <!-- TOC --><a name="todo-tk"></a>
 ## TODO TK
