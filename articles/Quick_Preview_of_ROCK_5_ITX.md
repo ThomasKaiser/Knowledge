@@ -3,7 +3,7 @@
 ![I/O ports view](../media/rock5-itx-1.jpg)
 
 <details>
-  <summary>More pictures</summary>
+  <summary>**Click here for more pictures**</summary>
 
   ![Top view](../media/rock5-itx-2.jpg)
   
@@ -23,6 +23,8 @@
 
 </details>
 
+**Warning:** this (p)review will focus on general hardware/software topics with server/NAS use cases only in mind. So if you're after 'Linux desktop experience', gaming, Android or similar stuff you can stop to read right now :)
+
    * [Overview](#overview)
    * [Quick performance assessment](#quick-performance-assessment)
    * [I/O capabilities](#io-capabilities)
@@ -34,6 +36,9 @@
    * [SATA power ports](#sata-power-ports)
    * [SATA performance](#sata-performance)
    * [Power button](#power-button)
+   * [Network testing](#network-testing)
+      + [LanTest with different settings](#lantest-with-different-settings)
+      + [`iperf3` testing](#iperf3-testing)
    * [Open questions](#open-questions)
    * [TODO TK](#todo-tk)
 
@@ -91,9 +96,9 @@ Other notable onboard components on *my* board include:
 
 Rock 5 ITX is one of the first RK3588 devices to be equipped with LPDDR5 modules and since Rockchip's DRAM initialization BLOB clocks LPDDR5 higher than LPDDR4X (5472 MT/s vs. 4224 MT/s) we should see workloads/benchmarks that depend on memory access becoming faster.
 
-Though at this point in time that's not true. Since `sbc-bench` benchmarks DRAM bandwith and latency individually we see that bandwidth has not improved and latency got worse: just compare [Radxa-Rock-5B.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5B.md) with [Radxa-Rock-5-ITX.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5-ITX.md)
+Though *at this point in time* at least using [official OS images](https://github.com/radxa-build/rock-5-itx/releases/) that's not true. Since `sbc-bench` benchmarks DRAM bandwith and latency individually we see that bandwidth has not improved and latency got worse: just compare [Radxa-Rock-5B.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5B.md) with [Radxa-Rock-5-ITX.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5-ITX.md)
 
-As such any benchmark numbers reviewers put online *now* are BS until this problem is resolved.
+As such any benchmark scores reviewers put online *now* are BS until this problem is addressed.
 
 <!-- TOC --><a name="io-capabilities"></a>
 ## I/O capabilities
@@ -932,6 +937,349 @@ When the board is powered via PoE it does not automatically boot when power is p
 A different situation is the board being shut down before. In this mode (powered off but still connected to power source) it consumes around 0.25W - 0.3W and awaits a press on the power button to boot again.
 
 When the power button is pressed for a longer amount of time (~4 seconds?) the board immediately powers off.
+
+<!-- TOC --><a name="network-testing"></a>
+## Network testing
+
+To test networking I use a MacBook with a 2.5GbE USB Ethernet dongle connected (RTL8156 based). For the NAS tests I equipped the M.2 key M slot with an older NVMe SSD (performance numbers not worth a look since the SSD is clearly the bottleneck and not RK3588's PCIe/NVMe implementation) that is at least fast enough for tests with 2 x 2.5GbE later.
+
+I let OpenMediaVault 6 (OMV6) being installed by [the install script](https://github.com/OpenMediaVault-Plugin-Developers/installScript) that is derived from my initial Armbian OMV installation routine. And on the client side I rely on [Helios LanTest](https://www.helios.de/web/EN/products/LanTest.html) with 10GbE settings for [these reasons](https://www.helios.de/web/EN/support/TI/157.html).
+
+<!-- TOC --><a name="lantest-with-different-settings"></a>
+### LanTest with different settings
+
+1st test is with Radxa's OS defaults. For 2.5GbE the results are terrible, especially sequential writes since not even half of what should be achievable with just Gigabit Ethernet. But this is due to server tasks running on the little A55 cores and all cores suffering from clockspeeds not ramping up quickly enough:
+
+![LanTest 1](../media/rock5-itx-lantest-1.png)
+
+2nd test with all cpufreq governors set to `performance` to ensure the A55 clock at 1.8 GHz and the A76 above 2.3 GHz shows nice improvements, especially sequential write performance more than tripled from 51 MB/s to 168 MB/s
+
+![LanTest 2](../media/rock5-itx-lantest-2.png)
+
+3rd test with the relevant daemons pinned to the big A76 cores and with better ioniceness by an ugly cronjob that was part of [my initial OMV installation routine](https://github.com/armbian/build/blob/62884059870855f7f4603df45d8a30cb77992ff0/scripts/customize-image.sh.template#L159-L161) but is lost now.
+
+Sequential performance is now 200/250 MB/s compared to 50/200 with OS defaults, the other tests also improved a lot:
+
+![LanTest 3](../media/rock5-itx-lantest-3.png)
+
+But that's still not expected performance (especially sequential writes) so let's try to have a look what's going on:
+
+<!-- TOC --><a name="iperf3-testing"></a>
+### `iperf3` testing
+
+First test should be 'worst case' since searching for bottlenecks: all cpufreq governors and DMC are set to `powersave` to ensure all CPU cores clock only at 408 MHz. The `iperf3` server task will be pinned to a little core: `taskset -c 3 iperf3 -s`
+
+<details>
+  <summary>1.57/2.35 Gbits/sec, 0 retries in both directions</summary>
+
+    macbookpro-tk:~ tk$ iperf3 -c 192.168.81.1 ; iperf3 -c 192.168.81.1 -R
+    Connecting to host 192.168.81.1, port 5201
+    [  5] local 192.168.81.2 port 55603 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   190 MBytes  1.60 Gbits/sec                  
+    [  5]   1.00-2.00   sec   187 MBytes  1.57 Gbits/sec                  
+    [  5]   2.00-3.00   sec   188 MBytes  1.57 Gbits/sec                  
+    [  5]   3.00-4.00   sec   188 MBytes  1.58 Gbits/sec                  
+    [  5]   4.00-5.00   sec   186 MBytes  1.56 Gbits/sec                  
+    [  5]   5.00-6.00   sec   187 MBytes  1.57 Gbits/sec                  
+    [  5]   6.00-7.00   sec   188 MBytes  1.57 Gbits/sec                  
+    [  5]   7.00-8.00   sec   187 MBytes  1.57 Gbits/sec                  
+    [  5]   8.00-9.00   sec   187 MBytes  1.57 Gbits/sec                  
+    [  5]   9.00-10.00  sec   187 MBytes  1.57 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-10.00  sec  1.83 GBytes  1.57 Gbits/sec                  sender
+    [  5]   0.00-10.00  sec  1.83 GBytes  1.57 Gbits/sec                  receiver
+    
+    iperf Done.
+    Connecting to host 192.168.81.1, port 5201
+    Reverse mode, remote host 192.168.81.1 is sending
+    [  5] local 192.168.81.2 port 55605 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   279 MBytes  2.34 Gbits/sec                  
+    [  5]   1.00-2.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   2.00-3.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   3.00-4.00   sec   280 MBytes  2.35 Gbits/sec                  
+    [  5]   4.00-5.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   5.00-6.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   6.00-7.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   7.00-8.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   8.00-9.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   9.00-10.00  sec   281 MBytes  2.35 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.35 Gbits/sec    0             sender
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.35 Gbits/sec                  receiver
+    
+    iperf Done.
+
+</details>
+
+TX with 2.35 Gbits/sec is the maximum and as such no problem, in RX direction only 1.57 Gbits/sec hint at a bottleneck. When checking for CPU core utilization not only `cpu3` was busy but also `cpu0` (another little core) `cpu6` (an A76) which handle the IRQs for the NIC in question.
+
+Before:
+
+    root@rock-5-itx:/home/radxa# grep -E "CPU0|^224|^240|^242" /proc/interrupts 
+               CPU0       CPU1       CPU2       CPU3       CPU4       CPU5       CPU6       CPU7       
+    224:          0          0          0          0          0          0        597          0   ITS-MSI 570949632 Edge      enP4p65s0-0
+    240:          0          0          0          0          0          0         46          0   ITS-MSI 570949648 Edge      enP4p65s0-16
+    242:        335          0          0          0          0          0          0          0   ITS-MSI 570949650 Edge      enP4p65s0-18
+
+After:
+
+    root@rock-5-itx:/home/radxa# grep -E "CPU0|^224|^240|^242" /proc/interrupts 
+               CPU0       CPU1       CPU2       CPU3       CPU4       CPU5       CPU6       CPU7       
+    224:          0          0          0          0          0          0      85905          0   ITS-MSI 570949632 Edge      enP4p65s0-0
+    240:          0          0          0          0          0          0      51853          0   ITS-MSI 570949648 Edge      enP4p65s0-16
+    242:     112560          0          0          0          0          0          0          0   ITS-MSI 570949650 Edge      enP4p65s0-18
+
+Next test is pinning the server task to `cpu6`: `taskset -c 6 iperf3 -s`
+
+<details>
+  <summary>1.30/2.35 Gbits/sec, 124 retries</summary>
+
+    macbookpro-tk:~ tk$ iperf3 -c 192.168.81.1 ; iperf3 -c 192.168.81.1 -R
+    Connecting to host 192.168.81.1, port 5201
+    [  5] local 192.168.81.2 port 55607 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   157 MBytes  1.32 Gbits/sec                  
+    [  5]   1.00-2.00   sec   159 MBytes  1.33 Gbits/sec                  
+    [  5]   2.00-3.00   sec   155 MBytes  1.30 Gbits/sec                  
+    [  5]   3.00-4.00   sec   154 MBytes  1.29 Gbits/sec                  
+    [  5]   4.00-5.00   sec   156 MBytes  1.31 Gbits/sec                  
+    [  5]   5.00-6.00   sec   156 MBytes  1.31 Gbits/sec                  
+    [  5]   6.00-7.00   sec   157 MBytes  1.32 Gbits/sec                  
+    [  5]   7.00-8.00   sec   154 MBytes  1.29 Gbits/sec                  
+    [  5]   8.00-9.00   sec   157 MBytes  1.32 Gbits/sec                  
+    [  5]   9.00-10.00  sec   153 MBytes  1.28 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-10.00  sec  1.52 GBytes  1.31 Gbits/sec                  sender
+    [  5]   0.00-10.00  sec  1.52 GBytes  1.30 Gbits/sec                  receiver
+    
+    iperf Done.
+    Connecting to host 192.168.81.1, port 5201
+    Reverse mode, remote host 192.168.81.1 is sending
+    [  5] local 192.168.81.2 port 55609 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   268 MBytes  2.25 Gbits/sec                  
+    [  5]   1.00-2.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   2.00-3.00   sec   279 MBytes  2.34 Gbits/sec                  
+    [  5]   3.00-4.00   sec   276 MBytes  2.32 Gbits/sec                  
+    [  5]   4.00-5.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   5.00-6.00   sec   276 MBytes  2.32 Gbits/sec                  
+    [  5]   6.00-7.00   sec   276 MBytes  2.32 Gbits/sec                  
+    [  5]   7.00-8.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   8.00-9.00   sec   277 MBytes  2.32 Gbits/sec                  
+    [  5]   9.00-10.00  sec   281 MBytes  2.35 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  5]   0.00-10.00  sec  2.71 GBytes  2.33 Gbits/sec  124             sender
+    [  5]   0.00-10.00  sec  2.71 GBytes  2.33 Gbits/sec                  receiver
+    
+    iperf Done.
+
+</details>
+
+When watching core utilization `cpu6` was fully utilized at 100% with the RX test and became the bottleneck which explains why throughput at 1.30 Gbits/sec is lower than the previous test with the `iperf3` task running on a little core.
+
+Next test is therefore pinning the server task to another A76 core as `cpu6` to avoid the artificial bottleneck from test before: `taskset -c 5 iperf3 -s`
+
+<details>
+  <summary>1.52/2.35 Gbits/sec, 15 retries</summary>
+
+    macbookpro-tk:~ tk$ iperf3 -c 192.168.81.1 ; iperf3 -c 192.168.81.1 -R
+    Connecting to host 192.168.81.1, port 5201
+    [  5] local 192.168.81.2 port 55611 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   184 MBytes  1.55 Gbits/sec                  
+    [  5]   1.00-2.00   sec   181 MBytes  1.52 Gbits/sec                  
+    [  5]   2.00-3.00   sec   182 MBytes  1.53 Gbits/sec                  
+    [  5]   3.00-4.00   sec   179 MBytes  1.50 Gbits/sec                  
+    [  5]   4.00-5.00   sec   181 MBytes  1.52 Gbits/sec                  
+    [  5]   5.00-6.00   sec   182 MBytes  1.52 Gbits/sec                  
+    [  5]   6.00-7.00   sec   182 MBytes  1.53 Gbits/sec                  
+    [  5]   7.00-8.00   sec   182 MBytes  1.52 Gbits/sec                  
+    [  5]   8.00-9.00   sec   179 MBytes  1.50 Gbits/sec                  
+    [  5]   9.00-10.00  sec   182 MBytes  1.53 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-10.00  sec  1.77 GBytes  1.52 Gbits/sec                  sender
+    [  5]   0.00-10.00  sec  1.77 GBytes  1.52 Gbits/sec                  receiver
+    
+    iperf Done.
+    Connecting to host 192.168.81.1, port 5201
+    Reverse mode, remote host 192.168.81.1 is sending
+    [  5] local 192.168.81.2 port 55613 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   279 MBytes  2.34 Gbits/sec                  
+    [  5]   1.00-2.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   2.00-3.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   3.00-4.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   4.00-5.00   sec   280 MBytes  2.35 Gbits/sec                  
+    [  5]   5.00-6.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   6.00-7.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   7.00-8.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   8.00-9.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   9.00-10.00  sec   281 MBytes  2.35 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.35 Gbits/sec   15             sender
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.35 Gbits/sec                  receiver
+    
+    iperf Done.
+
+</details>
+
+While 1.52 Gbits/sec is better than before this is still lower than the 1.57 Gbits/sec with `iperf3` pinned to a little core.
+
+Now let's switch all CPU cores to their maximum by setting all governors to `performance`. Again testing with server task pinned to `cpu5`:
+
+<details>
+  <summary>1.30/2.35 Gbits/sec, 20 retries</summary>
+
+    macbookpro-tk:~ tk$ iperf3 -c 192.168.81.1 ; iperf3 -c 192.168.81.1 -R
+    Connecting to host 192.168.81.1, port 5201
+    [  5] local 192.168.81.2 port 55623 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   158 MBytes  1.33 Gbits/sec                  
+    [  5]   1.00-2.00   sec   156 MBytes  1.31 Gbits/sec                  
+    [  5]   2.00-3.00   sec   153 MBytes  1.28 Gbits/sec                  
+    [  5]   3.00-4.00   sec   155 MBytes  1.30 Gbits/sec                  
+    [  5]   4.00-5.00   sec   158 MBytes  1.32 Gbits/sec                  
+    [  5]   5.00-6.00   sec   150 MBytes  1.26 Gbits/sec                  
+    [  5]   6.00-7.00   sec   155 MBytes  1.30 Gbits/sec                  
+    [  5]   7.00-8.00   sec   158 MBytes  1.32 Gbits/sec                  
+    [  5]   8.00-9.00   sec   158 MBytes  1.32 Gbits/sec                  
+    [  5]   9.00-10.00  sec   156 MBytes  1.31 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-10.00  sec  1.52 GBytes  1.31 Gbits/sec                  sender
+    [  5]   0.00-10.00  sec  1.52 GBytes  1.30 Gbits/sec                  receiver
+    
+    iperf Done.
+    Connecting to host 192.168.81.1, port 5201
+    Reverse mode, remote host 192.168.81.1 is sending
+    [  5] local 192.168.81.2 port 55625 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   280 MBytes  2.35 Gbits/sec                  
+    [  5]   1.00-2.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   2.00-3.00   sec   280 MBytes  2.35 Gbits/sec                  
+    [  5]   3.00-4.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   4.00-5.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   5.00-6.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   6.00-7.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   7.00-8.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   8.00-9.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   9.00-10.00  sec   281 MBytes  2.35 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.36 Gbits/sec   20             sender
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.35 Gbits/sec                  receiver
+    
+    iperf Done.
+
+</details>
+
+In TX direction we're back at 1.30 Gbits/sec as such lower compared to the previous test with all CPU cores at 408 MHz. Watching core utilization there was no bottleneck whatsoever, the highest utilization that could be seen on `cpu6` during the RX test was shortly 10%
+
+Now pinning the `iperf3` task again to little core `cpu3`:
+
+<details>
+  <summary>1.31/2.35 Gbits/sec, 13 retries</summary>
+
+    macbookpro-tk:~ tk$ iperf3 -c 192.168.81.1 ; iperf3 -c 192.168.81.1 -R
+    Connecting to host 192.168.81.1, port 5201
+    [  5] local 192.168.81.2 port 55627 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   161 MBytes  1.35 Gbits/sec                  
+    [  5]   1.00-2.00   sec   152 MBytes  1.28 Gbits/sec                  
+    [  5]   2.00-3.00   sec   144 MBytes  1.21 Gbits/sec                  
+    [  5]   3.00-4.00   sec   149 MBytes  1.25 Gbits/sec                  
+    [  5]   4.00-5.00   sec   159 MBytes  1.34 Gbits/sec                  
+    [  5]   5.00-6.00   sec   160 MBytes  1.34 Gbits/sec                  
+    [  5]   6.00-7.00   sec   159 MBytes  1.34 Gbits/sec                  
+    [  5]   7.00-8.00   sec   158 MBytes  1.33 Gbits/sec                  
+    [  5]   8.00-9.00   sec   158 MBytes  1.32 Gbits/sec                  
+    [  5]   9.00-10.00  sec   158 MBytes  1.33 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-10.00  sec  1.52 GBytes  1.31 Gbits/sec                  sender
+    [  5]   0.00-10.00  sec  1.52 GBytes  1.31 Gbits/sec                  receiver
+    
+    iperf Done.
+    Connecting to host 192.168.81.1, port 5201
+    Reverse mode, remote host 192.168.81.1 is sending
+    [  5] local 192.168.81.2 port 55629 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   280 MBytes  2.35 Gbits/sec                  
+    [  5]   1.00-2.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   2.00-3.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   3.00-4.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   4.00-5.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   5.00-6.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   6.00-7.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   7.00-8.00   sec   280 MBytes  2.35 Gbits/sec                  
+    [  5]   8.00-9.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   9.00-10.00  sec   281 MBytes  2.35 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.36 Gbits/sec   13             sender
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.35 Gbits/sec                  receiver
+    
+    iperf Done.
+
+</details>
+
+No CPU utilization bottleneck whatsoever but RX scores still suck. Final test with all governors back to `powersave` and testing with `iperf3` pinned to little `cpu3` we're slightly faster:
+
+<details>
+  <summary>1.42/2.35 Gbits/sec, 1 retry</summary>
+
+    macbookpro-tk:~ tk$ iperf3 -c 192.168.81.1 ; iperf3 -c 192.168.81.1 -R
+    Connecting to host 192.168.81.1, port 5201
+    [  5] local 192.168.81.2 port 55631 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   164 MBytes  1.38 Gbits/sec                  
+    [  5]   1.00-2.00   sec   165 MBytes  1.39 Gbits/sec                  
+    [  5]   2.00-3.00   sec   162 MBytes  1.36 Gbits/sec                  
+    [  5]   3.00-4.00   sec   161 MBytes  1.35 Gbits/sec                  
+    [  5]   4.00-5.00   sec   162 MBytes  1.36 Gbits/sec                  
+    [  5]   5.00-6.00   sec   171 MBytes  1.44 Gbits/sec                  
+    [  5]   6.00-7.00   sec   177 MBytes  1.48 Gbits/sec                  
+    [  5]   7.00-8.00   sec   176 MBytes  1.47 Gbits/sec                  
+    [  5]   8.00-9.00   sec   176 MBytes  1.48 Gbits/sec                  
+    [  5]   9.00-10.00  sec   177 MBytes  1.49 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-10.00  sec  1.65 GBytes  1.42 Gbits/sec                  sender
+    [  5]   0.00-10.00  sec  1.65 GBytes  1.42 Gbits/sec                  receiver
+    
+    iperf Done.
+    Connecting to host 192.168.81.1, port 5201
+    Reverse mode, remote host 192.168.81.1 is sending
+    [  5] local 192.168.81.2 port 55633 connected to 192.168.81.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth
+    [  5]   0.00-1.00   sec   279 MBytes  2.34 Gbits/sec                  
+    [  5]   1.00-2.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   2.00-3.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   3.00-4.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   4.00-5.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   5.00-6.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   6.00-7.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   7.00-8.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   8.00-9.00   sec   281 MBytes  2.35 Gbits/sec                  
+    [  5]   9.00-10.00  sec   281 MBytes  2.35 Gbits/sec                  
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.36 Gbits/sec    1             sender
+    [  5]   0.00-10.00  sec  2.74 GBytes  2.35 Gbits/sec                  receiver
+    
+    iperf Done.
+
+</details>
+
+Confused as where to look next...
 
 <!-- TOC --><a name="open-questions"></a>
 ## Open questions
