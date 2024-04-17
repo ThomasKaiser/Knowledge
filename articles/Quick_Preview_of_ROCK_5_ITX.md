@@ -40,6 +40,7 @@
       + [LanTest with different settings](#lantest-with-different-settings)
       + [`iperf3` testing](#iperf3-testing)
    * [Utilizing Armbian's build framework](#utilizing-armbians-build-framework)
+   * [SMB Multichannel](#smb-multichannel)
    * [Open questions](#open-questions)
    * [TODO TK](#todo-tk)
 
@@ -1304,23 +1305,18 @@ After quickly checking Radxa's [latest `b1` build from 2024/04/17](https://githu
 <details>
   <summary>memory bandwidth/latency comparison based on BLOB version</summary>
 
-Rock 5B with LPDDR4X at 2112 MHz (v1.08):
-
-  * cpu6 (Cortex-A76): memcpy: 10465.7 MB/s, memset: 29000.5 MB/s
-  * cpu6 (Cortex-A76) 16M latency: 128.6 114.1 119.0 110.4 118.3 106.1 104.0 107.7 
-  * cpu6 (Cortex-A76) 128M latency: 137.9 138.2 138.0 138.3 137.2 132.3 130.5 134.8 
-
-Rock 5 ITX with LPDDR5 at 2736 MHz (v1.15):
-
-  * cpu6 (Cortex-A76): memcpy: 13106.8 MB/s, memset: 28576.3 MB/s
-  * cpu6 (Cortex-A76) 16M latency: 131.9 120.7 130.3 119.3 130.4 121.9 120.9 121.2 
-  * cpu6 (Cortex-A76) 128M latency: 147.8 146.3 148.4 146.4 148.3 146.0 146.4 149.7 
-
-Rock 5 ITX with LPDDR5 at 2736 MHz (v1.16):
-
-  * cpu6 (Cortex-A76): memcpy: 13084.2 MB/s, memset: 29338.8 MB/s
-  * cpu6 (Cortex-A76) 16M latency: 131.2 119.9 130.5 119.0 129.9 123.8 121.3 121.3 
-  * cpu6 (Cortex-A76) 128M latency: 148.6 147.4 148.6 147.4 148.5 146.6 146.6 148.9 
+  * Rock 5B with LPDDR4X at 2112 MHz (v1.08):
+      + cpu6 (Cortex-A76): memcpy: 10465.7 MB/s, memset: 29000.5 MB/s
+      + cpu6 (Cortex-A76) 16M latency: 128.6 114.1 119.0 110.4 118.3 106.1 104.0 107.7 
+      + cpu6 (Cortex-A76) 128M latency: 137.9 138.2 138.0 138.3 137.2 132.3 130.5 134.8 
+  * Rock 5 ITX with LPDDR5 at 2736 MHz (v1.15):
+      + cpu6 (Cortex-A76): memcpy: 13106.8 MB/s, memset: 28576.3 MB/s
+      + cpu6 (Cortex-A76) 16M latency: 131.9 120.7 130.3 119.3 130.4 121.9 120.9 121.2 
+      + cpu6 (Cortex-A76) 128M latency: 147.8 146.3 148.4 146.4 148.3 146.0 146.4 149.7 
+  * Rock 5 ITX with LPDDR5 at 2736 MHz (v1.16):
+      + cpu6 (Cortex-A76): memcpy: 13084.2 MB/s, memset: 29338.8 MB/s
+      + cpu6 (Cortex-A76) 16M latency: 131.2 119.9 130.5 119.0 129.9 123.8 121.3 121.3 
+      + cpu6 (Cortex-A76) 128M latency: 148.6 147.4 148.6 147.4 148.5 146.6 146.6 148.9 
 
 </details>
 
@@ -1428,6 +1424,65 @@ So let's test with a 2.5GbE Ethernet dongle from same MacBook as before:
 
 ![LanTest 3](../media/rock5-itx-armbian-lantest-3.png)
 
+<!-- TOC --><a name="smb-multichannel"></a>
+## SMB Multichannel
+
+Since Rock 5 ITX has two 2.5GbE interfaces let's combine that with 2.5GbE interfaces on the client machine: *two* RTL8156 dongles. Most consumers and SBC enthusiasts unfortunately believe 'bonding' two NICs would result in doubled throughput (wrong, bonding only helps with plenty of clients distributing their traffic over several NICs while not able to increase individual link speed) but since over a decade we can make use of SMB Multichannel that is designed to multiply bandwidth by count of NICs (but ofc can't help with latency).
+
+I configured the two RTL8125BG on Rock 5 ITX in separate subnets and did the same on my MacBook with the two RTL8156. After mounting an SMB share over one of the interfaces we can check for Multichannel working correctly:
+
+<details>
+  <summary>`smbutil multichannel -a`</summary>
+
+    macbookpro-tk:~ tk$ smbutil multichannel -a
+    Session: /Volumes/FrankenRAID
+    Info: Setup Time: 2024-04-17 21:59:14, Multichannel ON: yes, Reconnect Count: 1Reconnect Time 2024-04-17 22:01:13
+    	Total RX Bytes: 18933754093, Total TX Bytes: 18992267745
+           id         client IF             server IF   state                     server ip                 port   speed
+    ========================================================================================================================
+    M     177  en0    (wifi    )   8         5          [session inactive     ]   192.168.83.252            445    261.6 Mb
+    ALT   184  en6    (Ethernet)   6         2          [session active       ]   192.168.81.1              445    2.5 Gb
+    ALT   188  en15   (Ethernet)   5         3          [session active       ]   192.168.80.1              445    2.5 Gb
+    Server NIC:
+    	name: NA, idx: 3, type:    NA, speed 2.5 Gb, state connected
+    		ip_addr: 192.168.80.1
+    Server NIC:
+    	name: NA, idx: 2, type:    NA, speed 2.5 Gb, state connected
+    		ip_addr: 192.168.81.1
+    Server NIC:
+    	name: NA, idx: 5, type:    NA, speed 1.0 Gb, state connected
+    		ip_addr: 192.168.83.252
+    Client NIC:
+    	name: en15, idx: 5, type: wired, speed 2.5 Gb, state connected
+    		ip_addr: 192.168.80.2
+    		ip_addr: fe80:0000:0000:0000:042b:c86e:b32e:f53c
+    Client NIC:
+    	name: en6, idx: 6, type: wired, speed 2.5 Gb, state connected
+    		ip_addr: 192.168.81.2
+    		ip_addr: fe80:0000:0000:0000:1c58:0446:21af:795e
+    Client NIC:
+    	name: en0, idx: 8, type: wireless, speed 261.6 Mb, state connected
+    		ip_addr: fd00:0000:0000:0000:006a:6b4e:3ddf:7c4c
+    		ip_addr: 2001:0a61:27cb:1801:6c01:48b7:d71c:be78
+    		ip_addr: 2001:0a61:27cb:1801:04ea:0046:10d5:8414
+    		ip_addr: 192.168.83.42
+    		ip_addr: fe80:0000:0000:0000:0821:6e40:db3c:add0
+    Client NIC:
+    	name: en12, idx: 4, type: wired, speed 100.0 Mb, state idle
+    		ip_addr: fe80:0000:0000:0000:aede:48ff:fe00:1122
+
+</details>
+
+For the SMB share two paths are active: `192.168.80.1/24` and `192.168.81.1/24` and even with all the unresolved problems we get a nice improvement in benchmark scores with LanTest:
+
+![LanTest Multichannel](../media/rock5-itx-lantest-multichannel.png)
+
+LanTest is a tool for testing/debugging (generating insights and not just 'best scores') but both [macOS Finder and Windows Explorer implement a few tweaks to boost LAN performance](https://www.helios.de/web/EN/support/TI/157.html). When copying three rather large files (2.3G each) to Rock 5 ITX and back with Multichannel enabled we're getting almost constant ~600 MB/s in both directions according to 'Activity Monitor.app':
+
+![Multichannel Finder copies](../media/rock5-itx-finder-copy-multichannel.png)
+
+Nice! And while not being a Windows user I would expect Explorer to get same transfer speeds or easily outperforming macOS Finder (an awful piece of software to be honest).
+
 <!-- TOC --><a name="open-questions"></a>
 ## Open questions
 
@@ -1444,5 +1499,5 @@ So let's test with a 2.5GbE Ethernet dongle from same MacBook as before:
   * consumption figures (disabling ASM1164, checking through governors/policies and Gen2 vs. Gen3)
   * educational measurement how wasteful ATX PSUs are
   * storage testing (only crappy NVMe SSD lying around, not enough SATA SSDs here)
-  * network testing: SMB Multichannel, iperf3, investigating macOS Finder crappiness
+  * network testing: iperf3, investigating macOS Finder crappiness
   * to be continued
