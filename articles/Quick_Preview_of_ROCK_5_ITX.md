@@ -3,7 +3,7 @@
 ![I/O ports view](../media/rock5-itx-1.jpg)
 
 <details>
-  <summary>**Click here for more pictures**</summary>
+  <summary> **Click here for more pictures** </summary>
 
   ![Top view](../media/rock5-itx-2.jpg)
   
@@ -23,7 +23,7 @@
 
 </details>
 
-**Warning:** this (p)review will focus on general hardware/software topics with server/NAS use cases only in mind. So if you're after 'Linux desktop experience', gaming, Android or similar stuff you can stop to read right now :)
+**Warning:** this (p)review will focus on general hardware/software topics with server/NAS use cases only in mind. So if you're after 'Linux desktop experience', gaming, Android or similar stuff you can stop reading right now :)
 
    * [Overview](#overview)
    * [Quick performance assessment](#quick-performance-assessment)
@@ -39,6 +39,7 @@
    * [Network testing](#network-testing)
       + [LanTest with different settings](#lantest-with-different-settings)
       + [`iperf3` testing](#iperf3-testing)
+   * [Utilizing Armbian's build framework](#utilizing-armbians-build-framework)
    * [Open questions](#open-questions)
    * [TODO TK](#todo-tk)
 
@@ -46,6 +47,13 @@
 ## Overview
 
 April 2024 Radxa started to send out developer samples of their RK3588 based [Mini-ITX](https://en.wikipedia.org/wiki/Mini-ITX) v1.11 board (for RK3588 basics and some notes about software support status see [Rock 5B](Quick_Preview_of_ROCK_5B.md)). Official documentation will once appear [here](https://docs.radxa.com/en/rock5/rock5itx) and for now you can see a block diagram [there](https://docs.radxa.com/en/assets/images/rock5itx-interface-overview-1266d3c0b4e745372a48a473d78c3cdc.webp).
+
+Pricing has been announced recently and differs only by amount of RAM:
+
+  * 4GB LPDDR5: $99
+  * 8GB LPDDR5: $119
+  * 16GB LPDDR5: $159
+  * 32GB LPDDR5: $239
 
 The board measures 170x170mm in size as it follows the Mini-ITX standard with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
 
@@ -96,7 +104,7 @@ Other notable onboard components on *my* board include:
 
 Rock 5 ITX is one of the first RK3588 devices to be equipped with LPDDR5 modules and since Rockchip's DRAM initialization BLOB clocks LPDDR5 higher than LPDDR4X (5472 MT/s vs. 4224 MT/s) we should see workloads/benchmarks that depend on memory access becoming faster.
 
-Though *at this point in time* at least using [official OS images](https://github.com/radxa-build/rock-5-itx/releases/) that's not true. Since `sbc-bench` benchmarks DRAM bandwith and latency individually we see that bandwidth has not improved and latency got worse: just compare [Radxa-Rock-5B.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5B.md) with [Radxa-Rock-5-ITX.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5-ITX.md)
+Though *at this point in time* at least using [official OS images (b1 build from 2024/04/17 included)](https://github.com/radxa-build/rock-5-itx/releases/) that's not true. Since `sbc-bench` benchmarks DRAM bandwith and latency individually we see that bandwidth has not improved and latency got worse: just compare [Radxa-Rock-5B.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5B.md) with [Radxa-Rock-5-ITX.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5-ITX.md)
 
 As such any benchmark scores reviewers put online *now* are BS until this problem is addressed.
 
@@ -647,7 +655,7 @@ Six displays in total but according to Radxa only four can be used concurrently.
   * 238.8GB "Samsung EE4S5" UHS SDR104 SDXC card as /dev/mmcblk1: date 05/2023, manfid/oemid: 0x00001b/0x534d, hw/fw rev: 0x3/0x0
   * 29.1GB "Samsung BJTD4R" HS400 Enhanced strobe eMMC card as /dev/mmcblk0: date 09/2023, manfid/oemid: 0x000015/0x0100, hw/fw rev: 0x0/0x0300000000000000
 
-The TF card implementation is SDR104 / UHS-I capable so let's benchmark my 256GB Samsung EVO card in the slot using `iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2`:
+The TF card implementation is SDR104 / UHS-I capable so let's benchmark my 256GB Samsung EVO Plus A2 card in the slot using `iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2`:
 
                                                               random    random
               kB  reclen    write  rewrite    read    reread    read     write
@@ -853,21 +861,21 @@ Three 120/128 GB Samsung SSDs are connected to the SATA ports all externally pow
 <details>
   <summary>Creating an mdadm raid0 out of them and formatting the array with ext4</summary>
 
-    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sda?; sudo wipefs --all --force /dev/sda
+    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sda?; wipefs --all --force /dev/sda
     /dev/sda1: 4 bytes were erased at offset 0x00001000 (linux_raid_member): fc 4e 2b a9
     /dev/sda: 8 bytes were erased at offset 0x00010040 (btrfs): 5f 42 48 52 66 53 5f 4d
     /dev/sda: 8 bytes were erased at offset 0x00000200 (gpt): 45 46 49 20 50 41 52 54
     /dev/sda: 8 bytes were erased at offset 0x1bf2975e00 (gpt): 45 46 49 20 50 41 52 54
     /dev/sda: 2 bytes were erased at offset 0x000001fe (PMBR): 55 aa
     
-    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sdb?; sudo wipefs --all --force /dev/sdb
+    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sdb?; wipefs --all --force /dev/sdb
     /dev/sdb1: 4 bytes were erased at offset 0x00001000 (linux_raid_member): fc 4e 2b a9
     /dev/sdb: 8 bytes were erased at offset 0x00010040 (btrfs): 5f 42 48 52 66 53 5f 4d
     /dev/sdb: 8 bytes were erased at offset 0x00000200 (gpt): 45 46 49 20 50 41 52 54
     /dev/sdb: 8 bytes were erased at offset 0x1bf2975e00 (gpt): 45 46 49 20 50 41 52 54
     /dev/sdb: 2 bytes were erased at offset 0x000001fe (PMBR): 55 aa
     
-    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sdc?; sudo wipefs --all --force /dev/sdc
+    root@rock-5-itx:/home/radxa# wipefs --all --force /dev/sdc?; wipefs --all --force /dev/sdc
     /dev/sdc1: 2 bytes were erased at offset 0x00000438 (ext4): 53 ef
     /dev/sdc: 8 bytes were erased at offset 0x00010040 (btrfs): 5f 42 48 52 66 53 5f 4d
     /dev/sdc: 8 bytes were erased at offset 0x00000200 (gpt): 45 46 49 20 50 41 52 54
@@ -925,7 +933,7 @@ Well, regardless of SSD crappiness this sucks since sequential write performance
               kB  reclen    write  rewrite    read    reread    read     write
           512000   16384   403808   404209  1104210  1107276  1102140   403876
 
-We're facing a serious problem here for people wanting to combine several SATA SSDs with Rock 5 ITX.
+We're facing a serious problem here for people wanting to combine several SATA SSDs with Rock 5 ITX. Situation unchanged with [latest `b1` build from 2024/04/17](https://github.com/radxa-build/rock-5-itx/releases/tag/b1)
 
 ![SATA test setup](../media/rock5-itx-sata-testing.jpg)
 
@@ -956,7 +964,7 @@ I let OpenMediaVault 6 (OMV6) being installed by [the install script](https://gi
 
 ![LanTest 2](../media/rock5-itx-lantest-2.png)
 
-3rd test with the relevant daemons pinned to the big A76 cores and with better ioniceness by an ugly cronjob that was part of [my initial OMV installation routine](https://github.com/armbian/build/blob/62884059870855f7f4603df45d8a30cb77992ff0/scripts/customize-image.sh.template#L159-L161) but is lost now.
+3rd test with the relevant daemons pinned to the big A76 cores and with better ioniceness by an ugly cronjob that was part of [my initial OMV installation routine](https://github.com/armbian/build/blob/62884059870855f7f4603df45d8a30cb77992ff0/scripts/customize-image.sh.template#L159-L161) but is lost now in OMV installation script.
 
 Sequential performance is now 200/250 MB/s compared to 50/200 with OS defaults, the other tests also improved a lot:
 
@@ -1281,12 +1289,152 @@ No CPU utilization bottleneck whatsoever but RX scores still suck. Final test wi
 
 Confused as where to look next...
 
+<!-- TOC --><a name="utilizing-armbians-build-framework"></a>
+## Utilizing Armbian's build framework
+
+After quickly checking Radxa's [latest `b1` build from 2024/04/17](https://github.com/radxa-build/rock-5-itx/releases/tag/b1) that showed still the DRAM and SATA write issues I [switched to Armbian](https://github.com/ThomasKaiser/build).
+
+1st build ended up [with low memory performance](https://sprunge.us/MBndJU) and by checking settings the DRAM initialization defaulted to 2 years old v1.08 BLOB. As such let's try latest BLOBs and retest again:
+
+    DDR_BLOB='rk35/rk3588_ddr_lp4_2112MHz_lp5_2736MHz_v1.15.bin'
+    BL31_BLOB='rk35/rk3588_bl31_v1.45.elf'
+
+[Little bit faster](https://sprunge.us/zAQ5kF) but still at 2736 MHz slower than LPDDR4X at 2112 MHz except for `memcpy`. Since there's also a `rk3588_ddr_lp4_2112MHz_lp5_2400MHz_v1.16.bin` lying around ([release info](https://github.com/rockchip-linux/rkbin/blob/master/doc/release/RK3588_EN.md)) I also tried that one just to realize that according to `/sys/kernel/debug/clk/clk_summary` and scores this BLOB also clocks LPDDR5 at 2736 MHz (or something went wrong when generating or installing `u-boot` package)
+
+<details>
+  <summary>memory bandwidth/latency comparison based on BLOB version</summary>
+
+Rock 5B with LPDDR4X at 2112 MHz (v1.08):
+
+  * cpu6 (Cortex-A76): memcpy: 10465.7 MB/s, memset: 29000.5 MB/s
+  * cpu6 (Cortex-A76) 16M latency: 128.6 114.1 119.0 110.4 118.3 106.1 104.0 107.7 
+  * cpu6 (Cortex-A76) 128M latency: 137.9 138.2 138.0 138.3 137.2 132.3 130.5 134.8 
+
+Rock 5 ITX with LPDDR5 at 2736 MHz (v1.15):
+
+  * cpu6 (Cortex-A76): memcpy: 13106.8 MB/s, memset: 28576.3 MB/s
+  * cpu6 (Cortex-A76) 16M latency: 131.9 120.7 130.3 119.3 130.4 121.9 120.9 121.2 
+  * cpu6 (Cortex-A76) 128M latency: 147.8 146.3 148.4 146.4 148.3 146.0 146.4 149.7 
+
+Rock 5 ITX with LPDDR5 at 2736 MHz (v1.16):
+
+  * cpu6 (Cortex-A76): memcpy: 13084.2 MB/s, memset: 29338.8 MB/s
+  * cpu6 (Cortex-A76) 16M latency: 131.2 119.9 130.5 119.0 129.9 123.8 121.3 121.3 
+  * cpu6 (Cortex-A76) 128M latency: 148.6 147.4 148.6 147.4 148.5 146.6 146.6 148.9 
+
+</details>
+
+Now repeating the SATA performance test with three SSDs as `mdraid-0` ends up with same numbers as with Radxa's `rbuild` images and the iperf weirdness is (not so) surprisingly also present. But since I generated a Bookworm image I can now continue with OpenMediaVault 7 (OMV version always correlates with Debian version).
+
+The install script did its job and I created a new `mdraid-0` out of the three SATA SSDs, an USB3 attached SATA SSD and a NVMe SSD to ensure I have a storage device still fast enough for 2 x 2.5GbE SMB Multichannel.
+
+<details>
+  <summary>FrankenRAID details</summary>
+
+    for i in a b c d ; do wipefs --all --force /dev/sd${i}?; wipefs --all --force /dev/sd${i}; sgdisk -n 1:0:0 /dev/sd${i}; done
+    wipefs --all --force /dev/nvme0n1p?
+    wipefs --all --force /dev/nvme0n1
+    sgdisk -n 1:0:0 /dev/nvme0n1
+    mdadm --create --verbose /dev/md127 --level=0 --raid-devices=5 /dev/sd[a-d]1 /dev/nvme0n1p1
+    
+    root@rock-5-itx:~# mdadm --detail /dev/md127
+    /dev/md127:
+               Version : 1.2
+         Creation Time : Wed Apr 17 18:12:04 2024
+            Raid Level : raid0
+            Array Size : 726416384 (692.76 GiB 743.85 GB)
+          Raid Devices : 5
+         Total Devices : 5
+           Persistence : Superblock is persistent
+    
+           Update Time : Wed Apr 17 18:12:04 2024
+                 State : clean 
+        Active Devices : 5
+       Working Devices : 5
+        Failed Devices : 0
+         Spare Devices : 0
+    
+                Layout : original
+            Chunk Size : 512K
+    
+    Consistency Policy : none
+    
+                  Name : rock-5-itx:0  (local to host rock-5-itx)
+                  UUID : cc75ca88:241730ad:ff6eb643:a4e8bead
+                Events : 0
+    
+        Number   Major   Minor   RaidDevice State
+           0       8        1        0      active sync   /dev/sda1
+           1       8       17        1      active sync   /dev/sdb1
+           2       8       33        2      active sync   /dev/sdc1
+           3       8       49        3      active sync   /dev/sdd1
+           4     259        1        4      active sync   /dev/nvme0n1p1
+    
+    root@rock-5-itx:~# sbc-bench.sh -S
+      * 238.5GB "KXG50ZNV256G NVMe TOSHIBA 256GB" SSD as /dev/nvme0: Speed 8GT/s, Width x2 (downgraded), 13% worn out, drive temp: 42°C
+      * 111.8GB "Transcend TS120GMTS420" SSD as /dev/sda [SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)]: behind JMicron JMS578 SATA 6Gb/s bridge (152d:0578), 1% worn out, Driver=uas, 5Gbps (capable of 12Mbps, 480Mbps, 5Gbps), drive temp: 55°C
+      * 111.8GB "Samsung SSD 750 EVO 120GB" SSD as /dev/sdb: SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s), 3% worn out, drive temp: 26°C
+      * 111.8GB "Samsung SSD 840 EVO 120GB" SSD as /dev/sdc: SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s), 3% worn out, drive temp: 24°C
+      * 119.2GB "SAMSUNG MZ7TE128HMGR-00004" SSD as /dev/sdd: SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s), 3% worn out, drive temp: 24°C
+    
+    root@rock-5-itx:~# iozone -e -I -a -s 500M -r 16384k -i 0 -i 1 -i 2 -f /srv/dev-disk-by-uuid-4982ea7d-30e1-448b-8bce-839062d85476/iozone
+    	Iozone: Performance Test of File I/O
+    	        Version $Revision: 3.489 $
+    		Compiled for 64 bit mode.
+    		Build: linux 
+    
+    	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+    	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+    	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+    	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+    	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+    	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+    	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+    	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+    	             Alexey Skidanov, Sudhir Kumar.
+    
+    	Run began: Wed Apr 17 20:03:30 2024
+    
+    	Include fsync in write timing
+    	O_DIRECT feature enabled
+    	Auto Mode
+    	File size set to 512000 kB
+    	Record Size 16384 kB
+    	Command line used: iozone -e -I -a -s 500M -r 16384k -i 0 -i 1 -i 2 -f /srv/dev-disk-by-uuid-4982ea7d-30e1-448b-8bce-839062d85476/iozone
+    	Output is in kBytes/sec
+    	Time Resolution = 0.000001 seconds.
+    	Processor cache size set to 1024 kBytes.
+    	Processor cache line size set to 32 bytes.
+    	File stride size set to 17 * record size.
+                                                                  random    random     bkwd    record    stride                                    
+                  kB  reclen    write  rewrite    read    reread    read     write     read   rewrite      read   fwrite frewrite    fread  freread
+              512000   16384   655228   658457  1141072  1282401  1247449   661628                                                                
+    
+    iozone test complete.
+
+</details>
+
+So let's test with a 2.5GbE Ethernet dongle from same MacBook as before:
+
+1st test is with Armbian's and OMV's defaults. Not as terrible as Radxa defaults but far away from what's possible with this hardware. Turns out someone at Armbian chose `schedutil` as default cpufreq governor which nicely ruins every attempt made in the past to improve performance:
+
+![LanTest 1](../media/rock5-itx-armbian-lantest-1.png)
+
+2nd test with `schedutil` exchanged with `ondemand` and `io_is_busy` set to `1` doubles almost every score except sequential read that wasn't that terrible already.
+
+![LanTest 2](../media/rock5-itx-armbian-lantest-2.png)
+
+3rd test with all the other tunables set correctly (see `tk-optimize-rk3588.conf` [here](https://github.com/ThomasKaiser/Knowledge/blob/master/articles/Quick_Preview_of_ROCK_5B.md#important-insights-and-suggested-optimisations)) and performance slightly improves even more:
+
+![LanTest 3](../media/rock5-itx-armbian-lantest-3.png)
+
 <!-- TOC --><a name="open-questions"></a>
 ## Open questions
 
   * DC-IN voltage range? As far as I understood the 12V requirement is solely related to SATA power (12V rail only needed with 5.25" and some exotic 3.5" HDDs)
+  * Why does SATA write performance sucks that much?
   * LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse. Why?
-  * 'ROOBI OS' by default flashed to eMMC?
+  * 'ROOBI OS' by default flashed to eMMC when device finally ships?
   * What is the purpose of the 16M SPI NOR flash?
 
 <!-- TOC --><a name="todo-tk"></a>
