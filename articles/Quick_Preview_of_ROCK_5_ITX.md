@@ -41,6 +41,13 @@
       + [`iperf3` testing](#iperf3-testing)
    * [Utilizing Armbian's build framework](#utilizing-armbians-build-framework)
    * [SMB Multichannel](#smb-multichannel)
+   * [Analyzing different tunables in NAS setups](#analyzing-different-tunables-in-nas-setups)
+      + [Basics](#basics)
+      + [cpufreq governor `schedutil`, DMC governor set to `dmc_ondemand` (Armbian defaults with RK3588 today):](#cpufreq-governor-schedutil-dmc-governor-set-to-dmc_ondemand-armbian-defaults-with-rk3588-today)
+      + [cpufreq governor `schedutil`, DMC governor set to `performance`:](#cpufreq-governor-schedutil-dmc-governor-set-to-performance)
+      + [cpufreq governor `ondemand` with tweaks, DMC governor set to `dmc_ondemand`:](#cpufreq-governor-ondemand-with-tweaks-dmc-governor-set-to-dmc_ondemand)
+      + [cpufreq governor `ondemand` with tweaks, DMC governor set to `performance`:](#cpufreq-governor-ondemand-with-tweaks-dmc-governor-set-to-performance)
+      + [cpufreq governor and DMC governor set both to `performance` (bad for idle consumption):](#cpufreq-governor-and-dmc-governor-set-both-to-performance-bad-for-idle-consumption)
    * [Open questions](#open-questions)
    * [TODO TK](#todo-tk)
 
@@ -950,7 +957,7 @@ When the power button is pressed for a longer amount of time (~4 seconds?) the b
 <!-- TOC --><a name="network-testing"></a>
 ## Network testing
 
-To test networking I use a MacBook with a 2.5GbE USB Ethernet dongle connected (RTL8156 based). For the NAS tests I equipped the M.2 key M slot with an older NVMe SSD (performance numbers not worth a look since the SSD is clearly the bottleneck and not RK3588's PCIe/NVMe implementation) that is at least fast enough for tests with 2 x 2.5GbE later.
+To test networking I use a MacBook with a 2.5GbE USB Ethernet dongle connected (RTL8156 based). For the NAS tests I equipped the M.2 key M slot with an older NVMe SSD (performance numbers not worth a look since the SSD is clearly the bottleneck and not RK3588's PCIe/NVMe implementation) that should be at least fast enough for tests with 2 x 2.5GbE later (though turned out it was not and had to be extended to a RAID-0 later).
 
 I let OpenMediaVault 6 (OMV6) being installed by [the install script](https://github.com/OpenMediaVault-Plugin-Developers/installScript) that is derived from my initial Armbian OMV installation routine. And on the client side I rely on [Helios LanTest](https://www.helios.de/web/EN/products/LanTest.html) with 10GbE settings for [these reasons](https://www.helios.de/web/EN/support/TI/157.html).
 
@@ -1024,7 +1031,7 @@ First test should be 'worst case' since searching for bottlenecks: all cpufreq g
 
 </details>
 
-TX with 2.35 Gbits/sec is the maximum and as such no problem, in RX direction only 1.57 Gbits/sec hint at a bottleneck. When checking for CPU core utilization not only `cpu3` was busy but also `cpu0` (another little core) `cpu6` (an A76) which handle the IRQs for the NIC in question.
+TX with 2.35 Gbits/sec is the maximum and as such no problem, in RX direction only 1.57 Gbits/sec hint at a bottleneck. When checking for CPU core utilization not only `cpu3` was busy but also `cpu0` (another little core) and `cpu6` (an A76) which handle the IRQs for the NIC in question.
 
 Before:
 
@@ -1412,7 +1419,7 @@ The install script did its job and I created a new `mdraid-0` out of the three S
 
 So let's test with a 2.5GbE Ethernet dongle from same MacBook as before:
 
-1st test is with Armbian's and OMV's defaults. Not as terrible as Radxa defaults but far away from what's possible with this hardware. Turns out someone at Armbian chose `schedutil` as default cpufreq governor which nicely ruins every attempt made in the past to improve performance:
+1st test is with Armbian's and OMV's defaults. Not as terrible as Radxa defaults but far away from what's possible with this hardware. Turns out someone at Armbian chose `schedutil` as default cpufreq governor which nicely ruins every attempt made in the past to improve performance (EDIT: [they did this on purpose w/o sufficient testing](https://github.com/armbian/build/pull/6120)):
 
 ![LanTest 1](../media/rock5-itx-armbian-lantest-1.png)
 
@@ -1432,7 +1439,7 @@ Since Rock 5 ITX has two 2.5GbE interfaces let's combine that with 2.5GbE interf
 I configured the two RTL8125BG on Rock 5 ITX in separate subnets and did the same on my MacBook with the two RTL8156. After mounting an SMB share over one of the interfaces we can check for Multichannel working correctly:
 
 <details>
-  <summary>`smbutil multichannel -a`</summary>
+  <summary>smbutil multichannel -a</summary>
 
     macbookpro-tk:~ tk$ smbutil multichannel -a
     Session: /Volumes/FrankenRAID
@@ -1482,6 +1489,319 @@ LanTest is a tool for testing/debugging (generating insights and not just 'best 
 ![Multichannel Finder copies](../media/rock5-itx-finder-copy-multichannel.png)
 
 Nice! And while not being a Windows user I would expect Explorer to get same transfer speeds or easily outperforming macOS Finder (an awful piece of software to be honest).
+
+<!-- TOC --><a name="analyzing-different-tunables-in-nas-setups"></a>
+## Analyzing different tunables in NAS setups
+
+<!-- TOC --><a name="basics"></a>
+### Basics
+
+When balancing performance vs. consumption there are several strategies at play. For example for best performance you would simply design CPUs consisting of only 'big' cores like Cortex-A76/A78/X1/X2 or the Neoverse server variants that will also all the time run at their maximum clockspeeds like all the other 'engines' (like memory or PCIe controller) as well. 
+
+While this approach will result in superiour performance also consumption figures will be high as well as efforts needed for heat dissipation. A SoC like RK3588 is designed for a balance of performance and low consumption: four big A76 cores complemented by four little A55, memory controller able to adjust DRAM clock, same for other SoC engines.
+
+For the hardware to be able to balance between 'max performance when needed' and 'idle consumption as low as possible' further mechanisms like for example DVFS (dynamic voltage frequency scaling) are needed: when SoC engines are less busy or even idle, they are clocked lower and at the same time the supply voltage is reduced to save energy.
+
+But these HW capabilities on their own are rather useless unless there's software support:
+
+  * Scheduling: on hybrid designs (big.LITTLE/DynamIQ on ARM, on Intel [some SKUs starting with Lakefield](https://github.com/ThomasKaiser/sbc-bench/blob/07fdc0b99e0868d8d40425bdf8ba97d00aca4ad3/sbc-bench.sh#L2171-L2315)) an intelligent scheduler is needed to decide which tasks should be sent to efficiency and which to performance cores *in which situation*. To make things more complicated there exists the 'race to idle' concept: a performance core while needing (much) more energy can finish a certain task (much) faster than an efficiency core as such handling the task on performance cores can be more energy efficient in certain situations (especially when other 'engines' like I/O are involved that then need only to be woken up for a short period of time to be sent back to deep sleep immediately afterwards)
+      + this scheduling is called 'SMP affinity' in general: which *process* should be executed where?
+      + and then there's 'IRQ affinitiy': should interrupts for certain engines be processed on efficiency or performance cores *and in which situations* (though in the 'Android e-waste world' where all these SoCs on SBCs originate from usually all IRQs end up on `cpu0` which becomes easily a hard bottleneck maxing out at 100% especially with inappropriate cpufreq settings). To make things more complicated balancing interrupts evenly on all cores is not the best idea on hybrid systems and will actually worsen or even trash performance in certain scenarios ([for example networking](https://techdocs.broadcom.com/us/en/storage-and-ethernet-connectivity/ethernet-nic-controllers/bcm957xxx/adapters/Tuning/tcp-performance-tuning/nic-tuning_22/configure-irq-and-application-affinity.html))
+  * To make use of DVFS cpufreq drivers are needed and the driver is responsible to decide when to ramp up clockspeeds (then due to higher supply voltages consuming much more energy) and when to lower them. For certain scenarios / use cases different so called 'governors' have been developed that follow different strategies (at least on ARM, on x86/x64 with `intel_pstate`/`amd-pstate` drivers a lot happens below at firmware level). Choosing the right one for the use case in question is important if you want the ideal balance: highest performance (when needed) and lowest power consumption (when possible/idle)
+  * Same is true for other 'engines' like memory controller (DMC – dynamic memory controller – in Rockchip speak) or GPU and NPU cores
+
+Since this review is about server/NAS use cases for now let's simply focus on cpufreq and memory and compare 5 different setups. The two `ondemand` results are with my tweaks applied since w/o them `ondemand` pretty much sucks as much as `schedutil` in storage/network situations.
+
+This is still the SMB Multichannel setup with two 2.5GbE connections between a MacBook and Rock 5 ITX:
+
+<!-- TOC --><a name="cpufreq-governor-schedutil-dmc-governor-set-to-dmc_ondemand-armbian-defaults-with-rk3588-today"></a>
+### cpufreq governor `schedutil`, DMC governor set to `dmc_ondemand` (Armbian defaults with RK3588 today):
+
+![cpufreq governor `schedutil`, DMC governor set to `dmc_ondemand`](../media/rock5-itx-schedutil-dmc_ondemand.png)
+
+Horribly low performance but understandable since the `schedutil` cpufreq governor keeps the clockspeeds low all the time. Only the little cores go up a little higher (many IRQs are pinned to `cpu0`) but never reach the upper 1800 MHz limit:
+
+<details>
+  <summary>sbc-bench -m</summary>
+
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:30:35: 1416/ 408/ 408MHz  0.52   4%   2%   1%   0%   0%   0%  41.6°C   12.03 
+    11:30:40: 1200/ 408/ 408MHz  0.48   0%   0%   0%   0%   0%   0%  40.7°C   12.03 
+    11:30:45: 1200/ 408/ 408MHz  0.44   0%   0%   0%   0%   0%   0%  40.7°C   12.03 
+    11:30:50: 1416/ 408/ 408MHz  0.41   0%   0%   0%   0%   0%   0%  40.7°C   12.05 
+    11:30:55: 1200/ 408/ 408MHz  0.37   4%   1%   1%   0%   0%   0%  40.7°C   12.03 
+    11:31:00: 1416/ 408/ 600MHz  0.42  11%   4%   4%   0%   2%   0%  40.7°C   12.03 
+    11:31:05: 1200/ 408/ 408MHz  0.71  16%   9%   3%   0%   0%   3%  41.6°C   12.04 
+    11:31:10: 1200/ 408/ 816MHz  0.81  23%  16%   1%   0%   0%   5%  42.5°C   12.02 
+    11:31:15: 1200/ 408/ 408MHz  0.99  11%   8%   0%   0%   1%   1%  41.6°C   12.03 
+    11:31:21: 1200/ 408/ 408MHz  0.91  13%   9%   0%   0%   0%   3%  41.6°C   12.03 
+    11:31:26: 1416/ 408/ 408MHz  1.00  22%  16%   0%   0%   0%   3%  41.6°C   12.03 
+    11:31:31: 1200/ 600/1008MHz  0.92  22%  17%   1%   0%   0%   3%  42.5°C   12.05 
+    11:31:36: 1200/ 408/ 408MHz  0.92  19%  12%   1%   0%   1%   3%  42.5°C   12.03 
+    11:31:41: 1200/ 408/ 408MHz  0.93  14%   7%   1%   0%   0%   5%  42.5°C   12.04 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:31:46: 1200/ 408/ 408MHz  1.02  10%   5%   1%   0%   0%   3%  42.5°C   12.02 
+    11:31:51: 1416/ 408/ 600MHz  1.02   8%   5%   0%   0%   0%   2%  42.5°C   12.04 
+    11:31:56: 1416/ 408/ 408MHz  1.01   7%   2%   3%   0%   0%   1%  41.6°C   12.05 
+    11:32:02: 1200/ 408/ 408MHz  1.01   7%   2%   3%   0%   0%   1%  42.5°C   12.03 
+    11:32:07: 1200/ 408/ 408MHz  1.01   5%   2%   2%   0%   0%   0%  41.6°C   12.05 
+    11:32:12: 1200/ 408/ 408MHz  0.93   6%   3%   3%   0%   0%   0%  41.6°C   12.02 
+    11:32:17: 1200/ 600/1608MHz  0.94  10%   4%   4%   0%   1%   0%  41.6°C   12.06 
+    11:32:22: 1416/ 600/ 408MHz  1.02  10%   5%   4%   0%   0%   0%  41.6°C   12.04 
+    11:32:27: 1416/ 600/ 408MHz  1.18  11%   5%   4%   0%   0%   0%  41.6°C   12.03 
+    11:32:32: 1200/1416/ 408MHz  1.17  10%   5%   4%   0%   0%   0%  41.6°C   12.03 
+    11:32:37: 1416/ 408/ 600MHz  1.07  10%   4%   3%   0%   2%   0%  41.6°C   12.03 
+    11:32:42: 1200/ 408/ 600MHz  1.07  11%   5%   4%   0%   0%   0%  42.5°C   12.05 
+    11:32:48: 1200/ 408/ 408MHz  0.98  20%  12%   1%   0%   0%   6%  42.5°C   12.04 
+    11:32:53: 1200/ 408/ 408MHz  0.90  21%  16%   0%   0%   1%   3%  42.5°C   12.02 
+    11:32:58: 1416/ 408/ 408MHz  0.99  19%  13%   0%   0%   0%   5%  42.5°C   12.04 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:33:03: 1416/ 408/ 408MHz  1.07  24%  16%   1%   0%   1%   5%  42.5°C   12.03 
+    11:33:08: 1200/ 408/ 408MHz  1.07  23%  17%   0%   0%   1%   4%  43.5°C   12.02 
+    11:33:13: 1200/ 408/ 408MHz  1.06  18%  11%   1%   0%   0%   4%  42.5°C   12.03 
+    11:33:18: 1416/ 408/ 408MHz  1.06  18%  10%   2%   0%   0%   5%  42.5°C   12.05 
+    11:33:23: 1200/ 408/ 408MHz  1.05  16%  10%   1%   0%   0%   4%  42.5°C   12.04 
+    11:33:29: 1200/ 408/ 408MHz  0.97   6%   2%   3%   0%   0%   0%  42.5°C   12.03 
+    11:33:34: 1416/ 408/ 408MHz  0.89   5%   2%   2%   0%   0%   0%  42.5°C   12.03 
+    11:33:39: 1200/ 408/ 408MHz  0.82   5%   2%   2%   0%   0%   0%  42.5°C   12.04 
+    11:33:44: 1200/ 600/ 408MHz  0.83   6%   2%   2%   0%   0%   0%  42.5°C   12.03 
+    11:33:49: 1416/ 408/ 408MHz  0.77  11%   4%   3%   0%   2%   0%  42.5°C   12.03 
+    11:33:54: 1200/ 408/ 408MHz  0.78  11%   4%   4%   0%   1%   0%  42.5°C   12.03 
+    11:33:59: 1416/ 408/ 816MHz  0.80  11%   4%   4%   0%   1%   0%  42.5°C   12.03 
+    11:34:04: 1200/1008/ 408MHz  0.82  10%   4%   5%   0%   0%   0%  42.5°C   12.03 
+    11:34:09: 1416/ 408/ 600MHz  1.29  10%   4%   3%   0%   1%   0%  42.5°C   12.02 
+    11:34:15: 1416/ 408/ 408MHz  1.42  12%   6%   4%   0%   0%   1%  42.5°C   12.02 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:34:20: 1416/ 408/ 408MHz  1.63  22%  16%   1%   0%   0%   4%  42.5°C   12.03 
+    11:34:25: 1200/ 600/ 408MHz  1.66  18%  13%   0%   0%   1%   2%  42.5°C   12.05 
+    11:34:30: 1200/ 408/ 408MHz  1.53  21%  15%   0%   0%   0%   3%  42.5°C   12.02 
+    11:34:35: 1200/ 408/ 816MHz  1.49  23%  16%   1%   0%   0%   5%  43.5°C   12.03 
+    11:34:40: 1416/ 408/ 408MHz  1.37  14%  10%   0%   0%   1%   2%  42.5°C   12.04 
+    11:34:45: 1200/ 408/ 408MHz  1.58   9%   6%   0%   0%   0%   2%  42.5°C   12.03 
+    11:34:50: 1416/ 408/ 408MHz  1.53  11%   6%   0%   0%   0%   4%  42.5°C   12.04 
+    11:34:56: 1200/ 408/ 408MHz  1.65   8%   4%   2%   0%   0%   1%  42.5°C   12.03 
+    11:35:01: 1200/ 408/ 408MHz  1.60   6%   2%   3%   0%   0%   0%  42.5°C   12.05 
+    11:35:06: 1416/ 408/ 408MHz  1.79   8%   3%   3%   0%   0%   1%  42.5°C   12.04 
+    11:35:11: 1200/ 408/ 408MHz  1.65   7%   2%   3%   0%   0%   1%  41.6°C   12.03 
+    11:35:16: 1416/ 408/ 408MHz  1.75  10%   4%   3%   0%   1%   0%  41.6°C   12.03 
+    11:35:21: 1200/ 600/ 408MHz  1.77  11%   4%   4%   0%   1%   0%  42.5°C   12.03 
+    11:35:26: 1200/ 600/ 408MHz  1.79  11%   4%   4%   0%   1%   0%  41.6°C   12.05 
+    11:35:31: 1416/ 408/1800MHz  1.73  11%   5%   4%   0%   1%   0%  42.5°C   12.03 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:35:36: 1200/ 408/ 408MHz  1.59   6%   2%   2%   0%   0%   0%  42.5°C   12.04 
+    11:35:42: 1200/ 408/ 408MHz  1.46   0%   0%   0%   0%   0%   0%  41.6°C   12.05 
+
+</details>
+
+<!-- TOC --><a name="cpufreq-governor-schedutil-dmc-governor-set-to-performance"></a>
+### cpufreq governor `schedutil`, DMC governor set to `performance`:
+
+![cpufreq governor `schedutil`, DMC governor set to `performance`](../media/rock5-itx-schedutil-performance.png)
+
+Switching DMC governor from `dmc_ondemand` (dynamically switching between 528 and 2736 MHz) to `performance` (clocking the LPDDR5 all the time at 2736 MHz) doesn't change much. Still terrible as nothing has changed wrt CPU clockspeeds that remain low all the time:
+
+<details>
+  <summary>sbc-bench -m</summary>
+
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:48:54: 1200/ 408/ 408MHz  0.06   5%   2%   1%   0%   0%   0%  44.4°C   12.06 
+    11:48:59: 1416/ 408/ 408MHz  0.05   7%   2%   2%   0%   1%   0%  44.4°C   12.02 
+    11:49:04: 1200/1200/1008MHz  0.21  11%   4%   4%   0%   1%   0%  45.3°C   12.04 
+    11:49:09: 1416/ 408/ 408MHz  0.19  18%  14%   1%   0%   0%   3%  45.3°C   12.02 
+    11:49:14: 1416/ 408/ 408MHz  0.42  24%  17%   1%   0%   1%   4%  45.3°C   12.05 
+    11:49:19: 1608/ 408/ 600MHz  0.70  21%  16%   0%   0%   0%   2%  46.2°C   12.04 
+    11:49:24: 1416/ 408/ 408MHz  0.81  18%  13%   0%   0%   0%   3%  45.3°C   12.03 
+    11:49:29: 1200/ 408/ 408MHz  0.98  20%  15%   0%   0%   1%   3%  46.2°C   12.03 
+    11:49:34: 1200/ 408/ 408MHz  0.98  10%   6%   1%   0%   0%   2%  45.3°C   12.04 
+    11:49:40: 1416/ 408/ 408MHz  0.90  17%  10%   2%   0%   0%   3%  46.2°C   12.03 
+    11:49:45: 1416/ 408/ 408MHz  0.83  14%   8%   1%   0%   0%   3%  46.2°C   12.05 
+    11:49:50: 1200/ 408/ 408MHz  0.85   5%   2%   2%   0%   0%   0%  46.2°C   12.03 
+    11:49:55: 1200/ 408/ 408MHz  0.86   6%   2%   2%   0%   0%   0%  45.3°C   12.05 
+    11:50:00: 1200/ 408/ 408MHz  0.79   5%   2%   3%   0%   0%   0%  45.3°C   12.03 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:50:05: 1200/ 408/ 408MHz  0.90   9%   3%   3%   0%   0%   1%  45.3°C   12.05 
+    11:50:10: 1416/ 408/ 816MHz  1.14  11%   4%   4%   0%   1%   0%  45.3°C   12.03 
+    11:50:15: 1200/ 600/ 408MHz  1.21  10%   5%   4%   0%   0%   0%  45.3°C   12.03 
+    11:50:20: 1200/ 600/ 408MHz  1.20  10%   4%   4%   0%   0%   0%  45.3°C   12.04 
+    11:50:25: 1200/ 408/ 408MHz  1.10  10%   4%   5%   0%   0%   0%  45.3°C   12.05 
+    11:50:31: 1416/ 408/ 816MHz  1.09  11%   4%   3%   0%   3%   0%  45.3°C   12.03 
+    11:50:36: 1200/ 408/ 408MHz  1.00  18%  12%   2%   0%   0%   3%  45.3°C   12.05 
+    11:50:41: 1416/ 408/ 408MHz  1.16  23%  17%   0%   0%   1%   3%  46.2°C   12.02 
+    11:50:46: 1200/ 408/ 408MHz  1.15  20%  15%   1%   0%   0%   3%  46.2°C   12.04 
+    11:50:51: 1200/ 408/ 408MHz  1.22  26%  20%   1%   0%   0%   4%  46.2°C   12.01 
+    11:50:56: 1200/ 408/ 600MHz  1.28  24%  17%   0%   0%   1%   4%  46.2°C   12.03 
+    11:51:01: 1200/ 408/ 408MHz  1.26  16%  10%   2%   0%   0%   3%  46.2°C   12.05 
+    11:51:06: 1200/ 408/ 408MHz  1.40  16%   9%   2%   0%   0%   5%  46.2°C   12.04 
+    11:51:11: 1416/ 408/ 408MHz  1.37  12%   7%   2%   0%   0%   3%  46.2°C   12.03 
+    11:51:17: 1200/ 408/ 408MHz  1.26   6%   2%   3%   0%   0%   0%  46.2°C   12.03 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:51:22: 1200/ 408/ 408MHz  1.24   5%   2%   2%   0%   0%   0%  45.3°C   12.03 
+    11:51:27: 1200/ 408/ 408MHz  1.22   7%   2%   3%   0%   0%   1%  45.3°C   12.02 
+    11:51:32: 1416/ 408/ 408MHz  1.20  10%   3%   3%   0%   2%   1%  45.3°C   12.05 
+    11:51:37: 1200/ 408/ 816MHz  1.10  11%   4%   3%   0%   2%   0%  45.3°C   12.04 
+    11:51:42: 1416/1800/ 408MHz  1.09  11%   4%   4%   0%   1%   0%  46.2°C   12.03 
+    11:51:47: 1416/ 408/ 408MHz  1.09  10%   4%   4%   0%   0%   0%  45.3°C   12.03 
+    11:51:52: 1200/ 408/ 816MHz  1.16  11%   4%   4%   0%   2%   0%  45.3°C   12.03 
+    11:51:57: 1416/ 408/ 408MHz  1.31  20%  14%   2%   0%   0%   3%  46.2°C   12.01 
+    11:52:02: 1416/ 408/ 408MHz  1.28  20%  15%   0%   0%   0%   3%  46.2°C   12.03 
+    11:52:08: 1200/ 408/ 408MHz  1.42  15%  12%   0%   0%   0%   2%  46.2°C   12.03 
+    11:52:13: 1416/ 408/ 408MHz  1.39  17%  13%   0%   0%   0%   2%  46.2°C   12.04 
+    11:52:18: 1200/ 816/ 408MHz  1.36  19%  14%   0%   0%   0%   3%  47.2°C   12.03 
+    11:52:23: 1416/ 408/ 408MHz  1.25   9%   6%   0%   0%   0%   1%  46.2°C   12.02 
+    11:52:28: 1416/ 408/ 408MHz  1.23  17%   9%   2%   0%   0%   5%  46.2°C   12.03 
+    11:52:33: 1416/ 408/ 600MHz  1.45  15%   8%   1%   0%   0%   5%  46.2°C   12.03 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:52:38: 1200/ 408/ 408MHz  1.41  10%   6%   2%   0%   0%   2%  46.2°C   12.05 
+    11:52:43: 1200/ 408/ 408MHz  1.30   7%   2%   3%   0%   0%   1%  46.2°C   12.03 
+    11:52:48: 1200/ 408/ 408MHz  1.27   7%   2%   3%   0%   0%   1%  45.3°C   12.03 
+    11:52:53: 1200/ 408/ 408MHz  1.17   7%   2%   2%   0%   0%   1%  45.3°C   12.03 
+    11:52:59: 1200/ 408/ 816MHz  1.16  10%   3%   3%   0%   3%   0%  46.2°C   12.02 
+    11:53:04: 1416/ 408/ 816MHz  1.23  11%   4%   4%   0%   1%   0%  45.3°C   12.04 
+    11:53:09: 1416/1608/ 408MHz  1.21  10%   4%   4%   0%   1%   0%  46.2°C   12.03 
+    11:53:14: 1200/ 408/ 408MHz  1.19   4%   2%   2%   0%   0%   0%  45.3°C   12.05 
+    11:53:19: 1200/ 408/ 408MHz  1.09   0%   0%   0%   0%   0%   0%  45.3°C   12.03 
+
+</details>
+
+<!-- TOC --><a name="cpufreq-governor-ondemand-with-tweaks-dmc-governor-set-to-dmc_ondemand"></a>
+### cpufreq governor `ondemand` with tweaks, DMC governor set to `dmc_ondemand`:
+
+![cpufreq governor `ondemand` with tweaks, DMC governor set to `dmc_ondemand`](../media/rock5-itx-ondemand-dmc_ondemand.png)
+
+These were the Armbian settings from last year: everything except sequential reads at least twice as fast. When monitoring clockspeeds we see the cores ramping up to their max clockspeeds though not all the time:
+
+<details>
+  <summary>sbc-bench -m</summary>
+
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:25:51:  600/ 408/ 408MHz  0.46   0%   0%   0%   0%   0%   0%  38.8°C   12.05 
+    11:25:56: 1800/2352/2352MHz  0.42   5%   1%   1%   0%   1%   0%  40.7°C   12.04 
+    11:26:01: 1800/2352/2352MHz  0.39  14%   8%   1%   0%   0%   3%  43.5°C   12.02 
+    11:26:06: 1800/2352/2352MHz  0.35  21%  11%   0%   0%   4%   4%  45.3°C   12.02 
+    11:26:11: 1800/2352/ 816MHz  0.65  11%   6%   0%   0%   2%   2%  44.4°C   12.03 
+    11:26:16: 1800/ 408/2352MHz  0.59   7%   3%   0%   0%   0%   3%  43.5°C   12.03 
+    11:26:21: 1800/ 408/2352MHz  0.63   5%   3%   0%   0%   0%   0%  43.5°C   12.03 
+    11:26:27: 1800/ 600/2352MHz  0.66   4%   1%   1%   0%   0%   0%  43.5°C   12.03 
+    11:26:32: 1800/2352/2352MHz  0.77   8%   3%   2%   0%   1%   0%  43.5°C   12.03 
+    11:26:37: 1800/2352/2352MHz  0.70   8%   3%   3%   0%   0%   0%  43.5°C   12.03 
+    11:26:42: 1800/2352/2352MHz  0.73  15%   7%   1%   0%   1%   3%  46.2°C   12.02 
+    11:26:47: 1800/2352/2352MHz  0.67  19%   9%   0%   0%   5%   4%  47.2°C   12.01 
+    11:26:52: 1800/ 408/2352MHz  0.70  12%   5%   0%   0%   2%   3%  46.2°C   12.03 
+    11:26:57: 1800/ 600/2352MHz  0.64   6%   3%   0%   0%   0%   2%  45.3°C   12.03 
+    11:27:02: 1800/2352/2352MHz  0.67   6%   3%   0%   0%   0%   1%  45.3°C   12.03 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:27:07: 1800/ 600/2352MHz  0.62   5%   1%   1%   0%   1%   0%  44.4°C   12.04 
+    11:27:12: 1800/ 408/2352MHz  0.65   9%   3%   2%   0%   1%   0%  45.3°C   12.02 
+    11:27:17: 1800/ 600/ 816MHz  0.68   9%   3%   3%   0%   1%   0%  44.4°C   12.03 
+    11:27:23: 1800/2352/2352MHz  0.62  16%   7%   1%   0%   0%   6%  47.2°C   12.02 
+    11:27:28: 1800/2352/2352MHz  0.73  21%  10%   0%   0%   4%   5%  48.1°C   12.01 
+    11:27:33: 1800/ 816/2352MHz  0.91  12%   6%   0%   0%   3%   2%  47.2°C   12.02 
+    11:27:38: 1800/ 408/2352MHz  0.84   4%   2%   0%   0%   0%   1%  46.2°C   12.03 
+    11:27:43: 1800/ 408/2352MHz  0.93   6%   4%   0%   0%   0%   1%  46.2°C   12.05 
+    11:27:48: 1800/ 408/2352MHz  0.86   3%   1%   1%   0%   0%   0%  45.3°C   12.02 
+    11:27:53: 1800/2352/2352MHz  0.95   7%   2%   2%   0%   1%   0%  45.3°C   12.03 
+    11:27:58: 1800/2352/ 600MHz  1.11   9%   4%   3%   0%   1%   0%  45.3°C   12.04 
+    11:28:03:  600/ 408/ 408MHz  1.11   2%   1%   0%   0%   0%   0%  43.5°C   12.03 
+    11:28:09: 1800/ 408/ 408MHz  1.02   0%   0%   0%   0%   0%   0%  42.5°C   12.03 
+
+</details>
+
+<!-- TOC --><a name="cpufreq-governor-ondemand-with-tweaks-dmc-governor-set-to-performance"></a>
+### cpufreq governor `ondemand` with tweaks, DMC governor set to `performance`:
+
+![cpufreq governor `ondemand` with tweaks, DMC governor set to `performance`](../media/rock5-itx-ondemand-performance.png)
+
+Minor improvements with DRAM all the time at 2736 MHz (the drop in sequential writes is due to one test run scoring lower – maybe there was a SMB reconnect on one of the connections happening in between). Clockspeed monitoring looks pretty much the same as before for obvious reasons:
+
+<details>
+  <summary>sbc-bench -m</summary>
+
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:44:09: 1800/2352/ 600MHz  0.50   5%   3%   1%   0%   0%   0%  47.2°C   12.04 
+    11:44:14: 1800/2352/2352MHz  0.46   7%   2%   1%   0%   3%   0%  48.1°C   12.05 
+    11:44:19: 1800/2352/2352MHz  0.43  16%   8%   0%   0%   2%   4%  49.9°C   12.02 
+    11:44:24: 1800/2352/2352MHz  0.39  14%   8%   0%   0%   2%   3%  49.9°C   12.01 
+    11:44:30: 1800/ 408/2352MHz  0.44   8%   3%   0%   0%   2%   2%  49.0°C   12.03 
+    11:44:35: 1800/ 600/2352MHz  0.40   6%   3%   0%   0%   0%   2%  49.9°C   12.02 
+    11:44:40: 1800/2352/ 600MHz  0.45   5%   3%   0%   0%   0%   0%  49.0°C   12.03 
+    11:44:45: 1800/ 600/2352MHz  0.62   4%   1%   1%   0%   1%   0%  48.1°C   12.03 
+    11:44:50: 1800/2352/2352MHz  0.65  10%   2%   2%   0%   4%   0%  48.1°C   12.03 
+    11:44:55: 1800/2352/2352MHz  0.68   9%   3%   3%   0%   2%   0%  49.0°C   12.02 
+    11:45:00: 1800/2352/2352MHz  0.94  11%   6%   1%   0%   1%   2%  49.9°C   12.02 
+    11:45:05: 1800/2352/2352MHz  1.03  26%  10%   7%   0%   3%   5%  51.8°C   12.03 
+    11:45:10: 1800/ 600/2352MHz  0.94  11%   6%   0%   0%   3%   1%  50.8°C   12.03 
+    11:45:15: 1800/2352/2352MHz  1.19   5%   3%   0%   0%   0%   1%  50.8°C   12.02 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:45:20: 1800/ 408/2352MHz  1.17   5%   3%   0%   0%   0%   1%  49.9°C   12.03 
+    11:45:25: 1800/ 408/2352MHz  1.08   3%   1%   1%   0%   0%   1%  49.9°C   12.04 
+    11:45:31: 1800/2352/2352MHz  1.07  10%   2%   2%   0%   4%   0%  49.9°C   12.02 
+    11:45:36: 1800/2352/2352MHz  1.07   9%   3%   3%   0%   2%   0%  49.9°C   12.03 
+    11:45:41: 1800/2352/2352MHz  1.14  11%   4%   2%   0%   2%   2%  50.8°C   12.03 
+    11:45:46: 1800/ 816/2352MHz  1.05  20%  10%   0%   0%   3%   5%  51.8°C   12.01 
+    11:45:51: 1800/ 600/2352MHz  0.97  15%   7%   0%   0%   3%   3%  50.8°C   12.01 
+    11:45:56: 1800/2352/2352MHz  0.89   6%   3%   0%   0%   0%   1%  50.8°C   12.01 
+    11:46:01: 1800/ 408/2352MHz  0.82   5%   3%   1%   0%   0%   1%  49.9°C   12.03 
+    11:46:06: 1800/2352/2352MHz  0.83   6%   1%   1%   0%   2%   0%  49.9°C   12.04 
+    11:46:11: 1800/2352/2352MHz  0.85   7%   3%   2%   0%   1%   0%  49.0°C   12.03 
+    11:46:16: 1800/ 408/2352MHz  0.78   4%   2%   2%   0%   0%   0%  49.0°C   12.05 
+    11:46:22:  816/ 408/ 408MHz  0.72   0%   0%   0%   0%   0%   0%  47.2°C   12.03 
+
+</details>
+
+<!-- TOC --><a name="cpufreq-governor-and-dmc-governor-set-both-to-performance-bad-for-idle-consumption"></a>
+### cpufreq governor and DMC governor set both to `performance` (bad for idle consumption):
+
+![pufreq governor and DMC governor set both to `performance`](../media/rock5-itx-performance-performance.png)
+
+Best numbers possible but at the price of having a significantly higher idle consumption with all CPU cores and DRAM always at highest clock. And while benchmark scores like these show minor improvements in most real world scenarios it wouldn't make any difference. Cpufreq monitoring rather useless (since everything at top speed) but anyway:
+
+<details>
+  <summary>sbc-bench -m</summary>
+
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:39:06: 1800/2352/2352MHz  0.32   5%   3%   1%   0%   0%   0%  43.5°C   12.03 
+    11:39:11: 1800/2352/2352MHz  0.29   0%   0%   0%   0%   0%   0%  42.5°C   12.03 
+    11:39:16: 1800/2352/2352MHz  0.43   6%   1%   1%   0%   3%   0%  44.4°C   12.03 
+    11:39:21: 1800/2352/2352MHz  0.40  17%   8%   1%   0%   2%   4%  47.2°C   12.03 
+    11:39:26: 1800/2352/2352MHz  0.60  19%  10%   0%   0%   3%   4%  48.1°C   12.05 
+    11:39:31: 1800/2352/2352MHz  0.56   7%   3%   0%   0%   1%   2%  47.2°C   12.02 
+    11:39:37: 1800/2352/2352MHz  0.51   6%   3%   0%   0%   0%   1%  47.2°C   12.05 
+    11:39:42: 1800/2352/2352MHz  0.47   3%   1%   1%   0%   0%   0%  47.2°C   12.03 
+    11:39:47: 1800/2352/2352MHz  0.59  10%   2%   2%   0%   4%   0%  47.2°C   12.03 
+    11:39:52: 1800/2352/2352MHz  0.54  10%   3%   3%   0%   2%   0%  47.2°C   12.05 
+    11:39:57: 1800/2352/2352MHz  0.50  14%   7%   1%   0%   1%   3%  49.9°C   12.02 
+    11:40:02: 1800/2352/2352MHz  0.46  20%   9%   0%   0%   4%   5%  49.9°C   12.00 
+    11:40:07: 1800/2352/2352MHz  0.42   8%   4%   0%   0%   1%   2%  49.0°C   12.03 
+    11:40:12: 1800/2352/2352MHz  0.47   6%   3%   0%   0%   0%   2%  49.0°C   12.04 
+    
+    Time       cpu0/cpu4/cpu6    load %cpu %sys %usr %nice %io %irq   Temp   DC(V)
+    11:40:17: 1800/2352/2352MHz  0.43   2%   1%   1%   0%   0%   0%  48.1°C   12.04 
+    11:40:22: 1800/2352/2352MHz  0.56   8%   2%   2%   0%   3%   0%  48.1°C   12.05 
+    11:40:27: 1800/2352/2352MHz  0.59   8%   3%   3%   0%   1%   0%  48.1°C   12.03 
+    11:40:32: 1800/2352/2352MHz  0.63  10%   4%   1%   0%   0%   3%  49.0°C   12.03 
+    11:40:38: 1800/2352/2352MHz  0.58  13%   6%   0%   0%   2%   3%  49.9°C   12.00 
+    11:40:43: 1800/2352/2352MHz  0.61  14%   7%   0%   0%   4%   2%  49.0°C   12.05 
+    11:40:48: 1800/2352/2352MHz  0.56   6%   2%   0%   0%   0%   3%  49.9°C   12.04 
+    11:40:53: 1800/2352/2352MHz  0.52   5%   3%   0%   0%   0%   1%  49.0°C   12.05 
+    11:40:58: 1800/2352/2352MHz  0.47   3%   1%   1%   0%   0%   0%  49.0°C   12.02 
+    11:41:03: 1800/2352/2352MHz  0.44  10%   2%   2%   0%   4%   0%  49.0°C   12.05 
+    11:41:08: 1800/2352/2352MHz  0.48   4%   2%   2%   0%   0%   0%  48.1°C   12.02 
+    11:41:13: 1800/2352/2352MHz  0.44   0%   0%   0%   0%   0%   0%  46.2°C   12.03 
+
+</details>
+
+The above was *only* looking at clockspeeds / governors.
+
+An entirely different and mostly unrelated area is SMP/IRQ affinity somebody would've to look into to squeeze maximum performance out of such a setup. The Armbian project brags about superiour settings they ship with but looking back behind it seems this was just Mikhail's and mine pet project (we both left Armbian in 2018) since none of today's Armbian devs cares any more about such stuff. Well, maybe related to Armbian having completely switched direction towards 'best Linux desktop' or just no clue whatsoever ([the 'benchmarking' done here mixing completely unrelated stuff like IRQ affinity and cpufreq to justify `schedutil` being the new default](https://github.com/armbian/build/pull/6120#issuecomment-1873380309) is just... nuts)
 
 <!-- TOC --><a name="open-questions"></a>
 ## Open questions
