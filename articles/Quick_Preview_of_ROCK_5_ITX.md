@@ -110,11 +110,18 @@ Other notable onboard components on *my* board include:
 <!-- TOC --><a name="quick-performance-assessment"></a>
 ## Quick performance assessment
 
-Rock 5 ITX is one of the first RK3588 devices to be equipped with LPDDR5 modules and since Rockchip's DRAM initialization BLOB clocks LPDDR5 higher than LPDDR4X (5472 MT/s vs. 4224 MT/s) we should see workloads/benchmarks that depend on memory access becoming faster.
+Rock 5 ITX is one of the first RK3588 devices to be equipped with LPDDR5 modules and since Rockchip's DRAM initialization BLOB clocks LPDDR5 higher than LPDDR4X (5472 MT/s vs. 4224 MT/s) many (me included) thought we see workloads/benchmarks that depend on memory access becoming faster.
 
-Though *at this point in time* at least using [official OS images (b1 build from 2024/04/17 included)](https://github.com/radxa-build/rock-5-itx/releases/) that's not true. Since `sbc-bench` benchmarks DRAM bandwith and latency individually we see that bandwidth has not improved and latency got worse: just compare [Radxa-Rock-5B.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5B.md) with [Radxa-Rock-5-ITX.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5-ITX.md)
+<del>Though *at this point in time* at least using [official OS images (b1 build from 2024/04/17 included)](https://github.com/radxa-build/rock-5-itx/releases/) that's not true. Since `sbc-bench` benchmarks DRAM bandwith and latency individually we see that bandwidth has not improved and latency got worse</del>
 
-As such any benchmark scores reviewers put online *now* are BS until this problem is addressed.
+Rockchip/Radxa [in the meantime confirmed that while bandwidth got partially better latency is worse with LPDDR5 vs. LPDDR4X](https://forum.radxa.com/t/rock-5-in-itx-form-factor/20005/50?u=tkaiser). Let's hope Rockchip can improve settings a bit but for now the advertised performance gain due to LPDDR5 over LPDDR4X seems to be none.
+
+For people trusting into Geekbench (me not) I let an `sbc-bench -G` measure performance (`sbc-bench` taking care of relevant governors set to `performance` and also measuring different CPU clusters individually on hybrid designs):
+
+  * A55 cluster: https://browser.geekbench.com/v6/cpu/compare/5424883?baseline=5768888
+  * A76 cluster: https://browser.geekbench.com/v6/cpu/compare/5424972?baseline=5768992
+
+Overall similar performance between (significantly lower clocked) LPDDR4X and LPDDR5 and the same is true with other benchmarks, compare [Radxa-Rock-5B.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5B.md) with [Radxa-Rock-5-ITX.md](https://github.com/ThomasKaiser/sbc-bench/blob/master/results/reviews/Radxa-Rock-5-ITX.md) for example.
 
 <!-- TOC --><a name="io-capabilities"></a>
 ## I/O capabilities
