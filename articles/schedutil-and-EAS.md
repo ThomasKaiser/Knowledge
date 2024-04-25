@@ -63,7 +63,7 @@ What about other SoC makers? Since I'm currently [evaluating an ARM thingy with 
 
 Funny! A76 is between 1.9 to 2.5 times faster than A55 at identical clockspeed.
 
-The most fascinating properties are those from Amlogic of course: they simply decided to use a nicely looking `1024` number, divide it by 2 for fun and then throw those two numbers at random DT locations which results in the A76 in their A928X being exactly twice as performant **and** power efficient as a little A55.
+The most fascinating properties are those from Amlogic of course: they simply decided to use a nicely looking `1024` number, divide it by 2 for fun and then throw those two numbers at random DT locations which results in the A76 in their S928X being exactly twice as performant **and** power efficient as a little A55. 'As expected' one could say since Amlogic has a ltrack record of not only [cheating with clockspeeds](https://www.cnx-software.com/2016/08/28/amlogic-s905-and-s912-processors-appear-to-be-limited-to-1-5-ghz-not-2-ghz-as-advertised/) but also messing up performance on SoCs with more than one cluster since in the past they always forgot to add `capacity-dmips-mhz` properties for the cores and as an example [on their S912 with two clusters consisting of A53 limited to either 1.0 or 1.4 GHz single-threaded workloads mostly ended up on the castrated A53 at only 1.0 GHz](https://forum.khadas.com/t/s912-limited-to-1200-mhz-with-multithreaded-loads/2311/54?u=tkaiser).
 
 Google/Samsung seem to have actually measured something while the 100/300 values from Rockchip for the RK3588 are obviously just two random numbers chosen. 
 
