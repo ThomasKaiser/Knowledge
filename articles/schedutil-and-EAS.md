@@ -61,11 +61,16 @@ What about other SoC makers? Since I'm currently [evaluating an ARM thingy with 
   * A76: `capacity-dmips-mhz = <620>;` `dynamic-power-coefficient = <284>;`
   * X1: `capacity-dmips-mhz = <1024>;` `dynamic-power-coefficient = <650>;`
 
-Funny! A76 is between 1.9 to 2.5 times faster than A55 at identical clockspeed.
+### [MediaTek MT8186](https://github.com/torvalds/linux/blob/master/arch/arm64/boot/dts/mediatek/mt8186.dtsi) (A76 2.68 times faster than A55):
 
-The most fascinating properties are those from Amlogic of course: they simply decided to use a nicely looking `1024` number, divide it by 2 for fun and then throw those two numbers at random DT locations which results in the A76 in their S928X being exactly twice as performant **and** power efficient as a little A55. 'As expected' one could say since Amlogic has a ltrack record of not only [cheating with clockspeeds](https://www.cnx-software.com/2016/08/28/amlogic-s905-and-s912-processors-appear-to-be-limited-to-1-5-ghz-not-2-ghz-as-advertised/) but also messing up performance on SoCs with more than one cluster since in the past they always forgot to add `capacity-dmips-mhz` properties for the cores and as an example [on their S912 with two clusters consisting of A53 limited to either 1.0 or 1.4 GHz single-threaded workloads mostly ended up on the castrated A53 at only 1.0 GHz](https://forum.khadas.com/t/s912-limited-to-1200-mhz-with-multithreaded-loads/2311/54?u=tkaiser).
+  * A55: `capacity-dmips-mhz = <382>;` `dynamic-power-coefficient = <84>;`
+  * A76: `capacity-dmips-mhz = <1024>;` `dynamic-power-coefficient = <335>;`
 
-Google/Samsung seem to have actually measured something while the 100/300 values from Rockchip for the RK3588 are obviously just two random numbers chosen. 
+Funny! A76 is between 1.9 to 2.7 times faster than A55 at identical clockspeed.
+
+The most fascinating properties are those from Amlogic of course: they simply decided to use a nicely looking `1024` number, divide it by 2 for fun and then throw those two numbers at random DT locations which results in the A76 in their S928X being exactly twice as performant **and** power efficient as a little A55. 'As expected' one could say since Amlogic has a 'track record' of not only [cheating with clockspeeds](https://www.cnx-software.com/2016/08/28/amlogic-s905-and-s912-processors-appear-to-be-limited-to-1-5-ghz-not-2-ghz-as-advertised/) but also messing up performance on SoCs with more than one cluster since in the past they always forgot to add `capacity-dmips-mhz` properties for the cores and as an example [on their S912 with two clusters consisting of A53 limited to either 1.0 or 1.4 GHz single-threaded workloads mostly ended up on the slower A53 at only 1.0 GHz](https://forum.khadas.com/t/s912-limited-to-1200-mhz-with-multithreaded-loads/2311/54?u=tkaiser).
+
+Google/Samsung and MediaTek seem to have actually measured something while the 100/300 values from Rockchip for the RK3588 are obviously just two random numbers chosen. 
 
 The clear winner is Unisoc since they [provide detailed power costs](https://github.com/realme-kernel-opensource/realme_C31_C35_narzo50A-Prime-AndroidR-kernel-source/blob/79c7c8b238a20393a78ee5f1110991bd4280e143/arch/arm64/boot/dts/sprd/ums9620.dtsi#L133-L173).
 
