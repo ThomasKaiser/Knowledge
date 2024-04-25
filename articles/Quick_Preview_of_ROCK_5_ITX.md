@@ -1815,16 +1815,16 @@ An entirely different and mostly unrelated area is SMP/IRQ affinity somebody wou
 
   * DC-IN voltage range? As far as I understood the 12V requirement is solely related to SATA power (12V rail only needed with 5.25" and some exotic 3.5" HDDs)
   * Why does SATA write performance sucks that much?
-  * LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse. Why?
+  * <del>LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse. Why?</del>
   * 'ROOBI OS' by default flashed to eMMC when device finally ships?
   * What is the purpose of the 16M SPI NOR flash?
 
 <!-- TOC --><a name="todo-tk"></a>
 ## TODO TK
 
-  * investigate LPDDR5 initialization
+  * <del>investigate LPDDR5 initialization</del>
   * consumption figures (disabling ASM1164, checking through governors/policies and Gen2 vs. Gen3)
   * educational measurement how wasteful ATX PSUs are
   * storage testing (only crappy NVMe SSD lying around, not enough SATA SSDs here)
-  * network testing: iperf3, investigating macOS Finder crappiness
-  * to be continued
+  * network testing: iperf3, <del>investigating macOS Finder crappiness</del>
+  * <del>to be continued</del>

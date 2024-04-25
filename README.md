@@ -1,5 +1,9 @@
 # Random stuff about 'small and energy efficient' computing.
 
+#### 2024/04/26
+
+* [The `schedutil` governor and energy aware scheduling](articles/schedutil-and-EAS.md)
+
 #### 2024/04/15
 
 * [Quick Preview of ROCK 5 ITX](articles/Quick_Preview_of_ROCK_5_ITX.md)
