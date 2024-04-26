@@ -1,10 +1,16 @@
 # The `schedutil` governor and energy aware scheduling
 
+A quick look on at how broken things are on Linux (on ARM).
+
 With hybrid designs (big.LITTLE/DynamIQ on ARM, on Intel [some SKUs starting with Lakefield](https://github.com/ThomasKaiser/sbc-bench/blob/07fdc0b99e0868d8d40425bdf8ba97d00aca4ad3/sbc-bench.sh#L2171-L2315)) the scheduler needs to know both energy consumption at specific clockspeeds as well as performance characteristics to decide when a task should be running on an efficiency and when on a performance core to balance performance and consumption.
 
-The only scheduler able to deal with this 'energy aware scheduling' (EAS) concept is `schedutil` and as such it should be the only reasonable choice on hybrid CPU/SoC designs. Though what sounds great in theory doesn't seem to work that great in practice.
+The only Linux scheduler able to deal with this 'energy aware scheduling' (EAS) concept is `schedutil` and as such it should be the only reasonable choice on hybrid CPU/SoC designs. Though what sounds great in theory doesn't seem to work that great in practice.
+
+Linux on ARM uses device-tree to configure this stuff.
 
 ## `capacity-dmips-mhz` property
+
+This *should* tell the scheduler how performant a specific core is.
 
 In 2002 [ARM explained in detail why using Dhrystone 'today' (in 2002) is 100% wrong](https://www.docjava.com/courses/cr346/data/papers/DhrystoneMIPS-CriticismbyARM.pdf). Money quote: 'Code profiling demonstrates that Dhrystone is not a particularly good predictor of real-world performance, especially for complex embedded systems.'
 
@@ -24,9 +30,9 @@ So why chose ARM in 2016 `capacity-dmips-mhz` over `capacity-coremark-mhz` and n
 
 What about ARM customers? Do they follow ARM's recommendation from 2016 to rely on this Dhrystone joke from last century? [Unfortunately yes](https://lore.kernel.org/linux-devicetree/5A3CD286.2010705@hisilicon.com/T/). I guess at SoC vendors also nobody gives a sh*t about such stuff?
 
-## dynamic-power-coefficient
+## `dynamic-power-coefficient` property
 
-This DT property for each CPU core should tell how much energy this CPU core needs which is an interesting attempt given that modern CPUs usually implement 'dynamic voltage and frequency scaling' (DVFS) and consumption increases a lot more at the highest DVFS OPP so a single number for the whole CPU sounds a little bit strange. But the formula used in the energy model `power (uW) = dynamic-power-coefficient * uV^2 * Freq (Mhz)` may compensate for that (uV^2). Has anyone ever tested this?
+This DT property for each CPU core *should* tell how much energy this CPU core needs which is an interesting attempt given that modern CPUs usually implement 'dynamic voltage and frequency scaling' (DVFS) and consumption increases a lot more at the highest DVFS OPP so a single number for the whole CPU sounds a little bit strange. But the formula used in the energy model `power (uW) = dynamic-power-coefficient * uV^2 * Freq (Mhz)` may compensate for that (uV^2). Has anyone ever tested this?
 
 [ARM's calculation approach as an example](https://patchwork.ozlabs.org/project/linux-imx/patch/20190128165522.31749-7-quentin.perret@arm.com/). Relies this time on `sysbench` and taking the arithmetic mean of the various values.
 
@@ -70,19 +76,19 @@ What about other SoC makers? Since I'm currently [evaluating an ARM thingy with 
 
 Funny! A76 is between 1.9 to 2.7 times faster than A55 at identical clockspeed.
 
-The most fascinating properties are those from Amlogic of course: they simply decided to use a nicely looking `1024` number, divide it by 2 for fun and then throw those two numbers at random DT locations which results in the A76 in their S928X being exactly twice as performant **and** power efficient as a little A55. 'As expected' one could say since Amlogic has a 'track record' of not only [cheating with clockspeeds](https://www.cnx-software.com/2016/08/28/amlogic-s905-and-s912-processors-appear-to-be-limited-to-1-5-ghz-not-2-ghz-as-advertised/) but also messing up performance on SoCs with more than one cluster since in the past they always forgot to add `capacity-dmips-mhz` properties for the cores and as an example [on their S912 with two clusters consisting of A53 limited to either 1.0 or 1.4 GHz single-threaded workloads mostly ended up on the slower A53 at only 1.0 GHz](https://forum.khadas.com/t/s912-limited-to-1200-mhz-with-multithreaded-loads/2311/54?u=tkaiser).
+The most fascinating properties are those from Amlogic of course: they simply decided to use a nicely looking `1024` number, divide it by 2 for fun and then throw those two numbers at random DT locations which results in the A76 in their S928X being exactly twice as performant **and** power efficient at the same time as a little A55. 'As expected' one could say since Amlogic has a 'track record' of not only [cheating with clockspeeds](https://www.cnx-software.com/2016/08/28/amlogic-s905-and-s912-processors-appear-to-be-limited-to-1-5-ghz-not-2-ghz-as-advertised/) but also messing up performance on SoCs with more than one cluster since in the past they always forgot to add `capacity-dmips-mhz` properties for the cores and as an example [on their S912 with two clusters consisting of A53 limited to either 1.0 or 1.4 GHz single-threaded workloads mostly ended up on the slower A53 at only 1.0 GHz](https://forum.khadas.com/t/s912-limited-to-1200-mhz-with-multithreaded-loads/2311/54?u=tkaiser).
 
 Google/Samsung and MediaTek seem to have actually measured something while the 100/300 values from Rockchip for the RK3588 are obviously just two random numbers chosen. 
 
-The clear winner is Unisoc since they [provide detailed power costs](https://github.com/realme-kernel-opensource/realme_C31_C35_narzo50A-Prime-AndroidR-kernel-source/blob/79c7c8b238a20393a78ee5f1110991bd4280e143/arch/arm64/boot/dts/sprd/ums9620.dtsi#L133-L173).
+The winner is Unisoc since they [provide detailed power costs](https://github.com/realme-kernel-opensource/realme_C31_C35_narzo50A-Prime-AndroidR-kernel-source/blob/79c7c8b238a20393a78ee5f1110991bd4280e143/arch/arm64/boot/dts/sprd/ums9620.dtsi#L133-L173) though nobody knows with which methodology they generated those numbers (`sysbench`?)
 
-But why do the `capacity-dmips-mhz` differ between SoC vendors? Did they by accident discover that using Dhrystone is a bad idea since being more a software than a hardware benchmark not representing anything even remotely what we do on today's CPUs?
+But why do the `capacity-dmips-mhz` differ between SoC vendors? Did they by accident discover that using Dhrystone is a bad idea since being more of a software than a hardware benchmark not representing anything even remotely what we do on today's CPUs?
 
-At least not in Rockchip's case since I personally measured half a year ago to discover this: [the VAX MIPS ratings generated with same dhrystone binary suggest the A76 being 2.32 faster than an A55 at same clockspeed (14540 / 6260 = 2.32)](https://github.com/ThomasKaiser/sbc-bench/blob/master/Benchmarking_some_benchmarks.md#dhrystone--dmips--dmipsmhz). So when relying on this DMIPS nonsense it would have to read `capacity-dmips-mhz = <441>;` for the A55 cores. And this should be the same for any other A76/A55 combo out there since this Dhrystone joke is that small that it runs entirely inside CPU caches.
+At least not in Rockchip's case since I personally measured half a year ago to discover this: [the VAX MIPS ratings generated with same dhrystone binary suggest the A76 being 2.32 faster than an A55 at same clockspeed (14540 / 6260 = 2.32)](https://github.com/ThomasKaiser/sbc-bench/blob/master/Benchmarking_some_benchmarks.md#dhrystone--dmips--dmipsmhz). So when relying on this DMIPS nonsense it would have to read `capacity-dmips-mhz = <441>;` for the A55 cores. And this should be the same for any other A76/A55 combo out there since this Dhrystone joke is that small that it runs entirely inside CPU caches. But since the Dhrystone joke is a compiler/libs benchmark it may be possible that Rockchip really set these numbers based on 'measured' DMIPS just by using a different compiler version or whatever.
 
 Let's use the popular Geekbench 6 suite (though giving questionable numbers on any platform other than x86) and have a look at the A76 and A55 both at 1800 MHz in RK3588 (with the LPDDR at 4800 MT/s): `MaxKHz=1800000 Netio=powerbox-1/4 sbc-bench.sh -G` (sbc-bench executes Geekbench multiple times and on hybrid systems also on each CPU cluster individually)
 
-A76 single-threaded 3.23 times faster than A55 at same clock: https://browser.geekbench.com/v6/cpu/compare/5841948?baseline=5842066 ([full results](https://sprunge.us/B7m0Gs))
+A76 single-threaded *on average* 3.23 times faster than A55 at same clock: https://browser.geekbench.com/v6/cpu/compare/5841948?baseline=5842066 ([full results](https://sprunge.us/B7m0Gs))
 
 Clicking on the Geekbench browser link is interesting due to the wide range of performance differences with individual sub tests between the in-order A55 and the out-of-order A76 which hints at the whole idea of an energy model based on two properties per core type being flawed (I guess there's lots of real-world tasks where execution on an A55 needs way more time than just 2.5 times longer according to what SoC vendors have written to `.dtsi` files)
 
