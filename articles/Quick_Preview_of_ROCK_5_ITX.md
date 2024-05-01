@@ -63,6 +63,8 @@ Pricing has been announced recently and differs only by amount of RAM:
   * 16GB LPDDR5: $159
   * 32GB LPDDR5: $239
 
+In the meantime the device is also listed as available at both [Allnet and Arace](https://radxa.com/products/rock5/5itx/#buy)
+
 The board measures 170x170mm in size as it follows the Mini-ITX standard with externally accessible connectors all on the 'back side' accompanied by an appropriate I/O shield. From left to right there's
 
   * 5.5/2.1 mm centre positive DC-IN: wide input range (voltage range not tested/confirmed yet) but [**important** to use 12V when powering 5.25" HDDs by the board](#sata-power-ports)
@@ -99,7 +101,7 @@ On the remaining two board sides we find other internal connectors:
 
 Other notable onboard components on *my* board include:
 
-  * soldered 32GB "Samsung BJTD4R" HS400 eMMC module
+  * soldered 32GB "Samsung BJTD4R" HS400 eMMC module (on production boards it will be 8GB instead, not user-accessible and will be hosting [ROOBI OS](https://docs.radxa.com/en/x/roobi) for initial flashing of the real OS)
   * 2 x 32Gb SK Hynix H58G56AK6B LPDDR5 modules for a total of 8GB DRAM
   * Rockchip RK806-1 PMIC
   * 128 Mb Winbond W25X20CL SPI NOR flash
@@ -679,7 +681,7 @@ The TF card implementation is SDR104 / UHS-I capable so let's benchmark my 256GB
 
 Results confirm SDR104 / UHS-I with 65/88 MB/s write/read since most probably the TF card is the bottleneck here so the theoretical 104 MB/s can't be reached but the 50MB/s SDR50 mode would provide are clearly exceeded.
 
-The 32GB eMMC on the dev sample is empty but according to Radxa's cardboard box that may change when Rock 5 ITX can be bought since 'On board 32G eMMC for ROOBI OS' is printed on the retail package. As such the board might boot up from the prepopulated eMMC and provide a way for an OS to be installed from the Internet?
+The 32GB eMMC on the dev sample is empty but according to Radxa's cardboard box that will change when Rock 5 ITX can be bought since 'On board eMMC for ROOBI OS' is printed on the retail package. As such the board will boot up from the prepopulated eMMC and provide a way for an OS to be installed from the Internet.
 
 For now let's check the perforance of the eMMC module again with `iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2` on an ext4 partition:
 
@@ -688,7 +690,7 @@ For now let's check the perforance of the eMMC module again with `iozone -e -I -
           102400       4    26175    35219    25977    25981    25705    34631
           102400   16384   108049   108512   294709   295442   295918   108310
 
-Great random IOPS at 4K and 100/300 MB/s at sequential transfer speeds. Both nice.
+Great random IOPS at 4K and 100/300 MB/s at sequential transfer speeds. Both nice and irrelevant since production boards ship with an 8GB module that is not user-accessible by default and will only be used to boot into ROOBI OS.
 
 <!-- TOC --><a name="usb-c-port"></a>
 ## USB-C port
@@ -1816,7 +1818,7 @@ An entirely different and mostly unrelated area is SMP/IRQ affinity somebody wou
   * DC-IN voltage range? As far as I understood the 12V requirement is solely related to SATA power (12V rail only needed with 5.25" and some exotic 3.5" HDDs)
   * Why does SATA write performance sucks that much?
   * <del>LPDDR5 modules should be faster than the LPDDR4X on Rock 5B (4224 vs. 5472 MT/s) but with today's boot BLOBS memory bandwidth with LPDDR5 hasn't improved and latency got worse. Why?</del>
-  * 'ROOBI OS' by default flashed to eMMC when device finally ships?
+  * <del>'ROOBI OS' by default flashed to eMMC when device finally ships? Likely since [eMMC should be hidden from Linux later](https://github.com/radxa/kernel/commit/6846388e0270c994c190d4ae5f7573255e0cb2d0)</del>
   * What is the purpose of the 16M SPI NOR flash?
 
 <!-- TOC --><a name="todo-tk"></a>
