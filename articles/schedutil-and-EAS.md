@@ -95,3 +95,12 @@ Clicking on the Geekbench browser link is interesting due to the wide range of p
 But even if the whole concept would work flawlessly ARM's Dhrystone recommendation ruins it already (since suggesting little cores being a lot faster than they actually are) and SoC vendors writing funny numbers in DT nodes doesn't help either.
 
 Seems nobody gives a sh*t about such stuff?
+
+
+
+这个和dhrystone/coremark的版本，编译器选项的关系很大，我之前用的coremark测试出来结果是1.9倍左右。实际上，还要考虑真实的使用情况，A76/A55性能比较无法给出一个很好的量化值。
+
+This has a lot to do with the version of dhrystone/coremark, compiler options, the coremark test I used before came out around 1.9x. In reality, there are real world usage situations to consider, and the A76/A55 performance comparison doesn't give a good quantitative value.
+
+
+

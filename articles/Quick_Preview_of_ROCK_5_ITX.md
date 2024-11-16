@@ -683,7 +683,7 @@ Results confirm SDR104 / UHS-I with 65/88 MB/s write/read since most probably th
 
 The 32GB eMMC on the dev sample is empty but according to Radxa's cardboard box that will change when Rock 5 ITX can be bought since 'On board eMMC for ROOBI OS' is printed on the retail package. As such the board will boot up from the prepopulated eMMC and provide a way for an OS to be installed from the Internet.
 
-For now let's check the perforance of the eMMC module again with `iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2` on an ext4 partition:
+For now let's check the performance of the eMMC module again with `iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2` on an ext4 partition:
 
                                                               random    random
               kB  reclen    write  rewrite    read    reread    read     write
