@@ -67,7 +67,7 @@ It should be noted that throttling tresholds for all 4 boards are similar (trip-
 
 RK3399 directly attached with some thermal compound to this huge heatsink with sufficient fin spacing is the winner. It should also be noted that the PCB itself acts as a heatsink allowing for the SoC's heat to dissipate into the PCB's copper ground plane (see [here](https://forum.armbian.com/topic/7310-rockpro64/?do=findComment&comment=60708) for a thermal image). Large PCB with copper ground plane combined with huge heatsink with excellent heat transfer (no thermal pad) --> great thermal performance
 
-![](http://kaiser-edv.de/tmp/aumASK/RockPro64_without_WiFi.jpg)
+![](../media/IMG_8022.JPG)
 
 ##### NanoPi NEO4
 

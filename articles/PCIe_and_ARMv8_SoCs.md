@@ -10,7 +10,7 @@
 * Amlogic S928X (1 x Gen2 x1 muxed with USB3)
 * Broadcom BCM2711 (1 x Gen2 x1)
 * Broadcom BCM2712 ([1 x Gen3 x4, 2 x Gen3 x1](https://github.com/raspberrypi/linux/blob/2d3d2030c0564790a76cf94fa0ca1913873381af/arch/arm/boot/dts/bcm2712.dtsi#L935-L1092)). Note: on RPi 5 the x4 connection is used to attach the RP1 I/O chip and only one of the other lanes is exposed. All of them are forced to Gen2 speeds which [can be changed for the latter easily](https://www.jeffgeerling.com/blog/2023/testing-pcie-on-raspberry-pi-5)
-* Cixin P1/CP8180 (16 Gen4 lanes)
+* Cix Tech P1/CP8180 (1 x Gen4 x8, 1 x Gen4 x4, 1 x Gen4 x2, 2 x Gen4 x1)
 * MediaTek MT7622 (2 x Gen2 x1)
 * MediaTek MT8395 (1 x Gen3 x2, 1 x Gen2 x1)
 * Nvidia Jetson AGX (5 x Gen4 (16GT/s), 1x8, 1x4, 1x2, 2x1 Root port and endpoint)

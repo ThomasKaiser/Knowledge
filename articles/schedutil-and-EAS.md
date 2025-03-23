@@ -2,7 +2,7 @@
 
 A quick look on at how broken things are on Linux (on ARM).
 
-With hybrid designs (big.LITTLE/DynamIQ on ARM, on Intel [some SKUs starting with Lakefield](https://github.com/ThomasKaiser/sbc-bench/blob/07fdc0b99e0868d8d40425bdf8ba97d00aca4ad3/sbc-bench.sh#L2171-L2315)) the scheduler needs to know both energy consumption at specific clockspeeds as well as performance characteristics to decide when a task should be running on an efficiency and when on a performance core to balance performance and consumption.
+With hybrid designs (big.LITTLE/DynamIQ on ARM, on Intel [some SKUs starting with Lakefield](https://github.com/ThomasKaiser/sbc-bench/blob/fe319a30f0662797169eff66feca54764df74599/sbc-bench.sh#L2234-L2400)) the scheduler needs to know both energy consumption at specific clockspeeds as well as performance characteristics to decide when a task should be running on an efficiency and when on a performance core to balance performance and consumption.
 
 The only Linux scheduler able to deal with this 'energy aware scheduling' (EAS) concept is `schedutil` and as such it should be the only reasonable choice on hybrid CPU/SoC designs. Though what sounds great in theory doesn't seem to work that great in practice.
 
@@ -96,11 +96,11 @@ But even if the whole concept would work flawlessly ARM's Dhrystone recommendati
 
 Seems nobody gives a sh*t about such stuff?
 
-
+Later addition: I've been in touch with Rockchip engineers and for their 1.9 performance ratio they wrote:
 
 这个和dhrystone/coremark的版本，编译器选项的关系很大，我之前用的coremark测试出来结果是1.9倍左右。实际上，还要考虑真实的使用情况，A76/A55性能比较无法给出一个很好的量化值。
 
-This has a lot to do with the version of dhrystone/coremark, compiler options, the coremark test I used before came out around 1.9x. In reality, there are real world usage situations to consider, and the A76/A55 performance comparison doesn't give a good quantitative value.
+(This has a lot to do with the version of dhrystone/coremark, compiler options, the coremark test I used before came out around 1.9x. In reality, there are real world usage situations to consider, and the A76/A55 performance comparison doesn't give a good quantitative value.)
 
 
 
